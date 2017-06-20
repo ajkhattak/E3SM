@@ -18,9 +18,12 @@
     <default_value></default_value>
     <values modifier='additive'>
       <value compset="_ELM"                >-phys elm</value>
-      <value compset="_ELM%[^_]*BC" >-phys elm -cppdefs -DMODAL_AER</value>
+      <value compset="_ELM%[^_](?!*PF.)*BC" >-phys elm -cppdefs '-DMODAL_AER'</value>
       <value compset="1950(?:SOI)?_EAM%CMIP6-[LH]R[^_]*_ELM%[^_]*BC">-phys elm -cppdefs '-DMODAL_AER -DAPPLY_POST_DECK_BUGFIXES'</value>
       <value compset="2010(?:SOI)?_EAM%CMIP6-[LH]R[^_]*_ELM%[^_]*BC">-phys elm -cppdefs '-DMODAL_AER -DAPPLY_POST_DECK_BUGFIXES'</value>
+      <!-- ELMCN coupling with PFLOTRAN vertical-only mode. NB - needed to exclude PF if 'BC' combined, as above-->
+      <value compset="_ELM%[^_]*PF.*(BC).*"     >-cppdefs '-DMODAL_AER -DELM_PFLOTRAN -DCOLUMN_MODE'</value>
+      <value compset="_ELM%[^_]*PF(?!.*(BC).*)" >-cppdefs '-DELM_PFLOTRAN -DCOLUMN_MODE'</value>
     </values>
     <group>build_component_clm</group>
     <file>env_build.xml</file>
