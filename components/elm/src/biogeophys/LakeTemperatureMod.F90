@@ -15,14 +15,14 @@ module LakeTemperatureMod
   use LakeStateType     , only : lakestate_type
   use SoilStateType     , only : soilstate_type
   use SolarAbsorbedType , only : solarabs_type
-  use TemperatureType   , only : temperature_type
-  use WaterfluxType     , only : waterflux_type
-  use WaterstateType    , only : waterstate_type
   use ColumnType        , only : col_pp
   use ColumnDataType    , only : col_es, col_ef, col_ws, col_wf  
   use VegetationType    , only : veg_pp
   use VegetationDataType, only : veg_ef  
   !    
+
+  use timeinfoMod
+  !
   ! !PUBLIC TYPES:
   implicit none
   save
@@ -112,7 +112,6 @@ contains
     use QSatMod            , only : QSat
     use TridiagonalMod     , only : Tridiagonal
     use elm_varpar         , only : nlevlak, nlevgrnd, nlevsno
-    use clm_time_manager   , only : get_step_size
     use elm_varcon         , only : hfus, cpliq, cpice, tkwat, tkice, denice
     use elm_varcon         , only : vkc, grav, denh2o, tfrz, cnfac
     use elm_varctl         , only : iulog, use_lch4
@@ -127,11 +126,11 @@ contains
     type(soilstate_type)   , intent(in)    :: soilstate_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
     type(lakestate_type)   , intent(inout) :: lakestate_vars
+    real(r8)  :: dtime
     !
     ! !LOCAL VARIABLES:
     real(r8), parameter :: p0 = 1._r8                                      ! neutral value of turbulent prandtl number
     integer  :: i,j,fc,fp,g,c,p                                            ! do loop or array index
-    real(r8) :: dtime                                                      ! land model time step (sec)
     real(r8) :: beta(bounds%begc:bounds%endc)                              ! fraction of solar rad absorbed at surface: equal to NIR fraction
                                                                            ! of surface absorbed shortwave
     real(r8) :: eta                                                        ! light extinction coefficient (/m): depends on lake type
@@ -263,7 +262,7 @@ contains
     ! 1!) Initialization
     ! Determine step size
 
-    dtime = get_step_size()
+    dtime = dtime_mod
 
     ! Initialize constants
     cwat = cpliq*denh2o ! water heat capacity per unit volume
@@ -705,7 +704,7 @@ contains
          cv(bounds%begc:bounds%endc, :), &
          cv_lake(bounds%begc:bounds%endc, :), &
          lhabs(bounds%begc:bounds%endc), &
-         lakestate_vars)
+         lakestate_vars, dtime)
 
     !!!!!!!!!!!!!!!!!!!!!!!
 
@@ -1231,7 +1230,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine PhaseChange_Lake (bounds, num_lakec, filter_lakec, cv, cv_lake, lhabs, &
-        lakestate_vars)
+        lakestate_vars,  dtime )
      !
      ! !DESCRIPTION:
      ! Calculation of the phase change within snow, soil, & lake layers:
@@ -1250,7 +1249,6 @@ contains
      ! Errors will be trapped at the end of LakeTemperature.
      !
      ! !USES:
-     use clm_time_manager , only : get_step_size
      use elm_varcon       , only : tfrz, hfus, denh2o, denice, cpliq, cpice
      use elm_varpar       , only : nlevsno, nlevgrnd, nlevlak
      !
@@ -1262,11 +1260,11 @@ contains
      real(r8)               , intent(inout) :: cv_lake( bounds%begc: , 1: )     ! heat capacity [J/(m2 K)] [col, levlak]
      real(r8)               , intent(out)   :: lhabs( bounds%begc: )            ! total per-column latent heat abs. (J/m^2) [col]
      type(lakestate_type)   , intent(inout) :: lakestate_vars
+     real(r8), intent(in) :: dtime
      !
      ! !LOCAL VARIABLES:
      integer  :: j,c,g                              ! do loop index
      integer  :: fc                                 ! lake filtered column indices
-     real(r8) :: dtime                              ! land model time step (sec)
      real(r8) :: heatavail                          ! available energy for melting or freezing (J/m^2)
      real(r8) :: heatrem                            ! energy residual or loss after melting or freezing
      real(r8) :: melt                               ! actual melting (+) or freezing (-) [kg/m2]
@@ -1307,7 +1305,6 @@ contains
 
        ! Get step size
 
-       dtime = get_step_size()
 
        ! Initialization
 

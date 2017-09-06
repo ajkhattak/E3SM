@@ -6,9 +6,7 @@ module CropHarvestPoolsMod
   ! !USES:
   use shr_kind_mod        , only : r8 => shr_kind_r8
   use decompMod           , only : get_proc_bounds
-  use spmdMod             , only : masterproc
   use landunit_varcon     , only : istsoil
-  use clm_time_manager    , only : get_step_size
   use elm_varctl          , only : use_c13, use_c14
   use ColumnDataType      , only : col_cs, c13_col_cs, c14_col_cs
   use ColumnDataType      , only : col_cf, c13_col_cf, c14_col_cf
@@ -26,7 +24,7 @@ module CropHarvestPoolsMod
 contains
 
   !-----------------------------------------------------------------------
-  subroutine CropHarvestPools(num_soilc, filter_soilc)
+  subroutine CropHarvestPools(num_soilc, filter_soilc, dt)
     !
     ! !DESCRIPTION:
     ! Update all loss fluxes from crop harvest pools, and update harvest pool state variables
@@ -36,11 +34,10 @@ contains
     ! !ARGUMENTS:
     integer                  , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    !
+    real(r8)                 , intent(in)     :: dt        ! time step (seconds)
     ! !LOCAL VARIABLES:
     integer :: fc        ! lake filter indices
     integer :: c         ! indices
-    real(r8):: dt        ! time step (seconds)
     real(r8) :: kprod1       ! decay constant for 1-year product pool
     !-----------------------------------------------------------------------
 
@@ -69,7 +66,6 @@ contains
     end do
 
     ! set time steps
-    dt = real( get_step_size(), r8 )
 
     ! update wood product state variables
     do fc = 1,num_soilc

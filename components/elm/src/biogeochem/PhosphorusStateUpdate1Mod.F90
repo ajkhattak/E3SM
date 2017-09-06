@@ -5,7 +5,6 @@ module PhosphorusStateUpdate1Mod
   ! X.YANG
   ! !USES:
   use shr_kind_mod           , only: r8 => shr_kind_r8
-  use clm_time_manager       , only : get_step_size
   use elm_varpar             , only : nlevdecomp, ndecomp_pools, ndecomp_cascade_transitions
   use elm_varpar             , only : crop_prog, i_met_lit, i_cel_lit, i_lig_lit, i_cwd
   use elm_varctl             , only : iulog, use_nitrif_denitrif
@@ -21,7 +20,6 @@ module PhosphorusStateUpdate1Mod
   use elm_varctl             , only : use_pflotran, pf_cmode
   use elm_varctl             , only : nu_com
   ! forest fertilization experiment
-  use clm_time_manager       , only : get_curr_date
   use CNStateType            , only : fert_type , fert_continue, fert_dose, fert_start, fert_end
   use elm_varctl             , only : forest_fert_exp
   use elm_varctl             , only : NFIX_PTASE_plant
@@ -44,7 +42,7 @@ module PhosphorusStateUpdate1Mod
 
 contains
   subroutine PhosphorusStateUpdateDynPatch(bounds, num_soilc_with_inactive, &
-       filter_soilc_with_inactive)
+       filter_soilc_with_inactive, dt)
     !
     ! !DESCRIPTION:
     ! Update phosphorus states based on fluxes from dyn_cnbal_patch
@@ -54,17 +52,14 @@ contains
     integer                    , intent(in)    :: num_soilc_with_inactive       ! number of columns in soil filter
     integer                    , intent(in)    :: filter_soilc_with_inactive(:) ! soil column filter that includes inactive points
     !
+    real(r8)                   , intent(in)   :: dt
     ! !LOCAL VARIABLES:
     integer                                    :: c                             ! column index
     integer                                    :: fc                            ! column filter index
     integer                                    :: g                             ! gridcell index
     integer                                    :: j                             ! level index
-    real(r8)                                   :: dt                            ! time step (seconds)
 
-    character(len=*)           , parameter     :: subname = 'PhosphorusStateUpdateDynPatch'
     !-----------------------------------------------------------------------
-
-      dt = real( get_step_size(), r8 )
 
       if (.not.use_fates) then
 
@@ -101,7 +96,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine PhosphorusStateUpdate1(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       cnstate_vars)
+       cnstate_vars, dt)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update all the prognostic phosphorus state
@@ -114,10 +109,10 @@ contains
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)       , intent(in)    :: cnstate_vars
     !
+    real(r8)                 , intent(in)    :: dt !radiation time step
     ! !LOCAL VARIABLES:
     integer :: c,p,j,l,k ! indices
     integer :: fp,fc     ! lake filter indices
-    real(r8):: dt        ! radiation time step (seconds)
 
     integer:: kyr                     ! current year 
     integer:: kmo                     ! month of year  (1, ..., 12)
@@ -138,7 +133,6 @@ contains
          )
 
       ! set time steps
-      dt = real( get_step_size(), r8 )
 
       ! column-level fluxes
 
@@ -210,7 +204,6 @@ contains
       !------------------------------------------------------------------
      
       ! forest fertilization
-      call get_curr_date(kyr, kmo, kda, mcsec)
       if (forest_fert_exp) then
          do fc = 1,num_soilc
             c = filter_soilc(fc)

@@ -24,6 +24,8 @@ module BalanceCheckMod
   use ColumnDataType     , only : col_ef, col_ws, col_wf  
   use VegetationType     , only : veg_pp
   use VegetationDataType , only : veg_ef, veg_ws
+
+  use timeinfoMod
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -165,12 +167,10 @@ contains
      use column_varcon     , only : icol_road_perv, icol_road_imperv
      use landunit_varcon   , only : istice_mec, istdlak, istsoil,istcrop,istwet
      use elm_varctl        , only : create_glacier_mec_landunit
-     use clm_time_manager  , only : get_step_size, get_nstep
      use elm_initializeMod , only : surfalb_vars
      use domainMod         , only : ldomain
      use CanopyStateType   , only : canopystate_type
      use subgridAveMod
-     use clm_time_manager  , only : get_curr_date, get_nstep
      !
      ! !ARGUMENTS:
      type(bounds_type)     , intent(in)    :: bounds  
@@ -285,8 +285,8 @@ contains
 
        ! Get step size and time step
 
-       nstep = get_nstep()
-       dtime = get_step_size()
+       nstep = nstep_mod
+       dtime = dtime_mod !get_step_size()
 
        ! Determine column level incoming snow and rain.
        ! Assume that all columns on a topounit have the same atmospheric forcing.
@@ -356,6 +356,7 @@ contains
        end do
 
        if ( found ) then
+#ifndef _OPENACC
           write(iulog,*)'WARNING:  water balance error ',&
                ' nstep= ',nstep, &
                ' local indexc= ',indexc,&
@@ -417,6 +418,7 @@ contains
              write(iulog,*)'elm model is stopping'
              call endrun(decomp_index=indexc, elmlevel=namec, msg=errmsg(__FILE__, __LINE__))
           end if
+#endif
        end if
 
        ! Snow balance check
@@ -498,6 +500,7 @@ contains
           end if
        end do
        if ( found ) then
+#ifndef _OPENACC
           write(iulog,*)'WARNING:  snow balance error '
           write(iulog,*)'nstep= ',nstep, &
                ' local indexc= ',indexc, &
@@ -530,6 +533,7 @@ contains
              write(iulog,*)'elm model is stopping'
              call endrun(decomp_index=indexc, elmlevel=namec, msg=errmsg(__FILE__, __LINE__))
           end if
+#endif
        end if
 
        ! Energy balance checks
@@ -596,6 +600,7 @@ contains
           end if
        end do
        if ( found  .and. (nstep > 2) ) then
+#ifndef _OPENACC
           write(iulog,*)'WARNING:: BalanceCheck, solar radiation balance error (W/m2)'
           write(iulog,*)'nstep         = ',nstep
           write(iulog,*)'errsol        = ',errsol(indexp)
@@ -612,6 +617,7 @@ contains
              write(iulog,*)'elm model is stopping'
              call endrun(decomp_index=indexp, elmlevel=namep, msg=errmsg(__FILE__, __LINE__))
           end if
+#endif
        end if
 
        ! Longwave radiation energy balance check
@@ -626,6 +632,7 @@ contains
           end if
        end do
        if ( found  .and. (nstep > 2) ) then
+#ifndef _OPENACC
           write(iulog,*)'WARNING: BalanceCheck: longwave energy balance error (W/m2)' 
           write(iulog,*)'nstep        = ',nstep 
           write(iulog,*)'errlon       = ',errlon(indexp)
@@ -633,6 +640,7 @@ contains
              write(iulog,*)'elm model is stopping - error is greater than 1e-5 (W/m2)'
              call endrun(decomp_index=indexp, elmlevel=namep, msg=errmsg(__FILE__, __LINE__))
           end if
+#endif
        end if
 
        ! Surface energy balance check
@@ -649,6 +657,7 @@ contains
           end if
        end do
        if ( found  .and. (nstep > 2) ) then
+#ifndef _OPENACC
           write(iulog,*)'WARNING: BalanceCheck: surface flux energy balance error (W/m2)'
           write(iulog,*)'nstep          = ' ,nstep
           write(iulog,*)'errseb         = ' ,errseb(indexp)
@@ -674,6 +683,7 @@ contains
              write(iulog,*)'elm model is stopping'
              call endrun(decomp_index=indexp, elmlevel=namep, msg=errmsg(__FILE__, __LINE__))
           end if
+#endif 
        end if
 
        ! Soil energy balance check
@@ -712,7 +722,7 @@ contains
     ! Initialize column-level water balance at beginning of time step
     !
     ! !USES:
-    use subgridAveMod , only : p2c,c2g
+    use subgridAveMod , only : p2c,c2g, urbanf, unity
     use elm_varpar    , only : nlevgrnd, nlevsoi, nlevurb
     use column_varcon , only : icol_roof, icol_sunwall, icol_shadewall
     use column_varcon , only : icol_road_perv, icol_road_imperv
@@ -812,32 +822,32 @@ contains
 
       call c2g(bounds, begwb_col(bounds%begc:bounds%endc), &
            begwb_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, wa_local_col(bounds%begc:bounds%endc), &
            beg_wa_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, h2ocan_col(bounds%begc:bounds%endc), &
            beg_h2ocan_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, h2osno(bounds%begc:bounds%endc), &
            beg_h2osno_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, h2osfc(bounds%begc:bounds%endc), &
            beg_h2osfc_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, h2osoi_liq_depth_intg(bounds%begc:bounds%endc), &
            beg_h2osoi_liq_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, h2osoi_ice_depth_intg(bounds%begc:bounds%endc), &
            beg_h2osoi_ice_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
-      
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
+
     end associate
 
   end subroutine BeginGridWaterBalance
@@ -855,10 +865,9 @@ contains
      use column_varcon     , only : icol_road_perv, icol_road_imperv
      use landunit_varcon   , only : istice_mec, istdlak, istsoil,istcrop,istwet
      use elm_varctl        , only : create_glacier_mec_landunit
-     use clm_time_manager  , only : get_step_size, get_nstep
      use elm_initializeMod , only : surfalb_vars
      use CanopyStateType   , only : canopystate_type
-     use subgridAveMod
+     use subgridAveMod     , only : c2g, urbanf, unity
      !
      ! !ARGUMENTS:
      type(bounds_type)     , intent(in)    :: bounds  
@@ -983,7 +992,7 @@ contains
           end_h2osoi_ice_grc         =>    grc_ws%end_h2osoi_ice           & ! Output: [real(r8) (:)   ]  grid-level depth integrated liquid soil water at end of the time step (mm)
           )
 
-       dtime = get_step_size()
+       dtime = dtime_mod
 
        wa_local_col(bounds%begc:bounds%endc) = wa(bounds%begc:bounds%endc)
 
@@ -1025,35 +1034,35 @@ contains
 
       call c2g(bounds, endwb_col(bounds%begc:bounds%endc)             , &
            endwb_grc(bounds%begg:bounds%endg)                         , &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, wa_local_col(bounds%begc:bounds%endc)          , &
            end_wa_grc(bounds%begg:bounds%endg)                        , &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, h2ocan_col(bounds%begc:bounds%endc)            , &
            end_h2ocan_grc(bounds%begg:bounds%endg)                    , &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, h2osno_col(bounds%begc:bounds%endc)            , &
            end_h2osno_grc(bounds%begg:bounds%endg)                    , &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, h2osfc_col(bounds%begc:bounds%endc)            , &
            end_h2osfc_grc(bounds%begg:bounds%endg)                    , &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, h2osoi_liq_depth_intg(bounds%begc:bounds%endc) , &
            end_h2osoi_liq_grc(bounds%begg:bounds%endg)                , &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, h2osoi_ice_depth_intg(bounds%begc:bounds%endc) , &
            end_h2osoi_ice_grc(bounds%begg:bounds%endg)                , &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
       call c2g(bounds, errh2o(bounds%begc:bounds%endc)                , &
            errh2o_grc(bounds%begg:bounds%endg)                        , &
-           c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+           c2l_scale_type= urbanf, l2g_scale_type=unity )
 
     end associate
 

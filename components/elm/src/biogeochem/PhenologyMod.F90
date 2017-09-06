@@ -31,7 +31,9 @@ module PhenologyMod
   use VegetationType      , only : veg_pp                
   use VegetationDataType  , only : veg_es, veg_ef, veg_cs, veg_cf, veg_ns, veg_nf
   use VegetationDataType  , only : veg_ps, veg_pf
-  
+  !!!Added for gpu timing info
+  use timeinfoMod
+
   !
   implicit none
   save
@@ -45,25 +47,25 @@ module PhenologyMod
   !
   ! !PRIVATE DATA MEMBERS:
   type, private :: PnenolParamsType
-     real(r8) :: crit_dayl       ! critical day length for senescence
-     real(r8) :: crit_dayl_stress ! critical day length for senescence (stress)
-     real(r8) :: cumprec_onset   ! 10-day cumulative precipitation threshold for onset
-     real(r8) :: ndays_on        ! number of days to complete leaf onset
-     real(r8) :: ndays_off       ! number of days to complete leaf offset
-     real(r8) :: fstor2tran      ! fraction of storage to move to transfer for each onset
-     real(r8) :: crit_onset_fdd  ! critical number of freezing days to set gdd counter
-     real(r8) :: crit_onset_swi  ! critical number of days > soilpsi_on for onset
-     real(r8) :: soilpsi_on      ! critical soil water potential for leaf onset
-     real(r8) :: crit_offset_fdd ! critical number of freezing days to initiate offset
-     real(r8) :: crit_offset_swi ! critical number of water stress days to initiate offset
-     real(r8) :: soilpsi_off     ! critical soil water potential for leaf offset
-     real(r8) :: lwtop           ! live wood turnover proportion (annual fraction)
+     real(r8), pointer :: crit_dayl        => null() ! critical day length for senescence
+     real(r8), pointer :: crit_dayl_stress => null()  ! critical day length for senescence (stress)
+     real(r8), pointer :: cumprec_onset    => null() ! 10-day cumulative precipitation threshold for onset
+     real(r8), pointer :: ndays_on         => null() ! number of days to complete leaf onset
+     real(r8), pointer :: ndays_off        => null() ! number of days to complete leaf offset
+     real(r8), pointer :: fstor2tran       => null() ! fraction of storage to move to transfer for each onset
+     real(r8), pointer :: crit_onset_fdd   => null() ! critical number of freezing days to set gdd counter
+     real(r8), pointer :: crit_onset_swi   => null() ! critical number of days > soilpsi_on for onset
+     real(r8), pointer :: soilpsi_on       => null() ! critical soil water potential for leaf onset
+     real(r8), pointer :: crit_offset_fdd  => null() ! critical number of freezing days to initiate offset
+     real(r8), pointer :: crit_offset_swi  => null() ! critical number of water stress days to initiate offset
+     real(r8), pointer :: soilpsi_off      => null() ! critical soil water potential for leaf offset
+     real(r8), pointer :: lwtop            => null() ! live wood turnover proportion (annual fraction)
   end type PnenolParamsType
 
-  ! PhenolParamsInst is populated in readPhenolParams 
-  type(PnenolParamsType) ::  PhenolParamsInst
+  ! PhenolParamsInst is populated in readPhenolParams
+  type(PnenolParamsType), public ::  PhenolParamsInst
+  
 
-  real(r8) :: dt                            ! radiation time step delta t (seconds)
   real(r8) :: fracday                       ! dtime as a fraction of day
   real(r8) :: crit_dayl                     ! critical daylength for offset (seconds)
   real(r8) :: crit_dayl_stress              ! critical day length for senescence (stress)
@@ -92,7 +94,11 @@ module PhenologyMod
 
   integer, allocatable :: minplantjday(:,:) ! minimum planting julian day
   integer, allocatable :: maxplantjday(:,:) ! maximum planting julian day
-  integer              :: jdayyrstart(inSH) ! julian day of start of year
+  integer              :: jdayyrstart(2) ! julian day of start of year
+  
+  
+  
+  
   !-----------------------------------------------------------------------
 
 contains
@@ -117,6 +123,19 @@ contains
     real(r8)           :: tempr ! temporary to read in parameter
     character(len=100) :: tString ! temp. var for reading
     !-----------------------------------------------------------------------
+    allocate(PhenolParamsInst%crit_dayl       )
+    allocate(PhenolParamsInst%crit_dayl_stress)
+    allocate(PhenolParamsInst%cumprec_onset   )
+    allocate(PhenolParamsInst%ndays_on        )
+    allocate(PhenolParamsInst%ndays_off       )
+    allocate(PhenolParamsInst%fstor2tran      )
+    allocate(PhenolParamsInst%crit_onset_fdd  )
+    allocate(PhenolParamsInst%crit_onset_swi  )
+    allocate(PhenolParamsInst%soilpsi_on      )
+    allocate(PhenolParamsInst%crit_offset_fdd )
+    allocate(PhenolParamsInst%crit_offset_swi )
+    allocate(PhenolParamsInst%soilpsi_off     )
+    allocate(PhenolParamsInst%lwtop           )
 
     !
     ! read in parameters
@@ -283,6 +302,7 @@ contains
     ! !ARGUMENTS:
     implicit none
     type(bounds_type), intent(in) :: bounds  
+    real(r8) :: dt
     !------------------------------------------------------------------------
 
     !
@@ -346,8 +366,7 @@ contains
     ! For coupled carbon-nitrogen code (CN).
     !
     ! !USES:
-    use clm_time_manager , only : get_days_per_year
-    use clm_time_manager , only : get_curr_date, is_first_step
+    use timeinfoMod
     !
     ! !ARGUMENTS:
     integer                , intent(in)    :: num_soilp       ! number of soil patches in filter
@@ -368,6 +387,7 @@ contains
     integer mcsec                   !         seconds of day (0, ..., seconds/day)
     real(r8), parameter :: yravg   = 20.0_r8      ! length of years to average for gdd
     real(r8), parameter :: yravgm1 = yravg-1.0_r8 ! minus 1 of above
+    real(r8) :: dt
     !-----------------------------------------------------------------------
 
     associate(                                                  & 
@@ -384,8 +404,13 @@ contains
          )
 
       ! set time steps
-      
-      dayspyr = get_days_per_year()
+      dt = dtime_mod
+      dayspyr = dayspyr_mod
+      !time info only used if num_pcropp > 1
+      kyr = year_curr
+      kda = day_curr
+      kmo = mon_curr
+      mcsec = secs_curr
 
       do fp = 1,num_soilp
          p = filter_soilp(fp)
@@ -399,10 +424,6 @@ contains
       ! The following lines come from ibis's climate.f + stats.f
       ! gdd SUMMATIONS ARE RELATIVE TO THE PLANTING DATE (see subr. updateAccFlds)
 
-      if (num_pcropp > 0) then
-         ! get time-related info
-         call get_curr_date(kyr, kmo, kda, mcsec)
-      end if
 
       do fp = 1,num_pcropp
          p = filter_pcropp(fp)
@@ -436,7 +457,6 @@ contains
     !
     ! !USES:
     use elm_varcon       , only : secspday
-    use clm_time_manager , only : get_days_per_year
     !
     ! !ARGUMENTS:
     integer           , intent(in)    :: num_soilp       ! number of soil patches in filter
@@ -461,7 +481,7 @@ contains
          lgsf        => cnstate_vars%lgsf_patch    & ! Output: [real(r8) (:) ]  long growing season factor [0-1]                  
          )
 
-      dayspyr   = get_days_per_year()
+      dayspyr = dayspyr_mod
 
       do fp = 1,num_soilp
          p = filter_soilp(fp)
@@ -501,6 +521,7 @@ contains
     real(r8):: ws_flag        !winter-summer solstice flag (0 or 1)
     real(r8):: crit_onset_gdd !critical onset growing degree-day sum
     real(r8):: soilt
+    real(r8):: dt
     !-----------------------------------------------------------------------
 
     associate(                                                                                             & 
@@ -611,7 +632,7 @@ contains
          deadcrootp_storage_to_xfer          =>    veg_pf%deadcrootp_storage_to_xfer      & ! Output:  [real(r8) (:)   ]                                                    
 
          )
-
+         dt = dtime_mod
       ! start pft loop
       do fp = 1,num_soilp
          p = filter_soilp(fp)
@@ -827,7 +848,6 @@ contains
     ! per year.
     !
     ! !USES:
-    use clm_time_manager , only : get_days_per_year
     use elm_varcon       , only : secspday
     use shr_const_mod    , only : SHR_CONST_TKFRZ, SHR_CONST_PI
     !
@@ -843,6 +863,7 @@ contains
     integer :: g,t,c,p           ! indices
     integer :: fp              ! lake filter pft index
     real(r8):: dayspyr         ! days per year
+    real(r8) :: dt
     real(r8):: crit_onset_gdd  ! degree days for onset trigger
     real(r8):: soilt           ! temperature of top soil layer
     real(r8):: psi             ! water stress of top soil layer
@@ -966,7 +987,9 @@ contains
          )
 
       ! set time steps
-      dayspyr = get_days_per_year()
+      dt = dtime_mod
+      dayspyr = dayspyr_mod
+
 
       do fp = 1,num_soilp
          p = filter_soilp(fp)
@@ -1309,7 +1332,6 @@ contains
     ! handle CN fluxes during the phenological onset                       & offset periods.
     
     ! !USES:
-    use clm_time_manager , only : get_curr_date, get_curr_calday, get_days_per_year
     use pftvarcon        , only : ncorn, nscereal, nwcereal, nsoybean, gddmin, hybgdd
     use pftvarcon        , only : nwcerealirrig, nsoybeanirrig, ncornirrig, nscerealirrig
     use pftvarcon        , only : lfemerg, grnfill, mxmat, minplanttemp, planttemp
@@ -1345,6 +1367,7 @@ contains
     real(r8), parameter :: minrain = 0.1_r8    ! minimum rainfall for planting
     real(r8), parameter :: minwet = 0.2_r8     ! minimum fraction of saturation for planting
     real(r8), parameter :: maxwet = 0.8_r8     ! maximum fraction of saturation for planting
+    real(r8) :: dt
     !------------------------------------------------------------------------
 
     associate(                                                                   & 
@@ -1411,9 +1434,14 @@ contains
          )
 
       ! get time info
-      dayspyr = get_days_per_year()
-      jday    = get_curr_calday()
-      call get_curr_date(kyr, kmo, kda, mcsec)
+      !NEED TO FIX!
+      dt = dtime_mod
+      dayspyr = dayspyr_mod
+      kyr = year_curr
+      kda = day_curr
+      kmo = mon_curr
+      mcsec = secs_curr
+      jday  = jday_mod
 
       ndays_on = 20._r8 ! number of days to fertilize
 
@@ -2054,8 +2082,6 @@ contains
     ! CropPhenologyMod
     !
     ! !USES:
-    use clm_time_manager , only : get_curr_date
-    use clm_time_manager , only : get_step_size
     use elm_varcon       , only : secspday
     use elm_varpar       , only : numpft
     use pftvarcon        , only : planttemp
@@ -2085,6 +2111,7 @@ contains
     real(r8) :: es, ETout
     integer, dimension(12) :: ndaypm= &
          (/31,28,31,30,31,30,31,31,30,31,30,31/) !days per month
+    real(r8) :: dt
     !-----------------------------------------------------------------------
 
     associate(                                                &
@@ -2126,12 +2153,17 @@ contains
       ! and wet season are determined from either temperature thresholds or the
       ! P:PET ratio
 
-      dt      = real( get_step_size(), r8 )
+      dt = dtime_mod
+
+
       fracday = dt/secspday
 
       if (num_pcropp > 0) then
          ! get time-related info
-         call get_curr_date(kyr, kmo, kda, mcsec)
+         kyr = year_curr
+         kmo = mon_curr
+         kda = day_curr
+         mcsec = secs_curr
       end if
 
       do fp = 1,num_pcropp
@@ -2250,6 +2282,7 @@ contains
     integer :: p            ! indices
     integer :: fp           ! lake filter pft index
     real(r8):: t1           ! temporary variable
+    real(r8) :: dt
     !-----------------------------------------------------------------------
 
     associate(                                                                                             & 
@@ -2307,6 +2340,7 @@ contains
          )
 
       ! patch loop
+      dt = dtime_mod
       do fp = 1,num_soilp
          p = filter_soilp(fp)
 
@@ -2403,6 +2437,7 @@ contains
    integer :: fp                            ! lake filter pft index
    real(r8):: t1                            ! temporary variable
    real(r8):: cgrain                        ! amount of carbon in the grain
+   real(r8):: dt
    !-------------------------------------------------------------------------
    associate(&
    ivt                   =>    veg_pp%itype                                   , & ! Input:  [integer (:)]  pft vegetation type
@@ -2444,6 +2479,7 @@ contains
    dmyield               =>    crop_vars%dmyield_patch                       & ! InOut:  [real(r8) ):)]  dry matter harvested crop (t/ha)
    )
 
+   dt = dtime_mod
    cgrain = 0.50_r8
    do fp = 1,num_pcropp
       p = filter_pcropp(fp)
@@ -2505,6 +2541,7 @@ contains
     integer :: p, c         ! indices
     integer :: fp           ! lake filter pft index
     real(r8):: t1           ! temporary variable
+    real(r8):: dt
     !-----------------------------------------------------------------------
 
     associate(                                                                     & 
@@ -2580,7 +2617,7 @@ contains
 
       ! The litterfall transfer rate starts at 0.0 and increases linearly
       ! over time, with displayed growth going to 0.0 on the last day of litterfall
-      
+      dt = dtime_mod
       do fp = 1,num_soilp
          p = filter_soilp(fp)
 
@@ -2901,7 +2938,7 @@ contains
   end subroutine CNLivewoodTurnover
 
   !-----------------------------------------------------------------------
-  subroutine CNLitterToColumn (num_soilc, filter_soilc, &
+  subroutine CNLitterToColumn (num_soilp, filter_soilp, &
        cnstate_vars)
     !
     ! !DESCRIPTION:
@@ -2913,12 +2950,13 @@ contains
     use pftvarcon  , only : npcropmin
     !
     ! !ARGUMENTS:
-    integer                 , intent(in)    :: num_soilc       ! number of soil columns in filter
-    integer                 , intent(in)    :: filter_soilc(:) ! filter for soil columns
+    integer                 , intent(in)    :: num_soilp       ! number of soil columns in filter
+    integer                 , intent(in)    :: filter_soilp(:) ! filter for soil columns
     type(cnstate_type)      , intent(in)    :: cnstate_vars
     !
     ! !LOCAL VARIABLES:
-    integer :: fc,c,pi,p,j       ! indices
+    integer :: fp,c,p,j       ! indices
+    real(r8):: wt_col
     !-----------------------------------------------------------------------
 
     associate(                                                                                       & 
@@ -2961,62 +2999,58 @@ contains
          )
     
       do j = 1, nlevdecomp
-         do pi = 1,max_patch_per_col
-            do fc = 1,num_soilc
-               c = filter_soilc(fc)
-
-               if ( pi <=  col_pp%npfts(c) ) then
-                  p = col_pp%pfti(c) + pi - 1
-                  if (veg_pp%active(p)) then
-
+            do fp = 1,num_soilp
+                     p = filter_soilp(fp)
+                     c = veg_pp%column(p)
+                     wt_col = wtcol(p)
                      ! leaf litter carbon fluxes
                      phenology_c_to_litr_met_c(c,j) = phenology_c_to_litr_met_c(c,j) &
-                          + leafc_to_litter(p) * lf_flab(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                          + leafc_to_litter(p) * lf_flab(ivt(p)) * wt_col * leaf_prof(p,j)
                      phenology_c_to_litr_cel_c(c,j) = phenology_c_to_litr_cel_c(c,j) &
-                          + leafc_to_litter(p) * lf_fcel(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                          + leafc_to_litter(p) * lf_fcel(ivt(p)) * wt_col * leaf_prof(p,j)
                      phenology_c_to_litr_lig_c(c,j) = phenology_c_to_litr_lig_c(c,j) &
-                          + leafc_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                          + leafc_to_litter(p) * lf_flig(ivt(p)) * wt_col * leaf_prof(p,j)
 
                      ! leaf litter nitrogen fluxes
                      phenology_n_to_litr_met_n(c,j) = phenology_n_to_litr_met_n(c,j) &
-                          + leafn_to_litter(p) * lf_flab(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                          + leafn_to_litter(p) * lf_flab(ivt(p)) * wt_col * leaf_prof(p,j)
                      phenology_n_to_litr_cel_n(c,j) = phenology_n_to_litr_cel_n(c,j) &
-                          + leafn_to_litter(p) * lf_fcel(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                          + leafn_to_litter(p) * lf_fcel(ivt(p)) * wt_col * leaf_prof(p,j)
                      phenology_n_to_litr_lig_n(c,j) = phenology_n_to_litr_lig_n(c,j) &
-                          + leafn_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                          + leafn_to_litter(p) * lf_flig(ivt(p)) * wt_col * leaf_prof(p,j)
 
                      ! leaf litter phosphorus fluxes
                      phenology_p_to_litr_met_p(c,j) = phenology_p_to_litr_met_p(c,j) &
-                          + leafp_to_litter(p) * lf_flab(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                          + leafp_to_litter(p) * lf_flab(ivt(p)) * wt_col * leaf_prof(p,j)
                      phenology_p_to_litr_cel_p(c,j) = phenology_p_to_litr_cel_p(c,j) &
-                          + leafp_to_litter(p) * lf_fcel(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                          + leafp_to_litter(p) * lf_fcel(ivt(p)) * wt_col * leaf_prof(p,j)
                      phenology_p_to_litr_lig_p(c,j) = phenology_p_to_litr_lig_p(c,j) &
-                          + leafp_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                          + leafp_to_litter(p) * lf_flig(ivt(p)) * wt_col * leaf_prof(p,j)
 
                      ! fine root litter carbon fluxes
                      phenology_c_to_litr_met_c(c,j) = phenology_c_to_litr_met_c(c,j) &
-                          + frootc_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                          + frootc_to_litter(p) * fr_flab(ivt(p)) * wt_col * froot_prof(p,j)
                      phenology_c_to_litr_cel_c(c,j) = phenology_c_to_litr_cel_c(c,j) &
-                          + frootc_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                          + frootc_to_litter(p) * fr_fcel(ivt(p)) * wt_col * froot_prof(p,j)
                      phenology_c_to_litr_lig_c(c,j) = phenology_c_to_litr_lig_c(c,j) &
-                          + frootc_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                          + frootc_to_litter(p) * fr_flig(ivt(p)) * wt_col * froot_prof(p,j)
 
                      ! fine root litter nitrogen fluxes
                      phenology_n_to_litr_met_n(c,j) = phenology_n_to_litr_met_n(c,j) &
-                          + frootn_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                          + frootn_to_litter(p) * fr_flab(ivt(p)) * wt_col * froot_prof(p,j)
                      phenology_n_to_litr_cel_n(c,j) = phenology_n_to_litr_cel_n(c,j) &
-                          + frootn_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                          + frootn_to_litter(p) * fr_fcel(ivt(p)) * wt_col * froot_prof(p,j)
                      phenology_n_to_litr_lig_n(c,j) = phenology_n_to_litr_lig_n(c,j) &
-                          + frootn_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                          + frootn_to_litter(p) * fr_flig(ivt(p)) * wt_col * froot_prof(p,j)
 
 
                      ! fine root litter phosphorus fluxes
                      phenology_p_to_litr_met_p(c,j) = phenology_p_to_litr_met_p(c,j) &
-                          + frootp_to_litter(p) * fr_flab(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                          + frootp_to_litter(p) * fr_flab(ivt(p)) * wt_col * froot_prof(p,j)
                      phenology_p_to_litr_cel_p(c,j) = phenology_p_to_litr_cel_p(c,j) &
-                          + frootp_to_litter(p) * fr_fcel(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                          + frootp_to_litter(p) * fr_fcel(ivt(p)) * wt_col * froot_prof(p,j)
                      phenology_p_to_litr_lig_p(c,j) = phenology_p_to_litr_lig_p(c,j) &
-                          + frootp_to_litter(p) * fr_flig(ivt(p)) * wtcol(p) * froot_prof(p,j)
+                          + frootp_to_litter(p) * fr_flig(ivt(p)) * wt_col * froot_prof(p,j)
 
                      ! agroibis puts crop stem litter together with leaf litter
                      ! so I've used the leaf lf_f* parameters instead of making
@@ -3026,33 +3060,29 @@ contains
                      if (ivt(p) >= npcropmin) then ! add livestemc to litter
                         ! stem litter carbon fluxes
                         phenology_c_to_litr_met_c(c,j) = phenology_c_to_litr_met_c(c,j) &
-                             + livestemc_to_litter(p) * lf_flab(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                             + livestemc_to_litter(p) * lf_flab(ivt(p)) * wt_col * leaf_prof(p,j)
                         phenology_c_to_litr_cel_c(c,j) = phenology_c_to_litr_cel_c(c,j) &
-                             + livestemc_to_litter(p) * lf_fcel(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                             + livestemc_to_litter(p) * lf_fcel(ivt(p)) * wt_col * leaf_prof(p,j)
                         phenology_c_to_litr_lig_c(c,j) = phenology_c_to_litr_lig_c(c,j) &
-                             + livestemc_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                             + livestemc_to_litter(p) * lf_flig(ivt(p)) * wt_col * leaf_prof(p,j)
 
                         ! stem litter nitrogen fluxes
                         phenology_n_to_litr_met_n(c,j) = phenology_n_to_litr_met_n(c,j) &
-                             + livestemn_to_litter(p) * lf_flab(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                             + livestemn_to_litter(p) * lf_flab(ivt(p)) * wt_col * leaf_prof(p,j)
                         phenology_n_to_litr_cel_n(c,j) = phenology_n_to_litr_cel_n(c,j) &
-                             + livestemn_to_litter(p) * lf_fcel(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                             + livestemn_to_litter(p) * lf_fcel(ivt(p)) * wt_col * leaf_prof(p,j)
                         phenology_n_to_litr_lig_n(c,j) = phenology_n_to_litr_lig_n(c,j) &
-                             + livestemn_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                             + livestemn_to_litter(p) * lf_flig(ivt(p)) * wt_col * leaf_prof(p,j)
 
                         ! stem litter phosphorus fluxes
                         phenology_p_to_litr_met_p(c,j) = phenology_p_to_litr_met_p(c,j) &
-                             + livestemp_to_litter(p) * lf_flab(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                             + livestemp_to_litter(p) * lf_flab(ivt(p)) * wt_col * leaf_prof(p,j)
                         phenology_p_to_litr_cel_p(c,j) = phenology_p_to_litr_cel_p(c,j) &
-                             + livestemp_to_litter(p) * lf_fcel(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                             + livestemp_to_litter(p) * lf_fcel(ivt(p)) * wt_col * leaf_prof(p,j)
                         phenology_p_to_litr_lig_p(c,j) = phenology_p_to_litr_lig_p(c,j) &
-                             + livestemp_to_litter(p) * lf_flig(ivt(p)) * wtcol(p) * leaf_prof(p,j)
+                             + livestemp_to_litter(p) * lf_flig(ivt(p)) * wt_col * leaf_prof(p,j)
 
                      end if
-                  end if
-               end if
-
-            end do
 
          end do
       end do

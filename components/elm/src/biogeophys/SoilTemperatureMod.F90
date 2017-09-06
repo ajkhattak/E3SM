@@ -12,17 +12,14 @@ module SoilTemperatureMod
   use shr_infnan_mod    , only : nan => shr_infnan_nan, assignment(=)
   use decompMod         , only : bounds_type
   use abortutils        , only : endrun
-  use perf_mod          , only : t_startf, t_stopf
   use elm_varctl        , only : iulog
   use UrbanParamsType   , only : urbanparams_type  
+  use elm_varcon        , only : spval
   use atm2lndType       , only : atm2lnd_type
   use CanopyStateType   , only : canopystate_type
-  use WaterfluxType     , only : waterflux_type
-  use WaterstateType    , only : waterstate_type
   use SolarAbsorbedType , only : solarabs_type
   use SoilStateType     , only : soilstate_type
   use EnergyFluxType    , only : energyflux_type
-  use TemperatureType   , only : temperature_type
   use TopounitDataType  , only : top_af
   use LandunitType      , only : lun_pp
   use LandunitDataType  , only : lun_es, lun_ef  
@@ -30,6 +27,17 @@ module SoilTemperatureMod
   use ColumnDataType    , only : col_es, col_ef, col_ws, col_wf                
   use VegetationType    , only : veg_pp
   use VegetationDataType, only : veg_ef, veg_wf                
+  use timeinfoMod
+  use perfMod_GPU
+  use ExternalModelConstants   , only : EM_ID_PTM
+  use ExternalModelConstants   , only : EM_PTM_TBASED_SOLVE_STAGE
+  use ExternalModelInterfaceMod, only : EMI_Driver
+
+  !! Needed beacuse EMI is still using them as arguments
+  use WaterstateType    , only : waterstate_type
+  use TemperatureType   , only : temperature_type
+  use WaterfluxType     , only : waterflux_type
+  use elm_instMod , only : waterflux_vars, waterstate_vars, temperature_vars
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -112,7 +120,7 @@ module SoilTemperatureMod
   private :: PhaseChange_beta   ! Calculation of the phase change within snow and soil layers
   integer, parameter :: default_thermal_model  = 0
   integer, parameter :: petsc_thermal_model    = 1
-  integer            :: thermal_model
+  integer            :: thermal_model = default_thermal_model
   real(r8), private, parameter :: thin_sfclayer = 1.0e-6_r8   ! Threshold for thin surface layer
   !-----------------------------------------------------------------------
 
@@ -160,7 +168,7 @@ contains
     !   results in a tridiagonal system equation.
     !
     ! !USES:
-    use clm_time_manager         , only : get_step_size
+      
     use elm_varpar               , only : nlevsno, nlevgrnd, nlevurb
     use elm_varctl               , only : iulog
     use elm_varcon               , only : cnfac, cpice, cpliq, denh2o
@@ -218,9 +226,9 @@ contains
     integer  :: num_nolakec_and_nourbanc
     integer  :: num_nolakec_and_urbanc
     integer  :: num_filter_lun
-    integer, pointer :: filter_nolakec_and_nourbanc(:)
-    integer, pointer :: filter_nolakec_and_urbanc(:)
-    integer, pointer :: filter_lun(:)
+    integer, allocatable :: filter_nolakec_and_nourbanc(:)
+    integer, allocatable :: filter_nolakec_and_urbanc(:)
+    integer, allocatable :: filter_lun(:)
     logical  :: urban_column
     logical  :: update_temperature
     !-----------------------------------------------------------------------
@@ -289,7 +297,7 @@ contains
 
       ! Get step size
 
-      dtime = get_step_size()
+      dtime = dtime_mod !get_step_size()
 
       ! Restrict internal building temperature to between min and max
       ! and determine if heating or air conditioning is on
@@ -371,7 +379,7 @@ contains
 
       ! Thermal conductivity and Heat capacity
 
-      tk_h2osfc(begc:endc) = nan
+      tk_h2osfc(begc:endc) = spval
       call SoilThermProp(bounds, num_nolakec, filter_nolakec, &
            tk(begc:endc, :), &
            cv(begc:endc, :), &
@@ -418,8 +426,8 @@ contains
 
       ! initialize initial temperature vector
 
-      tvector_nourbanc(begc:endc, :) = nan
-      tvector_urbanc(  begc:endc, :) = nan
+      tvector_nourbanc(begc:endc, :) = spval
+      tvector_urbanc(  begc:endc, :) = spval
       do fc = 1,num_nolakec
          c = filter_nolakec(fc)
          do j = snl(c)+1, 0
@@ -482,7 +490,7 @@ contains
 
          call EMI_Driver(EM_ID_PTM,                                      &
               EM_PTM_TBASED_SOLVE_STAGE,                                 &
-              dt = get_step_size()*1.0_r8,                               &
+              dt = dtime,                                                &
               clump_rank  = bounds%clump_index,                          &
               num_nolakec_and_nourbanc = num_nolakec_and_nourbanc,       &
               filter_nolakec_and_nourbanc = filter_nolakec_and_nourbanc, &
@@ -620,11 +628,11 @@ contains
       end do
 
       call PhaseChangeH2osfc (bounds, num_nolakec, filter_nolakec, &
-           dhsdT(bounds%begc:bounds%endc))
+           dhsdT(bounds%begc:bounds%endc), dtime )
 
       call Phasechange_beta (bounds, num_nolakec, filter_nolakec, &
            dhsdT(bounds%begc:bounds%endc), &
-           soilstate_vars)
+           soilstate_vars, dtime)
 
       do fc = 1,num_nolakec
          c = filter_nolakec(fc)
@@ -745,6 +753,8 @@ contains
     integer, parameter :: nband=5
     real(r8)           :: bmatrix(bounds%begc:bounds%endc,nband,-nlevsno:nlevgrnd) ! banded matrix for numerical solution of temperature
     real(r8)           :: rvector(bounds%begc:bounds%endc,-nlevsno:nlevgrnd)       ! RHS vector for numerical solution of temperature
+
+    character(len=256) :: event
     !-----------------------------------------------------------------------
 
     associate(                                                             & 
@@ -800,11 +810,12 @@ contains
          bmatrix( begc:endc, 1:, -nlevsno: ))
 
     ! Solve the system
-    call t_startf( 'SoilTempBandDiag')
+    event = 'SoilTempBandDiag'
+    call t_startGPU(event)
     call BandDiagonal(bounds, -nlevsno, nlevgrnd, jtop(begc:endc), jbot(begc:endc), &
          num_filter, filter, nband, bmatrix(begc:endc, :, :), &
          rvector(begc:endc, :), tvector(begc:endc, :))
-    call t_stopf( 'SoilTempBandDiag')
+    call t_stopGPU(event)
 
   end associate
 
@@ -857,9 +868,6 @@ end subroutine SolveTemperature
     real(r8) :: satw                      ! relative total water content of soil.
     real(r8) :: zh2osfc
     !-----------------------------------------------------------------------
-
-    call t_startf( 'SoilThermProp' )
-
     ! Enforce expected array sizes
     SHR_ASSERT_ALL((ubound(cv)        == (/bounds%endc, nlevgrnd/)), errMsg(__FILE__, __LINE__))
     SHR_ASSERT_ALL((ubound(tk)        == (/bounds%endc, nlevgrnd/)), errMsg(__FILE__, __LINE__))
@@ -1044,7 +1052,6 @@ end subroutine SolveTemperature
             end if
          end do
       end do
-      call t_stopf( 'SoilThermProp' )
 
     end associate
 
@@ -1052,13 +1059,13 @@ end subroutine SolveTemperature
 
   !-----------------------------------------------------------------------
   subroutine PhaseChangeH2osfc (bounds, num_nolakec, filter_nolakec, &
-       dhsdT)
+       dhsdT, dtime)
     !
     ! !DESCRIPTION:
     ! Only freezing is considered.  When water freezes, move ice to bottom snow layer.
     !
     ! !USES:
-    use clm_time_manager , only : get_step_size
+      
     use elm_varcon       , only : tfrz, hfus, grav, denice, cnfac, cpice, cpliq
     use elm_varpar       , only : nlevsno, nlevgrnd
     use elm_varctl       , only : iulog
@@ -1068,11 +1075,12 @@ end subroutine SolveTemperature
     integer                , intent(in)    :: num_nolakec                          ! number of column non-lake points in column filter
     integer                , intent(in)    :: filter_nolakec(:)                    ! column filter for non-lake points
     real(r8)               , intent(in)    :: dhsdT ( bounds%begc: )               ! temperature derivative of "hs" [col               ]
+    real(r8), intent(in) :: dtime                       !land model time step (sec)
+
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,g                       !do loop index
     integer  :: fc                          !lake filtered column indices
-    real(r8) :: dtime                       !land model time step (sec)
     real(r8) :: temp1                       !temporary variables [kg/m2                    ]
     real(r8) :: hm(bounds%begc:bounds%endc) !energy residual [W/m2                         ]
     real(r8) :: xm(bounds%begc:bounds%endc) !melting or freezing within a time step [kg/m2 ]
@@ -1084,9 +1092,6 @@ end subroutine SolveTemperature
     real(r8) :: c1
     real(r8) :: c2
     !-----------------------------------------------------------------------
-
-    call t_startf( 'PhaseChangeH2osfc' )
-
     ! Enforce expected array sizes
     SHR_ASSERT_ALL((ubound(dhsdT) == (/bounds%endc/)), errMsg(__FILE__, __LINE__))
 
@@ -1114,8 +1119,6 @@ end subroutine SolveTemperature
          )
 
       ! Get step size
-
-      dtime = get_step_size()
 
       ! Initialization
 
@@ -1259,7 +1262,6 @@ end subroutine SolveTemperature
             endif
          endif
       enddo
-      call t_stopf( 'PhaseChangeH2osfc' )
 
     end associate
 
@@ -1267,7 +1269,7 @@ end subroutine SolveTemperature
 
   !-----------------------------------------------------------------------
   subroutine Phasechange_beta (bounds, num_nolakec, filter_nolakec, dhsdT, &
-       soilstate_vars)
+       soilstate_vars, dtime)
     !
     ! !DESCRIPTION:
     ! Calculation of the phase change within snow and soil layers:
@@ -1295,11 +1297,12 @@ end subroutine SolveTemperature
     integer                , intent(in)    :: filter_nolakec(:)                    ! column filter for non-lake points
     real(r8)               , intent(in)    :: dhsdT ( bounds%begc: )               ! temperature derivative of "hs" [col]
     type(soilstate_type)   , intent(in)    :: soilstate_vars
+    real(r8), intent(in) :: dtime            !land model time step (sec)
+
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,g,l                            !do loop index
     integer  :: fc                                 !lake filtered column indices
-    real(r8) :: dtime                              !land model time step (sec)
     real(r8) :: heatr                              !energy residual or loss after melting or freezing
     real(r8) :: temp1                              !temporary variables [kg/m2]
     real(r8) :: hm(bounds%begc:bounds%endc,-nlevsno+1:nlevgrnd)    !energy residual [W/m2]
@@ -1312,8 +1315,6 @@ end subroutine SolveTemperature
     real(r8) :: tinc(bounds%begc:bounds%endc,-nlevsno+1:nlevgrnd)  !t(n+1)-t(n) (K)
     real(r8) :: smp                                !frozen water potential (mm)
     !-----------------------------------------------------------------------
-
-    call t_startf( 'PhaseChangebeta' )
 
     ! Enforce expected array sizes
     SHR_ASSERT_ALL((ubound(dhsdT) == (/bounds%endc/)), errMsg(__FILE__, __LINE__))
@@ -1351,10 +1352,6 @@ end subroutine SolveTemperature
          imelt            =>    col_ef%imelt          , & ! Output: [integer  (:,:) ] flag for melting (=1), freezing (=2), Not=0 (new)
          t_soisno         =>    col_es%t_soisno         & ! Output: [real(r8) (:,:) ] soil temperature (Kelvin)              
          )
-
-      ! Get step size
-
-      dtime = get_step_size()
 
       ! Initialization
 
@@ -1647,7 +1644,6 @@ end subroutine SolveTemperature
          end if
       end do
 
-      call t_stopf( 'PhaseChangebeta' )
       do j = -nlevsno+1,0
          do fc = 1,num_nolakec
             c = filter_nolakec(fc)
@@ -2085,7 +2081,7 @@ end subroutine SolveTemperature
          )
 
       ! Initialize
-      rvector(begc:endc, :) = nan
+      rvector(begc:endc, :) = spval
 
       ! Set entries in RHS vector for snow layers
       call SetRHSVec_Snow(bounds, num_filter, filter, &
@@ -2187,7 +2183,7 @@ end subroutine SolveTemperature
          )
 
       ! Initialize
-      rt(begc:endc, : ) = nan
+      rt(begc:endc, : ) = spval
 
       if (urban_column) then
          call SetRHSVec_SnowUrban(bounds, num_filter, filter, &
@@ -2585,7 +2581,7 @@ end subroutine SolveTemperature
     SHR_ASSERT_ALL((ubound(rt)           == (/bounds%endc,1/)),         errMsg(__FILE__, __LINE__))
 
     ! Initialize
-    rt(bounds%begc:bounds%endc, : ) = nan
+    rt(bounds%begc:bounds%endc, : ) = spval
 
     !
     ! surface water ------------------------------------------------------------------
@@ -2657,7 +2653,7 @@ end subroutine SolveTemperature
          )
 
       ! Initialize
-      rt(begc:endc, : ) = nan
+      rt(begc:endc, : ) = spval
 
       if (urban_column) then
          call SetRHSVec_SoilUrban(bounds, num_filter, filter, &

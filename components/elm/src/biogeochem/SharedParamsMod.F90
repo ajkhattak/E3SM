@@ -11,16 +11,18 @@ module SharedParamsMod
   ! is indeed protected.  A generic private statement at the start of the module
   ! overrides the protected functionality with PGI
 
-  type, public  :: ParamsShareType
-      real(r8) :: Q10_mr      ! temperature dependence for maintenance respiraton
-      real(r8) :: Q10_hr      ! temperature dependence for heterotrophic respiration
-      real(r8) :: minpsi      ! minimum soil water potential for heterotrophic resp	  
-      real(r8) :: cwd_fcel    ! cellulose fraction of coarse woody debris
-      real(r8) :: cwd_flig    ! lignin fraction of coarse woody debris
-      real(r8) :: froz_q10    ! separate q10 for frozen soil respiration rates
-      real(r8) :: decomp_depth_efolding ! e-folding depth for reduction in decomposition (m) 
-      real(r8) :: mino2lim    ! minimum anaerobic decomposition rate as a fraction of potential aerobic rate
-      real(r8) :: organic_max ! organic matter content (kg/m3) where soil is assumed to act like peat
+  type, public :: ParamsShareType
+
+      real(r8), pointer :: Q10_mr                => null() ! temperature dependence for maintenance respiraton
+      real(r8), pointer :: Q10_hr                => null() ! temperature dependence for heterotrophic respiration
+      real(r8), pointer :: minpsi                => null() ! minimum soil water potential for heterotrophic resp
+      real(r8), pointer :: cwd_fcel              => null() ! cellulose fraction of coarse woody debris
+      real(r8), pointer :: cwd_flig              => null() ! lignin fraction of coarse woody debris
+      real(r8), pointer :: froz_q10              => null() ! separate q10 for frozen soil respiration rates
+      real(r8), pointer :: decomp_depth_efolding => null() ! e-folding depth for reduction in decomposition (m)
+      real(r8), pointer :: mino2lim              => null() ! minimum anaerobic decomposition rate as a fraction of potential aerobic rate
+      real(r8), pointer :: organic_max           => null() ! organic matter content (kg/m3) where soil is assumed to act like peat
+
   end type ParamsShareType
 
   type(ParamsShareType),protected :: ParamsShareInst
@@ -48,6 +50,15 @@ contains
     real(r8)           :: tempr ! temporary to read in parameter
     character(len=100) :: tString ! temp. var for reading
     !-----------------------------------------------------------------------
+    allocate(ParamsShareInst%Q10_mr               )
+    allocate(ParamsShareInst%Q10_hr               )
+    allocate(ParamsShareInst%minpsi               )
+    allocate(ParamsShareInst%cwd_fcel             )
+    allocate(ParamsShareInst%cwd_flig             )
+    allocate(ParamsShareInst%froz_q10             )
+    allocate(ParamsShareInst%decomp_depth_efolding)
+    allocate(ParamsShareInst%mino2lim             )
+    allocate(ParamsShareInst%organic_max          )
     !
     ! netcdf read here
     !

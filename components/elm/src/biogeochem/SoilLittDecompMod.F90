@@ -9,13 +9,13 @@ module SoilLittDecompMod
   use shr_kind_mod           , only : r8 => shr_kind_r8
   use shr_const_mod          , only : SHR_CONST_TKFRZ
   use decompMod              , only : bounds_type
-  use perf_mod               , only : t_startf, t_stopf
+  use perfMod_GPU
   use elm_varctl             , only : iulog, use_nitrif_denitrif, use_lch4, use_century_decomp
   use elm_varcon             , only : dzsoi_decomp
   use elm_varpar             , only : nlevdecomp, ndecomp_cascade_transitions, ndecomp_pools
   use DecompCascadeCNMod   , only : decomp_rate_constants_cn
   use DecompCascadeBGCMod  , only : decomp_rate_constants_bgc
-  use CNNitrifDenitrifMod    , only : nitrif_denitrif
+  use NitrifDenitrifMod    , only : nitrif_denitrif
   use VerticalProfileMod   , only : decomp_vertprofiles
   use CNDecompCascadeConType , only : decomp_cascade_con
   use CNStateType            , only : cnstate_type
@@ -47,11 +47,12 @@ module SoilLittDecompMod
   ! pflotran
   public :: SoilLittDecompAlloc2
   !
-  type, private :: CNDecompParamsType
-     real(r8) :: dnp         !denitrification proportion
+  type, public :: CNDecompParamsType
+     real(r8), pointer :: dnp => null()         !denitrification proportion
   end type CNDecompParamsType
 
-  type(CNDecompParamsType),private ::  CNDecompParamsInst
+  type(CNDecompParamsType)  , public ::  CNDecompParamsInst
+  
   !-----------------------------------------------------------------------
 
 contains
@@ -78,6 +79,8 @@ contains
     real(r8)           :: tempr ! temporary to read in constant
     character(len=100) :: tString ! temp. var for reading
     !-----------------------------------------------------------------------
+    
+    allocate(CNDecompParamsInst%dnp)
 
     tString='dnp'
     call ncd_io(trim(tString),tempr, 'read', ncid, readvar=readv)
@@ -90,8 +93,7 @@ contains
   subroutine SoilLittDecompAlloc (bounds, num_soilc, filter_soilc,    &
                 num_soilp, filter_soilp,                        &
                 canopystate_vars, soilstate_vars,               &
-                cnstate_vars, ch4_vars,                         &
-                elm_fates)
+                cnstate_vars, ch4_vars, dtime)
 
     !-----------------------------------------------------------------------------
     ! DESCRIPTION:
@@ -118,8 +120,9 @@ contains
     type(soilstate_type)     , intent(in)    :: soilstate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
     type(ch4_type)           , intent(in)    :: ch4_vars
-    type(hlm_fates_interface_type), intent(inout), optional :: elm_fates
-    
+    ! add phosphorus --
+!    type(crop_type)          , intent(in)    :: crop_vars
+    real(r8),   intent(in)    :: dtime
     !
     ! !LOCAL VARIABLES:
     integer :: c,j,k,l,m                                                                               !indices
@@ -136,6 +139,8 @@ contains
     ! For methane code
     real(r8):: phr_vr(bounds%begc:bounds%endc,1:nlevdecomp)                                            !potential HR (gC/m3/s)
     real(r8):: hrsum(bounds%begc:bounds%endc,1:nlevdecomp)                                             !sum of HR (gC/m2/s)
+
+    character(len=256) :: event
     !-----------------------------------------------------------------------
    
     associate(                                                                                           &
@@ -383,15 +388,15 @@ contains
       ! to resolve the competition between plants and soil heterotrophs
       ! for available soil mineral N resource.
       ! in addition, calculate fpi_vr, fpi_p_vr, & fgp
-      call t_startf('CNAllocation - phase-2')
+      event = 'CNAllocation - phase-2'
+      call t_startGPU(event)
       call Allocation2_ResolveNPLimit(bounds,                     &
                num_soilc, filter_soilc, num_soilp, filter_soilp,    &
                cnstate_vars,                                        &
-               soilstate_vars,                                      &
-               elm_fates)
-      call t_stopf('CNAllocation - phase-2')
+               soilstate_vars, dtime)
+      call t_stopGPU(event)
 
-      
+
       ! column loop to calculate actual immobilization and decomp rates, following
       ! resolution of plant/heterotroph  competition for mineral N
 
@@ -588,7 +593,7 @@ contains
   subroutine SoilLittDecompAlloc2 (bounds, num_soilc, filter_soilc, num_soilp, filter_soilp,   &
        photosyns_vars, canopystate_vars, soilstate_vars,               &
        cnstate_vars, ch4_vars,                                         &
-       crop_vars, atm2lnd_vars)
+       crop_vars, atm2lnd_vars, dt)
     !-----------------------------------------------------------------------------
     ! DESCRIPTION:
     ! bgc interface & pflotran:
@@ -600,7 +605,6 @@ contains
     ! !USES:
     use AllocationMod , only: Allocation3_PlantCNPAlloc ! Phase-3 of CNAllocation
     use atm2lndType     , only: atm2lnd_type
-    use clm_time_manager, only: get_step_size
 
     !
     ! !ARGUMENT:
@@ -616,18 +620,19 @@ contains
     type(ch4_type)           , intent(in)    :: ch4_vars
     type(crop_type)          , intent(inout) :: crop_vars
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
-
+    real(r8), intent(in) :: dt                                           ! time step (seconds)
 
     !
     ! !LOCAL VARIABLES:
     integer :: fc, c, j                                     ! indices
 !    real(r8):: col_plant_ndemand(bounds%begc:bounds%endc)   ! column-level vertically-integrated plant N demand (gN/m2/s)
-    real(r8) :: dt                                           ! time step (seconds)
     real(r8) :: smin_nh4_to_plant_vr_loc(bounds%begc:bounds%endc,1:nlevdecomp)
     real(r8) :: smin_no3_to_plant_vr_loc(bounds%begc:bounds%endc,1:nlevdecomp)
 
     ! For methane code
     real(r8):: hrsum(bounds%begc:bounds%endc,1:nlevdecomp)                                             !sum of HR (gC/m2/s)
+
+    character(len=256) :: event
     !-----------------------------------------------------------------------
 
     associate(                                                                                      &
@@ -674,7 +679,6 @@ contains
          )
 
       ! set time steps
-      dt = real( get_step_size(), r8 )
 	    !------------------------------------------------------------------
 	    ! 'call decomp_vertprofiles()' moved to EcosystemDynNoLeaching1
 	    !------------------------------------------------------------------
@@ -782,12 +786,13 @@ contains
       !------------------------------------------------------------------
       ! phase-3 Allocation for plants
       if(.not.use_fates)then
-          call t_startf('CNAllocation - phase-3')
+          event = 'CNAllocation - phase-3'
+          call t_startGPU(event)
           call Allocation3_PlantCNPAlloc (bounds                      , &
                 num_soilc, filter_soilc, num_soilp, filter_soilp    , &
                 canopystate_vars                                    , &
-                cnstate_vars, crop_vars)
-          call t_stopf('CNAllocation - phase-3')
+                cnstate_vars, crop_vars, dt)
+          call t_stopGPU(event)
       end if
       !------------------------------------------------------------------
       
@@ -836,8 +841,12 @@ contains
   !  if not properly set.
   !
   !USES:
-
-    use elm_varctl   , only: cnallocate_carbon_only, cnallocate_carbonnitrogen_only
+    
+    use Method_procs_acc, only : vegps_SetValues_acc
+    use Method_procs_acc, only : colps_setvalues_acc
+    use Method_procs_acc, only : vegpf_setvalues_acc
+    use Method_procs_acc, only : colpf_setvalues_acc
+    use elm_varctl   , only: carbon_only, carbonnitrogen_only
     use elm_varpar   , only: nlevdecomp, ndecomp_cascade_transitions
    !
    !ARGUMENTS:
@@ -874,12 +883,12 @@ contains
    end do
 
    ! pflotran not yet support phosphous cycle
-   if (cnallocate_carbon_only() .or. cnallocate_carbonnitrogen_only() ) then
-      call veg_ps%SetValues(num_patch=num_soilp,  filter_patch=filter_soilp,  value_patch=0._r8)
-      call col_ps%SetValues(num_column=num_soilc, filter_column=filter_soilc, value_column=0._r8)      
+   if ( carbon_only .or.  carbonnitrogen_only  ) then
+      call vegps_setvalues_acc(vegps=veg_ps,num_patch=num_soilp,  filter_patch=filter_soilp,  value_patch=0._r8)
+      call colps_setvalues_acc(colps=col_ps,num_column=num_soilc, filter_column=filter_soilc, value_column=0._r8)
 
-      call veg_pf%SetValues(num_patch=num_soilp,  filter_patch=filter_soilp,  value_patch=0._r8)
-      call col_pf%SetValues(num_column=num_soilc, filter_column=filter_soilc, value_column=0._r8)
+      call vegpf_setvalues_acc(vegpf=veg_pf, num_patch=num_soilp,  filter_patch=filter_soilp,  value_patch=0._r8)
+      call colpf_setvalues_acc(colpf=col_pf, num_column=num_soilc, filter_column=filter_soilc, value_column=0._r8)
    end if
 
   end associate

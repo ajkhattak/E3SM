@@ -34,7 +34,8 @@ module MaintenanceRespMod
      real(r8):: br_mr        !base rate for maintenance respiration(gC/gN/s)
   end type MaintenanceRespParamsType
 
-  type(MaintenanceRespParamsType),private ::  MaintenanceRespParamsInst
+  real(r8), public :: br_mr_Inst
+  
   !-----------------------------------------------------------------------
 
 contains
@@ -63,7 +64,7 @@ contains
     tString='br_mr'
     call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
     if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(__FILE__, __LINE__))
-    MaintenanceRespParamsInst%br_mr=tempr
+    br_mr_Inst=tempr
 
   end subroutine readMaintenanceRespParams
 
@@ -135,7 +136,7 @@ contains
       ! Original expression is br = 0.0106 molC/(molN h)
       ! Conversion by molecular weights of C and N gives 2.525e-6 gC/(gN s)
       ! set constants
-      br_mr = MaintenanceRespParamsInst%br_mr
+      br_mr = br_mr_Inst
 
       ! Peter Thornton: 3/13/09 
       ! Q10 was originally set to 2.0, an arbitrary choice, but reduced to 1.5 as part of the tuning

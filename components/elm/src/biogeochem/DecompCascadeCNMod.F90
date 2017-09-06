@@ -11,8 +11,8 @@ module DecompCascadeCNMod
   use shr_log_mod            , only : errMsg => shr_log_errMsg
   use elm_varpar             , only : nlevsoi, nlevgrnd, nlevdecomp, ndecomp_cascade_transitions, ndecomp_pools
   use elm_varpar             , only : i_met_lit, i_cel_lit, i_lig_lit, i_cwd
-  use elm_varctl             , only : iulog, spinup_state, anoxia, use_lch4, use_vertsoilc
-  use elm_varcon             , only : zsoi
+  use elm_varctl             , only : iulog, spinup_state, anoxia, use_lch4, use_vertsoilc, use_pflotran
+  use elm_varcon             , only : zsoi, spval
   use decompMod              , only : bounds_type
   use abortutils             , only : endrun
   use SharedParamsMod      , only : ParamsShareInst, anoxia_wtsat, nlev_soildecomp_standard 
@@ -21,6 +21,8 @@ module DecompCascadeCNMod
   use SoilStateType          , only : soilstate_type
   use CanopyStateType        , only : canopystate_type
   use ch4Mod                 , only : ch4_type
+
+  use timeinfoMod
   use ColumnType             , only : col_pp   
   use ColumnDataType         , only : col_es, col_cf  
   !
@@ -33,49 +35,50 @@ module DecompCascadeCNMod
   public :: init_decompcascade_cn
   public :: decomp_rate_constants_cn
 
-  type, private :: DecompCNParamsType
-     real(r8):: cn_s1_cn        !C:N for SOM 1
-     real(r8):: cn_s2_cn        !C:N for SOM 2
-     real(r8):: cn_s3_cn        !C:N for SOM 3
-     real(r8):: cn_s4_cn        !C:N for SOM 4
+  type, public :: DecompCNParamsType
 
-     real(r8):: np_s1_new_cn        !C:P for SOM 1
-     real(r8):: np_s2_new_cn        !C:P for SOM 2
-     real(r8):: np_s3_new_cn        !C:P for SOM 3
-     real(r8):: np_s4_new_cn        !C:P for SOM 4
+     real(r8), pointer :: cn_s1_cn         => null() !C:N for SOM 1
+     real(r8), pointer :: cn_s2_cn         => null() !C:N for SOM 2
+     real(r8), pointer :: cn_s3_cn         => null() !C:N for SOM 3
+     real(r8), pointer :: cn_s4_cn         => null() !C:N for SOM 4
 
-     real(r8):: cp_s1_new_cn        !C:P for SOM 1
-     real(r8):: cp_s2_new_cn        !C:P for SOM 2
-     real(r8):: cp_s3_new_cn        !C:P for SOM 3
-     real(r8):: cp_s4_new_cn        !C:P for SOM 4
+     real(r8), pointer :: np_s1_new_cn     => null()     !C:P for SOM 1
+     real(r8), pointer :: np_s2_new_cn     => null()     !C:P for SOM 2
+     real(r8), pointer :: np_s3_new_cn     => null()     !C:P for SOM 3
+     real(r8), pointer :: np_s4_new_cn     => null()     !C:P for SOM 4
 
-     real(r8):: rf_l1s1_cn      !respiration fraction litter 1 -> SOM 1
-     real(r8):: rf_l2s2_cn      !respiration fraction litter 2 -> SOM 2
-     real(r8):: rf_l3s3_cn      !respiration fraction litter 3 -> SOM 3
-     real(r8):: rf_s1s2_cn      !respiration fraction SOM 1 -> SOM 2
-     real(r8):: rf_s2s3_cn      !respiration fraction SOM 2 -> SOM 3
-     real(r8):: rf_s3s4_cn      !respiration fraction SOM 3 -> SOM 4
+     real(r8), pointer :: cp_s1_new_cn     => null()     !C:P for SOM 1
+     real(r8), pointer :: cp_s2_new_cn     => null()     !C:P for SOM 2
+     real(r8), pointer :: cp_s3_new_cn     => null()     !C:P for SOM 3
+     real(r8), pointer :: cp_s4_new_cn     => null()     !C:P for SOM 4
 
-     real(r8) :: cwd_fcel_cn    !cellulose fraction for CWD
-     real(r8) :: cwd_flig_cn    !
+     real(r8), pointer :: rf_l1s1_cn       => null() !respiration fraction litter 1 -> SOM 1
+     real(r8), pointer :: rf_l2s2_cn       => null() !respiration fraction litter 2 -> SOM 2
+     real(r8), pointer :: rf_l3s3_cn       => null() !respiration fraction litter 3 -> SOM 3
+     real(r8), pointer :: rf_s1s2_cn       => null() !respiration fraction SOM 1 -> SOM 2
+     real(r8), pointer :: rf_s2s3_cn       => null() !respiration fraction SOM 2 -> SOM 3
+     real(r8), pointer :: rf_s3s4_cn       => null() !respiration fraction SOM 3 -> SOM 4
 
-     real(r8) :: k_l1_cn        !decomposition rate for litter 1
-     real(r8) :: k_l2_cn        !decomposition rate for litter 2
-     real(r8) :: k_l3_cn        !decomposition rate for litter 3
-     real(r8) :: k_s1_cn        !decomposition rate for SOM 1
-     real(r8) :: k_s2_cn        !decomposition rate for SOM 2
-     real(r8) :: k_s3_cn        !decomposition rate for SOM 3
-     real(r8) :: k_s4_cn        !decomposition rate for SOM 4
+     real(r8), pointer  :: cwd_fcel_cn     => null() !cellulose fraction for CWD
+     real(r8), pointer  :: cwd_flig_cn     => null() !
 
-     real(r8) :: k_frag_cn      !fragmentation rate for CWD
-     real(r8) :: minpsi_cn      !minimum soil water potential for heterotrophic resp
+     real(r8), pointer  :: k_l1_cn         => null() !decomposition rate for litter 1
+     real(r8), pointer  :: k_l2_cn         => null() !decomposition rate for litter 2
+     real(r8), pointer  :: k_l3_cn         => null() !decomposition rate for litter 3
+     real(r8), pointer  :: k_s1_cn         => null() !decomposition rate for SOM 1
+     real(r8), pointer  :: k_s2_cn         => null() !decomposition rate for SOM 2
+     real(r8), pointer  :: k_s3_cn         => null() !decomposition rate for SOM 3
+     real(r8), pointer  :: k_s4_cn         => null() !decomposition rate for SOM 4
 
-     integer  :: nsompools = 4 
-     integer  :: nlitpools = 3
-     integer  :: ncwdpools = 1  
-     real(r8), allocatable :: spinup_vector(:) ! multipliers for soil decomp during accelerated spinup
+     real(r8), pointer  :: k_frag_cn       => null() !fragmentation rate for CWD
+     real(r8), pointer  :: minpsi_cn       => null() !minimum soil water potential for heterotrophic resp
 
-     
+     integer , pointer :: nsompools        => null() !4
+     integer , pointer :: nlitpools        => null() !3
+     integer , pointer :: ncwdpools        => null() !1
+     real(r8), pointer :: spinup_vector(:) => null() ! multipliers for soil decomp during accelerated spinup
+
+
   end type DecompCNParamsType
 
   type(DecompCNParamsType),private ::  DecompCNParamsInst
@@ -109,6 +112,38 @@ contains
     !EOP
     !-----------------------------------------------------------------------
 
+     allocate(DecompCNParamsInst%cn_s1_cn    ); DecompCNParamsInst%cn_s1_cn    =spval
+     allocate(DecompCNParamsInst%cn_s2_cn    ); DecompCNParamsInst%cn_s2_cn    =spval
+     allocate(DecompCNParamsInst%cn_s3_cn    ); DecompCNParamsInst%cn_s3_cn    =spval
+     allocate(DecompCNParamsInst%cn_s4_cn    ); DecompCNParamsInst%cn_s4_cn    =spval
+     allocate(DecompCNParamsInst%np_s1_new_cn); DecompCNParamsInst%np_s1_new_cn=spval
+     allocate(DecompCNParamsInst%np_s2_new_cn); DecompCNParamsInst%np_s2_new_cn=spval
+     allocate(DecompCNParamsInst%np_s3_new_cn); DecompCNParamsInst%np_s3_new_cn=spval
+     allocate(DecompCNParamsInst%np_s4_new_cn); DecompCNParamsInst%np_s4_new_cn=spval
+     allocate(DecompCNParamsInst%cp_s1_new_cn); DecompCNParamsInst%cp_s1_new_cn=spval
+     allocate(DecompCNParamsInst%cp_s2_new_cn); DecompCNParamsInst%cp_s2_new_cn=spval
+     allocate(DecompCNParamsInst%cp_s3_new_cn); DecompCNParamsInst%cp_s3_new_cn=spval
+     allocate(DecompCNParamsInst%cp_s4_new_cn); DecompCNParamsInst%cp_s4_new_cn=spval
+     allocate(DecompCNParamsInst%rf_l1s1_cn  ); DecompCNParamsInst%rf_l1s1_cn  =spval
+     allocate(DecompCNParamsInst%rf_l2s2_cn  ); DecompCNParamsInst%rf_l2s2_cn  =spval
+     allocate(DecompCNParamsInst%rf_l3s3_cn  ); DecompCNParamsInst%rf_l3s3_cn  =spval
+     allocate(DecompCNParamsInst%rf_s1s2_cn  ); DecompCNParamsInst%rf_s1s2_cn  =spval
+     allocate(DecompCNParamsInst%rf_s2s3_cn  ); DecompCNParamsInst%rf_s2s3_cn  =spval
+     allocate(DecompCNParamsInst%rf_s3s4_cn  ); DecompCNParamsInst%rf_s3s4_cn  =spval
+     allocate(DecompCNParamsInst%cwd_fcel_cn ); DecompCNParamsInst%cwd_fcel_cn =spval
+     allocate(DecompCNParamsInst%cwd_flig_cn ); DecompCNParamsInst%cwd_flig_cn =spval
+     allocate(DecompCNParamsInst%k_l1_cn     ); DecompCNParamsInst%k_l1_cn     =spval
+     allocate(DecompCNParamsInst%k_l2_cn     ); DecompCNParamsInst%k_l2_cn     =spval
+     allocate(DecompCNParamsInst%k_l3_cn     ); DecompCNParamsInst%k_l3_cn     =spval
+     allocate(DecompCNParamsInst%k_s1_cn     ); DecompCNParamsInst%k_s1_cn     =spval
+     allocate(DecompCNParamsInst%k_s2_cn     ); DecompCNParamsInst%k_s2_cn     =spval
+     allocate(DecompCNParamsInst%k_s3_cn     ); DecompCNParamsInst%k_s3_cn     =spval
+     allocate(DecompCNParamsInst%k_s4_cn     ); DecompCNParamsInst%k_s4_cn     =spval
+     allocate(DecompCNParamsInst%k_frag_cn   ); DecompCNParamsInst%k_frag_cn   =spval
+     allocate(DecompCNParamsInst%minpsi_cn   ); DecompCNParamsInst%minpsi_cn   =spval
+     allocate(DecompCNParamsInst%nsompools   ); DecompCNParamsInst%nsompools = 4
+     allocate(DecompCNParamsInst%nlitpools   ); DecompCNParamsInst%nlitpools = 3
+     allocate(DecompCNParamsInst%ncwdpools   ); DecompCNParamsInst%ncwdpools = 1
     ! These are not read off of netcdf file
     allocate(DecompCNParamsInst%spinup_vector(DecompCNParamsInst%nsompools+DecompCNParamsInst%nlitpools+ &
         DecompCNParamsInst%ncwdpools))
@@ -596,7 +631,6 @@ contains
      ! written by C. Koven based on original CLM4 decomposition cascade by P. Thornton
      !
      ! !USES:
-     use clm_time_manager, only : get_step_size, get_nstep, get_curr_date
      use elm_varcon      , only : secspday
      use elm_varpar      , only : i_cwd
      !
@@ -608,10 +642,12 @@ contains
      type(soilstate_type)   , intent(in)    :: soilstate_vars
      type(ch4_type)         , intent(in)    :: ch4_vars
      type(cnstate_type)     , intent(inout) :: cnstate_vars
+     real(r8)   :: dt                           ! decomp timestep (seconds)
+     integer  :: year, mon, day, sec          ! fraction of potential aerobic rate
+
 
      !
      ! !LOCAL VARIABLES:
-     real(r8):: dt                           ! decomp timestep (seconds)   
      real(r8):: dtd                          ! decomp timestep (days)
      real(r8):: frw(bounds%begc:bounds%endc) ! rooting fraction weight
      real(r8), allocatable:: fr(:,:)         ! column-level rooting fraction by soil depth
@@ -649,7 +685,6 @@ contains
      real(r8):: decomp_depth_efolding        ! (meters) e-folding depth for reduction in decomposition [
      real(r8):: depth_scalar(bounds%begc:bounds%endc,1:nlevdecomp) 
      real(r8) :: mino2lim                    ! minimum anaerobic decomposition rate as a
-     integer :: year, mon, day, sec          ! fraction of potential aerobic rate
      !-----------------------------------------------------------------------
 
      associate(                                             &
@@ -676,7 +711,9 @@ contains
        mino2lim = ParamsShareInst%mino2lim
 
        ! set time steps
-       dt = real( get_step_size(), r8 )
+       dt = dtime_mod
+       year = year_curr; mon = mon_curr; day = day_curr; sec = secs_curr
+
        dtd = dt/secspday
 
        ! set initial base rates for decomposition mass loss (1/day)
@@ -956,7 +993,6 @@ contains
           end do
        end if
 
-       call get_curr_date(year, mon, day, sec)
        !Calcluate location and depth-specific acceleration factors
        do fc=1,num_soilc
            c = filter_soilc(fc)
@@ -1038,6 +1074,15 @@ contains
            end do
          end do
        end if    
+
+       ! pflotran BGC will be operating on whole soil profile (i.e. from layer 1:nlevgrnd)
+       ! here it assumes that no reaction below layer nlevdecomp
+       if(use_pflotran) then
+         t_scalar(bounds%begc:bounds%endc,nlevdecomp+1:nlevgrnd) = 0._r8
+         w_scalar(bounds%begc:bounds%endc,nlevdecomp+1:nlevgrnd) = 0._r8
+         o_scalar(bounds%begc:bounds%endc,nlevdecomp+1:nlevgrnd) = 0._r8
+       end if
+
      end associate
    end subroutine decomp_rate_constants_cn
 

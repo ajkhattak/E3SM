@@ -590,7 +590,7 @@ module TopounitDataType
     integer, intent(in) :: begt   ! beginning topographic unit index
     integer, intent(in) :: endt   ! ending topographic unit index
 
-    allocate(this%t_rad   (begt:endt)) ; this%t_rad   (:) = nan
+    allocate(this%t_rad   (begt:endt)) ; this%t_rad   (:) =spval
   end subroutine init_top_es
   
   !-----------------------------------------------------------------------

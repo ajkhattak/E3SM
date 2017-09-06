@@ -19,6 +19,9 @@ module HydrologyDrainageMod
   use ColumnType        , only : col_pp
   use ColumnDataType    , only : col_ws, col_wf  
   use VegetationType    , only : veg_pp                
+  use elm_instMod   , only : ep_betr
+
+  use timeinfoMod
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -37,7 +40,7 @@ contains
        num_urbanc, filter_urbanc,         &
        num_do_smb_c, filter_do_smb_c,     &
        atm2lnd_vars, glc2lnd_vars,        &
-       soilhydrology_vars, soilstate_vars, ep_betr)
+       soilhydrology_vars, soilstate_vars)
     !
     ! !DESCRIPTION:
     ! Calculates soil/snow hydrology with drainage (subsurface runoff)
@@ -50,7 +53,6 @@ contains
     use domainMod        , only : ldomain
     use atm2lndType      , only : atm2lnd_type
     use elm_varpar       , only : nlevgrnd, nlevurb, nlevsoi    
-    use clm_time_manager , only : get_step_size, get_nstep
     use SoilHydrologyMod , only : ELMVICMap, Drainage
     use elm_varctl       , only : use_vsfm
     use BeTRSimulationALM, only : betr_simulation_alm_type
@@ -73,11 +75,11 @@ contains
     type(soilstate_type)     , intent(inout) :: soilstate_vars
     type(waterstate_type)                    :: waterstate_vars      ! ONLY used when betr is on
     type(waterflux_type)                     :: waterflux_vars       ! ONLY used when betr is on
-    class(betr_simulation_alm_type), intent(inout) :: ep_betr
+    !class(betr_simulation_alm_type), intent(inout) :: ep_betr
     !
     ! !LOCAL VARIABLES:
+    real(r8) :: dtime
     integer  :: g,t,l,c,j,fc               ! indices
-    real(r8) :: dtime                      ! land model time step (sec)
     !-----------------------------------------------------------------------
     
     associate(                                                                  &    
@@ -125,30 +127,34 @@ contains
 
       ! Determine time step and step size
 
-      dtime = get_step_size()
+      dtime = dtime_mod
 
       if (use_vichydro) then
          call ELMVICMap(bounds, num_hydrologyc, filter_hydrologyc, &
               soilhydrology_vars)
       endif
 
+#ifndef _OPENACC
       if (use_betr) then
         call ep_betr%BeTRSetBiophysForcing(bounds, col_pp, veg_pp, 1, nlevsoi, waterstate_vars=waterstate_vars)
         call ep_betr%PreDiagSoilColWaterFlux(num_hydrologyc, filter_hydrologyc)
       endif
+#endif
 
       if (.not. use_vsfm) then
          call Drainage(bounds, num_hydrologyc, filter_hydrologyc, &
               num_urbanc, filter_urbanc,&
-              soilhydrology_vars, soilstate_vars)
+              soilhydrology_vars, soilstate_vars, dtime)
       endif
 
+#ifndef _OPENACC
       if (use_betr) then
         call ep_betr%BeTRSetBiophysForcing(bounds, col_pp, veg_pp, 1, nlevsoi, waterstate_vars=waterstate_vars, &
           waterflux_vars=waterflux_vars)
         call ep_betr%DiagDrainWaterFlux(num_hydrologyc, filter_hydrologyc)
         call ep_betr%RetrieveBiogeoFlux(bounds, 1, nlevsoi, waterflux_vars=waterflux_vars)
       endif
+#endif
 
       do j = 1, nlevgrnd
          do fc = 1, num_nolakec

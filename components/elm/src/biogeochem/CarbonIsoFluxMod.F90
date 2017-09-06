@@ -22,6 +22,9 @@ module CarbonIsoFluxMod
   implicit none
   save
   private
+  integer, parameter :: c13 = 0
+  integer, parameter :: c14 = 1
+  
   !
   ! !PUBLIC MEMBER FUNCTIONS:
   public  :: CarbonIsoFlux1
@@ -54,7 +57,8 @@ contains
     integer                , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)     , intent(in)    :: cnstate_vars
-    character(len=*)       , intent(in)    :: isotope         ! 'c13' or 'c14'
+
+    integer                , intent(in)    :: isotope         ! 'c13' or 'c14'
     type(column_carbon_state),intent(in)   :: isocol_cs
     type(vegetation_carbon_state),intent(in)   :: isoveg_cs
     type(column_carbon_flux),intent(inout)    :: isocol_cf
@@ -428,7 +432,11 @@ contains
     integer                , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)     , intent(in)    :: cnstate_vars
-    character(len=*)       , intent(in)    :: isotope         ! 'c13' or 'c14'
+    !type(carbonflux_type)  , intent(in)    :: carbonflux_vars
+    !type(carbonstate_type) , intent(in)    :: carbonstate_vars
+    !type(carbonflux_type)  , intent(inout) :: isotopeflux_vars
+    !type(carbonstate_type) , intent(in)    :: isotopestate_vars
+    integer       , intent(in)    :: isotope         ! 'c13' or 'c14'
     type(column_carbon_state),intent(in)   :: isocol_cs
     type(vegetation_carbon_state),intent(in)   :: isoveg_cs
     type(column_carbon_flux),intent(inout)    :: isocol_cf
@@ -566,7 +574,7 @@ contains
     integer                , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)     , intent(in)    :: cnstate_vars
-    character(len=*)       , intent(in)    :: isotope         ! 'c13' or 'c14'
+    integer                , intent(in)    :: isotope         ! 'c13' or 'c14'
     type(column_carbon_state),intent(in)   :: isocol_cs
     type(vegetation_carbon_state),intent(in)   :: isoveg_cs
     type(column_carbon_flux),intent(inout)    :: isocol_cf
@@ -713,7 +721,7 @@ contains
     integer                , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)     , intent(in)    :: cnstate_vars
-    character(len=*)       , intent(in)    :: isotope         ! 'c13' or 'c14'
+    integer                , intent(in)    :: isotope         ! 'c13' or 'c14'
     type(column_carbon_state),intent(in)   :: isocol_cs
     type(vegetation_carbon_state),intent(in)   :: isoveg_cs
     type(column_carbon_flux),intent(inout)    :: isocol_cf
@@ -1299,7 +1307,8 @@ contains
      integer          , intent(in)             :: num           ! number of filter members
      integer          , intent(in)             :: filter(:)     ! filter indices
      integer          , intent(in)             :: diag          ! 0=no diagnostics, 1=print diagnostics
-     character(len=*) , intent(in)             :: isotope       ! 'c13' or 'c14'
+     integer          , intent(in)             :: isotope       ! 'c13' or 'c14'
+
      !
      ! ! LOCAL VARIABLES:
      integer  :: i,f     ! indices
@@ -1309,12 +1318,14 @@ contains
 
      ! if C14, double the fractionation
      select case (isotope)
-     case ('c14')
+     case (c14)
         frax = 1._r8 + (1._r8 - frax_c13) * 2._r8
-     case ('c13')
+     case (c13)
         frax = frax_c13
      case default
+#ifndef _OPENACC
         call endrun(msg='CarbonIsoFluxMod: iso must be either c13 or c14'//errMsg(__FILE__, __LINE__))
+#endif
      end select
 
      ! loop over the supplied filter

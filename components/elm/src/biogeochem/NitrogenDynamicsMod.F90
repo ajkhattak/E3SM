@@ -22,7 +22,6 @@ module NitrogenDynamicsMod
   use VegetationType      , only : veg_pp
   use VegetationDataType  , only : veg_cs, veg_ns, veg_nf  
   use VegetationPropertiesType  , only : veg_vp
-  use CNCarbonStateType   , only : carbonstate_type
   use elm_varctl          , only : NFIX_PTASE_plant
   use elm_varctl          , only : use_fates
  
@@ -43,12 +42,14 @@ module NitrogenDynamicsMod
   
   !
   ! !PRIVATE DATA:
-  type, private :: CNNDynamicsParamsType
-     real(r8):: sf        ! soluble fraction of mineral N (unitless)
-     real(r8):: sf_no3    ! soluble fraction of NO3 (unitless)
+  type, public :: CNNDynamicsParamsType
+     real(r8), pointer :: sf     => null()    ! soluble fraction of mineral N (unitless)
+     real(r8), pointer :: sf_no3 => null()    ! soluble fraction of NO3 (unitless)
   end type CNNDynamicsParamsType
+
+  type(CNNDynamicsParamsType), public ::  CNNDynamicsParamsInst
   
-  type(CNNDynamicsParamsType),private ::  CNNDynamicsParamsInst
+
   !-----------------------------------------------------------------------
 
 contains
@@ -98,6 +99,8 @@ contains
     
     call NitrogenDynamicsInit()
 
+    allocate(CNNDynamicsParamsInst%sf)
+    allocate(CNNDynamicsParamsInst%sf_no3)
     tString='sf_minn'
     call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
     if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(__FILE__, __LINE__))
@@ -112,7 +115,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine NitrogenDeposition( bounds, &
-       atm2lnd_vars)
+       atm2lnd_vars, dt )
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update the nitrogen deposition rate
@@ -124,6 +127,7 @@ contains
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds  
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
+    real(r8),   intent(in) :: dt
     !
     ! !LOCAL VARIABLES:
     integer :: g,c                    ! indices
@@ -145,7 +149,7 @@ contains
   end subroutine NitrogenDeposition
 
   !-----------------------------------------------------------------------
-  subroutine NitrogenFixation(num_soilc, filter_soilc)
+  subroutine NitrogenFixation(num_soilc, filter_soilc, dayspyr)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update the nitrogen fixation rate
@@ -153,18 +157,18 @@ contains
     ! All N fixation goes to the soil mineral N pool.
     !
     ! !USES:
-    use clm_time_manager , only : get_days_per_year, get_step_size
-    use shr_sys_mod      , only : shr_sys_flush
+      
     use elm_varcon       , only : secspday, spval
     !
     ! !ARGUMENTS:
     integer                 , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                 , intent(in)    :: filter_soilc(:) ! filter for soil columns
+    real(r8), intent(in) :: dayspyr               ! days per year
+
     !
     ! !LOCAL VARIABLES:
     integer  :: c,fc                  ! indices
     real(r8) :: t                     ! temporary
-    real(r8) :: dayspyr               ! days per year
     real(r8) :: secspyr              ! seconds per yr
     logical  :: do_et_bnf = .false.
     !-----------------------------------------------------------------------
@@ -179,7 +183,6 @@ contains
          nfix_to_sminn  => col_nf%nfix_to_sminn   & ! Output: [real(r8) (:)]  symbiotic/asymbiotic N fixation to soil mineral N (gN/m2/s)
          )
 
-      dayspyr = get_days_per_year()
 
       if (do_et_bnf .or. use_fates) then
          secspyr = dayspyr * 86400._r8
@@ -220,7 +223,7 @@ contains
   end subroutine NitrogenFixation
  
   !-----------------------------------------------------------------------
-  subroutine NitrogenLeaching(bounds, num_soilc, filter_soilc)
+  subroutine NitrogenLeaching(bounds, num_soilc, filter_soilc, dt )
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update the nitrogen leaching rate
@@ -228,16 +231,16 @@ contains
     !
     ! !USES:
     use elm_varpar       , only : nlevdecomp, nlevsoi
-    use clm_time_manager , only : get_step_size
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds  
     integer                  , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
+    real(r8)                 , intent(in)    :: dt          ! radiation time step (seconds)
+
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,fc                                 ! indices
-    real(r8) :: dt                                     ! radiation time step (seconds)
     real(r8) :: sf                                     ! soluble fraction of mineral N (unitless)
     real(r8) :: sf_no3                                 ! soluble fraction of NO3 (unitless)
     real(r8) :: disn_conc                              ! dissolved mineral N concentration (gN/kg water)
@@ -260,8 +263,6 @@ contains
          smin_no3_runoff_vr  => col_nf%smin_no3_runoff_vr    & ! Output: [real(r8) (:,:) ]  rate of mineral NO3 loss with runoff (gN/m3/s)  
          )
 
-      ! set time steps
-      dt = real( get_step_size(), r8 )
 
       if (.not. use_nitrif_denitrif) then
          ! set constant sf 
@@ -602,8 +603,7 @@ contains
     ! N2 fixation is based on Fisher 2010 GBC doi:10.1029/2009GB003621; Wang 2007 GBC doi:10.1029/2006GB002797; and Grand 2012 ecosys model
     !
     ! !USES:
-    use clm_time_manager , only : get_days_per_year, get_step_size
-    use shr_sys_mod      , only : shr_sys_flush
+      
     use elm_varcon       , only : secspday, spval
     use pftvarcon        , only : noveg
         

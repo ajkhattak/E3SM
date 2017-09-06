@@ -33,6 +33,8 @@ module LakeHydrologyMod
   use WaterfluxType        , only : waterflux_type
   use WaterstateType       , only : waterstate_type
   use elm_varcon           , only : snw_rds_min  
+
+  use timeinfoMod
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -73,7 +75,6 @@ contains
     use elm_varcon      , only : denh2o, denice, spval, hfus, tfrz, cpliq, cpice
     use elm_varpar      , only : nlevsno, nlevgrnd, nlevsoi
     use elm_varctl      , only : iulog
-    use clm_time_manager, only : get_step_size
     use SnowHydrologyMod, only : SnowCompaction, CombineSnowLayers, SnowWater, BuildSnowFilter
     use SnowHydrologyMod, only : DivideSnowLayers
     use LakeCon         , only : lsadz
@@ -92,10 +93,11 @@ contains
     type(soilstate_type)   , intent(in)    :: soilstate_vars
     type(aerosol_type)     , intent(inout) :: aerosol_vars
     type(lakestate_type)   , intent(inout) :: lakestate_vars
+    real(r8)   :: dtime            ! land model time step (sec)
+
     !
     ! !LOCAL VARIABLES:
     integer  :: p,fp,g,t,l,c,j,fc,jtop                          ! indices
-    real(r8) :: dtime                                           ! land model time step (sec)
     integer  :: newnode                                         ! flag when new snow node is set, (1=yes, 0=no)
     real(r8) :: dz_snowf                                        ! layer thickness rate change due to precipitation [mm/s]
     real(r8) :: bifall                                          ! bulk density of newly fallen dry snow [kg/m3]
@@ -215,8 +217,7 @@ contains
 
       ! Determine step size
 
-      dtime = get_step_size()
-
+      dtime = dtime_mod
       ! Add soil water to water balance.
       do j = 1, nlevgrnd
          do fc = 1, num_lakec
@@ -301,7 +302,25 @@ contains
             frac_iceold(c,0) = 1._r8
 
              ! intitialize SNICAR variables for fresh snow:
-             call aerosol_vars%Reset(column=c)
+             aerosol_vars%mss_bcpho_col(c,:)  = 0._r8
+             aerosol_vars%mss_bcphi_col(c,:)  = 0._r8
+             aerosol_vars%mss_bctot_col(c,:)  = 0._r8
+             aerosol_vars%mss_bc_col_col(c)   = 0._r8
+             aerosol_vars%mss_bc_top_col(c)   = 0._r8
+
+             aerosol_vars%mss_ocpho_col(c,:)  = 0._r8
+             aerosol_vars%mss_ocphi_col(c,:)  = 0._r8
+             aerosol_vars%mss_octot_col(c,:)  = 0._r8
+             aerosol_vars%mss_oc_col_col(c)   = 0._r8
+             aerosol_vars%mss_oc_top_col(c)   = 0._r8
+
+             aerosol_vars%mss_dst1_col(c,:)   = 0._r8
+             aerosol_vars%mss_dst2_col(c,:)   = 0._r8
+             aerosol_vars%mss_dst3_col(c,:)   = 0._r8
+             aerosol_vars%mss_dst4_col(c,:)   = 0._r8
+             aerosol_vars%mss_dsttot_col(c,:) = 0._r8
+             aerosol_vars%mss_dst_col_col(c)  = 0._r8
+             aerosol_vars%mss_dst_top_col(c)  = 0._r8
              col_ws%snw_rds(c,0) = snw_rds_min
 
          end if
@@ -488,12 +507,12 @@ contains
 
       ! Natural compaction and metamorphosis.
 
-      call SnowCompaction(bounds, num_shlakesnowc, filter_shlakesnowc)
+      call SnowCompaction(bounds, num_shlakesnowc, filter_shlakesnowc, dtime)
 
       ! Combine thin snow elements
 
       call CombineSnowLayers(bounds, num_shlakesnowc, filter_shlakesnowc, &
-           aerosol_vars)
+           aerosol_vars, dtime)
 
       ! Divide thick snow elements
 

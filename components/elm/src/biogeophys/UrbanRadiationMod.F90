@@ -58,7 +58,6 @@ contains
     use elm_varcon          , only : spval, sb, tfrz
     use column_varcon       , only : icol_road_perv, icol_road_imperv
     use column_varcon       , only : icol_roof, icol_sunwall, icol_shadewall
-    use clm_time_manager    , only : get_curr_date, get_step_size
     !
     ! !ARGUMENTS:
     type(bounds_type)      , intent(in)    :: bounds    
@@ -243,9 +242,6 @@ contains
               lwup_canyon(begl:endl),     &
               urbanparams_vars)
       end if
-
-      dtime = get_step_size()
-      call get_curr_date (year, month, day, secs)
 
       ! Determine variables needed for history output and communication with atm
       ! Loop over urban patches in clump
@@ -484,6 +480,7 @@ contains
 
          err = lwdown(l) - (lwdown_road(l) + (lwdown_shadewall(l) + lwdown_sunwall(l))*canyon_hwr(l))
          if (abs(err) > 0.10_r8 ) then
+#ifndef _OPENACC
             write(iulog,*) 'urban incident atmospheric longwave radiation balance error',err
             write(iulog,*) 'l          = ',l
             write(iulog,*) 'lwdown     = ',lwdown(l)
@@ -492,6 +489,7 @@ contains
             write(iulog,*) 'canyon_hwr = ',canyon_hwr(l)
             write(iulog,*) 'elm model is stopping'
             call endrun(decomp_index=l, elmlevel=namel, msg=errmsg(__FILE__, __LINE__))
+#endif
          endif
       end do
 
@@ -669,9 +667,11 @@ contains
             if (crit < .001_r8) exit
          end do
          if (iter >= n) then
+#ifndef _OPENACC
             write (iulog,*) 'urban net longwave radiation error: no convergence'
             write (iulog,*) 'elm model is stopping'
             call endrun(decomp_index=l, elmlevel=namel, msg=errmsg(__FILE__, __LINE__))
+#endif
          endif
 
          ! total net longwave radiation for canyon. project wall fluxes to horizontal surface
@@ -694,9 +694,11 @@ contains
 
          err = lwnet_canyon(l) - (lwup_canyon(l) - lwdown(l))
          if (abs(err) > .10_r8 ) then
+#ifndef _OPENACC
             write (iulog,*) 'urban net longwave radiation balance error',err
             write (iulog,*) 'elm model is stopping'
             call endrun(decomp_index=l, elmlevel=namel, msg=errmsg(__FILE__, __LINE__))
+#endif
          end if
 
       end do

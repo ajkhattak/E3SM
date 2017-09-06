@@ -22,7 +22,6 @@ module dynConsBiogeophysMod
   use TotalWaterAndHeatMod, only : heat_base_temp
   use elm_varcon        , only : tfrz, cpliq
   use subgridAveMod     , only : p2c, c2g
-  use dynSubgridControlMod, only : get_for_testing_zero_dynbal_fluxes
   use elm_varcon        , only : spval
   use GridcellDataType  , only : grc_es, grc_ef, grc_ws, grc_wf
   use LandunitType      , only : lun_pp                
@@ -69,20 +68,26 @@ contains
     ! !LOCAL VARIABLES:
     integer :: g   ! grid cell index
     !-------------------------------------------------------------------------------
-    
+    associate( &
+             liq1 => grc_ws%liq1 ,&
+             ice1 => grc_ws%ice1 ,&
+             heat1 => grc_es%heat1 ,&
+             liquid_water_temp1 => grc_es%liquid_water_temp1 &
+             )
     call dyn_water_content(bounds,                                        &
          num_nolakec, filter_nolakec,                                     &
          num_lakec, filter_lakec,                                         &
-         soilhydrology_vars, lakestate_vars,                              &
-         liquid_mass = grc_ws%liq1(bounds%begg:bounds%endg), &
-         ice_mass    = grc_ws%ice1(bounds%begg:bounds%endg))
+         soilhydrology_vars, lakestate_vars,             &
+         liquid_mass = liq1(bounds%begg:bounds%endg), &
+         ice_mass    = ice1(bounds%begg:bounds%endg))
 
     call dyn_heat_content( bounds,                                        &
          num_nolakec, filter_nolakec,                                     &
          num_lakec, filter_lakec,                                         &
          urbanparams_vars, soilstate_vars, soilhydrology_vars,            &
-         heat_grc = grc_es%heat1(bounds%begg:bounds%endg),  &
-         liquid_water_temp_grc = grc_es%liquid_water_temp1(bounds%begg:bounds%endg))
+         heat_grc = heat1(bounds%begg:bounds%endg),  &
+         liquid_water_temp_grc = liquid_water_temp1(bounds%begg:bounds%endg))
+    end associate
 
   end subroutine dyn_hwcontent_init
 
@@ -90,12 +95,12 @@ contains
   subroutine dyn_hwcontent_final(bounds, &
        num_nolakec, filter_nolakec, &
        num_lakec, filter_lakec, &
-       urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars)
+       urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars, &
+       dtime)
     !
     ! Should be called AFTER all subgrid weight updates this time step
     !
     ! !USES:
-    use clm_time_manager    , only : get_step_size
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds  
@@ -107,35 +112,45 @@ contains
     type(soilstate_type)     , intent(in)    :: soilstate_vars
     type(soilhydrology_type) , intent(in)    :: soilhydrology_vars
     type(lakestate_type)     , intent(in)    :: lakestate_vars
+    real(r8)                 , intent(in)    :: dtime ! land model time step (sec)
+
     !
     ! !LOCAL VARIABLES:
     integer  :: begg, endg
     integer  :: g     ! grid cell index
-    real(r8) :: dtime ! land model time step (sec)
     real(r8) :: delta_liq(bounds%begg:bounds%endg)  ! change in gridcell h2o liq content
     real(r8) :: delta_ice(bounds%begg:bounds%endg)  ! change in gridcell h2o ice content
     real(r8) :: delta_heat(bounds%begg:bounds%endg) ! change in gridcell heat content
     !---------------------------------------------------------------------------
 
+    associate( &
+             liq1 => grc_ws%liq1 ,&
+             ice1 => grc_ws%ice1 ,&
+             heat1 => grc_es%heat1 ,&
+             liq2 => grc_ws%liq2 ,&
+             ice2 => grc_ws%ice2 ,&
+             heat2 => grc_es%heat2 ,&
+             liquid_water_temp2 => grc_es%liquid_water_temp2 &
+             )
     begg = bounds%begg
     endg = bounds%endg
 
-    dtime = get_step_size()
     call dyn_water_content(bounds, &
          num_nolakec, filter_nolakec, &
          num_lakec, filter_lakec, &
          soilhydrology_vars, lakestate_vars, &
-         liquid_mass = grc_ws%liq2(bounds%begg:bounds%endg), &
-         ice_mass    = grc_ws%ice2(bounds%begg:bounds%endg))
+         liquid_mass = liq2(bounds%begg:bounds%endg), &
+         ice_mass    = ice2(bounds%begg:bounds%endg))
 
     call dyn_heat_content( bounds,                                &
          num_nolakec, filter_nolakec, &
          num_lakec, filter_lakec, &
          urbanparams_vars, soilstate_vars, soilhydrology_vars, &
-         heat_grc = grc_es%heat2(bounds%begg:bounds%endg), &
-         liquid_water_temp_grc = grc_es%liquid_water_temp2(bounds%begg:bounds%endg))
+         heat_grc = heat2(bounds%begg:bounds%endg), &
+         liquid_water_temp_grc = liquid_water_temp2(bounds%begg:bounds%endg))
 
-    if (get_for_testing_zero_dynbal_fluxes()) then
+    !TODO: FIX
+    if (.false.) then !get_for_testing_zero_dynbal_fluxes()) then
        do g = begg, endg
           delta_liq(g) = 0._r8
           delta_ice(g) = 0._r8
@@ -143,15 +158,16 @@ contains
       end do
     else
        do g = begg, endg
-          delta_liq(g)  = grc_ws%liq2(g) - grc_ws%liq1(g)
-          delta_ice(g)  = grc_ws%ice2(g) - grc_ws%ice1(g)
-          delta_heat(g) = grc_es%heat2(g) - grc_es%heat1(g)
+          delta_liq(g)  = liq2(g) - liq1(g)
+          delta_ice(g)  = ice2(g) - ice1(g)
+          delta_heat(g) = heat2(g) - heat1(g)
           grc_wf%qflx_liq_dynbal (g) = delta_liq(g)/dtime
           grc_wf%qflx_ice_dynbal (g) = delta_ice(g)/dtime
           grc_ef%eflx_dynbal    (g) = delta_heat(g)/dtime
        end do
     end if
 
+    end associate
   end subroutine dyn_hwcontent_final
 
   !-----------------------------------------------------------------------
@@ -199,14 +215,14 @@ contains
     call c2g(bounds, &
          carr = liquid_mass_col(bounds%begc:bounds%endc), &
          garr = liquid_mass(bounds%begg:bounds%endg), &
-         c2l_scale_type = 'unity', &
-         l2g_scale_type = 'unity')
+         c2l_scale_type = 0, &
+         l2g_scale_type = 0)
 
     call c2g(bounds, &
          carr = ice_mass_col(bounds%begc:bounds%endc), &
          garr = ice_mass(bounds%begg:bounds%endg), &
-         c2l_scale_type = 'unity', &
-         l2g_scale_type = 'unity')
+         c2l_scale_type = 0, &
+         l2g_scale_type = 0)
 
   end subroutine dyn_water_content
 
@@ -276,20 +292,20 @@ contains
     call c2g(bounds, &
          carr = heat_col(bounds%begc:bounds%endc), &
          garr = heat_grc(bounds%begg:bounds%endg), &
-         c2l_scale_type = 'unity', &
-         l2g_scale_type = 'unity')
+         c2l_scale_type = 0, &
+         l2g_scale_type = 0)
 
     call c2g(bounds, &
          carr = heat_liquid_col(bounds%begc:bounds%endc), &
          garr = heat_liquid_grc(bounds%begg:bounds%endg), &
-         c2l_scale_type = 'unity', &
-         l2g_scale_type = 'unity')
+         c2l_scale_type = 0, &
+         l2g_scale_type = 0)
 
     call c2g(bounds, &
          carr = cv_liquid_col(bounds%begc:bounds%endc), &
          garr = cv_liquid_grc(bounds%begg:bounds%endg), &
-         c2l_scale_type = 'unity', &
-         l2g_scale_type = 'unity')
+         c2l_scale_type = 0, &
+         l2g_scale_type = 0)
 
     do g = bounds%begg, bounds%endg
        if (cv_liquid_grc(g) > 0._r8) then

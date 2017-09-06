@@ -9,6 +9,14 @@ module SoilWaterMovementMod
   !
   use ColumnDataType    , only : col_es, col_ws, col_wf
   use VegetationDataType, only : veg_wf
+  use shr_log_mod         , only : errMsg => shr_log_errMsg
+
+  use ExternalModelConstants     , only : EM_VSFM_SOIL_HYDRO_STAGE
+  use ExternalModelConstants     , only : EM_ID_VSFM
+  use ExternalModelInterfaceMod  , only : EMI_Driver
+  use elm_instMod , only : waterflux_vars, waterstate_vars, temperature_vars
+  use abortutils           , only : endrun
+
   !
   implicit none
   save 
@@ -66,8 +74,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine SoilWater(bounds, num_hydrologyc, filter_hydrologyc, &
-       num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars, &
-       soil_water_retention_curve)
+       num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars, dt)
     !
     ! DESCRIPTION
     ! select one subroutine to do the soil and root water coupling
@@ -84,7 +91,6 @@ contains
     use TemperatureType            , only : temperature_type
     use WaterFluxType              , only : waterflux_type
     use WaterStateType             , only : waterstate_type
-    use SoilWaterRetentionCurveMod , only : soil_water_retention_curve_type
     use elm_varcon                 , only : denh2o, denice, watmin
     use ColumnType                 , only : col_pp
     use ExternalModelConstants     , only : EM_VSFM_SOIL_HYDRO_STAGE
@@ -104,7 +110,7 @@ contains
     type(waterflux_type)                     :: waterflux_vars        ! ONLY used when vsfm on (USE_PETSC_LIB)
     type(waterstate_type)                    :: waterstate_vars       ! ONLY used when vsfm on (USE_PETSC_LIB)
     type(temperature_type)                   :: temperature_vars      ! ONLY used when vsfm on (USE_PETSC_LIB)
-    class(soil_water_retention_curve_type), intent(in) :: soil_water_retention_curve
+    real(r8)                 , intent(in)    :: dt
     !
     ! !LOCAL VARIABLES:
     character(len=32)                        :: subname = 'SoilWater'       ! subroutine name
@@ -130,12 +136,11 @@ contains
     case (zengdecker_2009)
 
        call soilwater_zengdecker2009(bounds, num_hydrologyc, filter_hydrologyc, &
-            num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars, &
-            soil_water_retention_curve)
+            num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars, dt)
 
     case (vsfm)
 #ifdef USE_PETSC_LIB
-
+#ifndef _OPENACC
        call Prepare_Data_for_EM_VSFM_Driver(bounds, num_hydrologyc, filter_hydrologyc, &
             soilhydrology_vars, soilstate_vars)
 
@@ -147,10 +152,11 @@ contains
             waterflux_vars=waterflux_vars, waterstate_vars=waterstate_vars, &
             temperature_vars=temperature_vars)
 #endif
+#endif
     case default
-
-       call endrun(subname // ':: a SoilWater implementation must be specified!')          
-
+#ifndef _OPENACC
+       call endrun('SoilWater' // ':: a SoilWater implementation must be specified!')
+#endif
     end select
 
     if(use_betr)then
@@ -199,8 +205,7 @@ contains
 
   !-----------------------------------------------------------------------   
   subroutine soilwater_zengdecker2009(bounds, num_hydrologyc, filter_hydrologyc, &
-       num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars, &
-       soil_water_retention_curve)
+       num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars, dtime)
     !
     ! !DESCRIPTION:
     ! Soil hydrology
@@ -281,7 +286,6 @@ contains
     use TemperatureType      , only : temperature_type
     use WaterFluxType        , only : waterflux_type
     use WaterStateType       , only : waterstate_type
-    use SoilWaterRetentionCurveMod, only : soil_water_retention_curve_type
     use VegetationType       , only : veg_pp
     use ColumnType           , only : col_pp
     !
@@ -294,14 +298,14 @@ contains
     integer                 , intent(in)    :: filter_urbanc(:)     ! column filter for urban points
     type(soilhydrology_type), intent(inout) :: soilhydrology_vars
     type(soilstate_type)    , intent(inout) :: soilstate_vars
-    class(soil_water_retention_curve_type), intent(in) :: soil_water_retention_curve
+    real(r8), intent(in) :: dtime                                        ! land model time step (sec)
+
     !
     ! !LOCAL VARIABLES:
     integer  :: p,c,fc,j                                     ! do loop indices
     integer  :: nlevbed                                      ! number of layers to bedrock
     integer  :: jtop(bounds%begc:bounds%endc)                ! top level at each column
     integer  :: jbot(bounds%begc:bounds%endc)                ! bottom level at each column
-    real(r8) :: dtime                                        ! land model time step (sec)
     real(r8) :: hk(bounds%begc:bounds%endc,1:nlevgrnd)        ! hydraulic conductivity [mm h2o/s]
     real(r8) :: dhkdw(bounds%begc:bounds%endc,1:nlevgrnd)     ! d(hk)/d(vol_liq)
     real(r8) :: amx(bounds%begc:bounds%endc,1:nlevgrnd+1)     ! "a" left off diagonal of tridiagonal matrix
@@ -381,9 +385,6 @@ contains
          t_soisno          =>    col_es%t_soisno        & ! Input:  [real(r8) (:,:) ]  soil temperature (Kelvin)                       
          )
 
-      ! Get time step
-      
-      dtime = get_step_size()
 
       ! Because the depths in this routine are in mm, use local
       ! variable arrays instead of pointers
@@ -529,16 +530,6 @@ contains
             dhkdw(c,j) = imped(c,j)*(2._r8*bsw(c,j)+3._r8)*s2* &
                  (1._r8/(watsat(c,j)+watsat(c,min(nlevsoi, j+1))))
 
-            !compute un-restricted hydraulic conductivity
-            !call soil_water_retention_curve%soil_hk(hksat(c,j), imped(c,j), s1, bsw(c,j), hktmp, dhkds)
-            !if(hktmp/=hk(c,j))write(10,*)'diff',hktmp,hk(c,j)
-            !    call endrun('bad in hk')
-            !endif    
-            !apply ice impedance
-            !hk(c,j) = imped(c,j)*hk(c,j)          
-            !dhkdw(c,j) = imped(c,j) * dhkds * (1._r8/(watsat(c,j)+watsat(c,min(nlevsoi, j+1))))
-
-
             ! compute matric potential and derivative based on liquid water content only
             if (origflag == 1) then
                s_node = max(h2osoi_vol(c,j)/watsat(c,j), 0.01_r8)
@@ -546,8 +537,6 @@ contains
                s_node = max(vwc_liq(c,j)/watsat(c,j), 0.01_r8)
             endif
             s_node = min(1.0_r8, s_node)
-
-            !call soil_water_retention_curve%soil_suction(sucsat(c,j), s_node, bsw(c,j), smp(c,j), dsmpds)
 
             smp(c,j) = -sucsat(c,j)*s_node**(-bsw(c,j))
             smp(c,j) = max(smpmin(c), smp(c,j))
@@ -659,12 +648,10 @@ contains
             s_node = min(1.0_r8, s_node)
 
             ! compute smp for aquifer layer
-            !call soil_water_retention_curve%soil_suction(sucsat(c,j), s_node, bsw(c,j), smp1, dsmpds)
             smp1 = -sucsat(c,j)*s_node**(-bsw(c,j))
             smp1 = max(smpmin(c), smp1)
 
             ! compute dsmpdw for aquifer layer
-            !dsmpdw1 = dsmpds/watsat(c,j)
             dsmpdw1 = -bsw(c,j)*smp1/(s_node*watsat(c,j))
 
             ! first set up bottom layer of soil column
@@ -766,11 +753,6 @@ contains
                ka = imped(c,jwt(c)+1)*hksat(c,jwt(c)+1) &
                  *s1**(2._r8*bsw(c,jwt(c)+1)+3._r8)
 
-               !compute unsaturated hk, this shall be tested later, because it
-               !is not bit for bit
-               !call soil_water_retention_curve%soil_hk(hksat(c,jwt(c)+1), s1, bsw(c,jwt(c)+1), ka)
-               !apply ice impedance
-               !ka = imped(c,jwt(c)+1) * ka 
                ! Recharge rate qcharge to groundwater (positive to aquifer)
                smp1 = max(smpmin(c), smp(c,max(1,jwt(c))))
                wh      = smp1 - zq(c,max(1,jwt(c)))
@@ -803,11 +785,6 @@ contains
                ka = imped(c,jwt(c)+1)*hksat(c,jwt(c)+1) &
                  *s1**(2._r8*bsw(c,jwt(c)+1)+3._r8)
 
-               !compute unsaturated hk, this shall be tested later, because it
-               !is not bit for bit
-               !call soil_water_retention_curve%soil_hk(hksat(c,jwt(c)+1), s1, bsw(c,jwt(c)+1), ka)
-               !apply ice impedance
-               !ka = imped(c,jwt(c)+1) * ka 
                ! Recharge rate qcharge to groundwater (positive to aquifer)
                smp1 = max(smpmin(c), smp(c,max(1,jwt(c))))
                wh      = smp1 - zq(c,max(1,jwt(c)))

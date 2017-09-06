@@ -84,11 +84,10 @@ contains
     ! !LOCAL VARIABLES:
     logical :: found  ! whether a suitable template column has been found
     integer :: g,l,c  ! indices of grid cell, landunit, column
-    
-    character(len=*), parameter :: subname = 'template_col_from_landunit'
+
     !-----------------------------------------------------------------------
-    
-    SHR_ASSERT_ALL((ubound(cactive) == (/bounds%endc/)), errMsg(sourcefile, __LINE__))
+
+    !SHR_ASSERT_ALL((ubound(cactive) == (/bounds%endc/)), errMsg(sourcefile, __LINE__))
 
     found = .false.
     g = col_pp%gridcell(c_target)
@@ -150,11 +149,10 @@ contains
     ! !LOCAL VARIABLES:
     integer :: c
 
-    character(len=*), parameter :: subname = 'template_col_from_natveg_array'
     !-----------------------------------------------------------------------
 
-    SHR_ASSERT_ALL((ubound(cactive) == (/bounds%endc/)), errMsg(sourcefile, __LINE__))
-    SHR_ASSERT_ALL((ubound(c_templates) == (/bounds%endc/)), errMsg(sourcefile, __LINE__))
+    !SHR_ASSERT_ALL((ubound(cactive) == (/bounds%endc/)), errMsg(sourcefile, __LINE__))
+    !SHR_ASSERT_ALL((ubound(c_templates) == (/bounds%endc/)), errMsg(sourcefile, __LINE__))
 
     do c = bounds%begc, bounds%endc
        c_templates(c) = template_col_from_landunit(bounds, c, istsoil, &

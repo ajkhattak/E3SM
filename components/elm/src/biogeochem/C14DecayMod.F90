@@ -5,7 +5,6 @@ module C14DecayMod
   !
   ! !USES:
   use shr_kind_mod           , only : r8 => shr_kind_r8
-  use clm_time_manager       , only : get_curr_date, get_step_size, get_days_per_year
   use elm_varpar             , only : ndecomp_cascade_transitions, nlevdecomp, ndecomp_pools
   use elm_varcon             , only : secspday
   use elm_varctl             , only : spinup_state
@@ -14,6 +13,8 @@ module C14DecayMod
   use elm_varctl             , only : nu_com
   use ColumnDataType         , only : c14_col_cs
   use VegetationDataType     , only : c14_veg_cs  
+
+  use timeInfoMod
   !
   implicit none
   save
@@ -91,9 +92,10 @@ contains
          )
 
       ! set time steps
-      call get_curr_date(yr, mon, day, tod, offset)
-      dt = real( get_step_size(), r8 )
-      days_per_year = get_days_per_year()
+      yr = year_curr; mon = mon_curr; day = day_curr; tod = secs_curr
+      dt = dtime_mod
+      days_per_year = dayspyr_mod
+
 
       half_life = 5568._r8 * secspday * days_per_year  !! libby half-life value, for comparison against ages calculated with this value
       ! half_life = 5730._r8 * secspday * days_per_year  !! recent half-life value
@@ -168,7 +170,7 @@ contains
     ! for transient pulse simulation, impose a simplified bomb spike
     !
     ! !USES:
-    use clm_time_manager , only : get_curr_date,get_days_per_year
+    
     use elm_varcon       , only : c14ratio, secspday
     use ncdio_pio
     !
@@ -178,7 +180,7 @@ contains
     type(cnstate_type), intent(inout) :: cnstate_vars
     !
     ! !LOCAL VARIABLES:
-    integer  :: yr, mon, day, tod, offset
+    integer  :: yr, mon, day, tod
     real(r8) :: dateyear
     real(r8) :: delc14o2_atm 
     real(r8) :: days_per_year ! days per year
@@ -191,8 +193,8 @@ contains
     if ( use_c14_bombspike ) then
 
        ! get current date
-       call get_curr_date(yr, mon, day, tod, offset)
-       days_per_year = get_days_per_year()
+       yr = year_curr; mon = mon_curr; day = day_curr; tod = secs_curr
+       days_per_year = dayspyr_mod
        dateyear = real(yr) + real(mon)/12._r8 + real(day)/days_per_year + real(tod)/(secspday*days_per_year)
 
        ! find points in atm timeseries to interpolate between

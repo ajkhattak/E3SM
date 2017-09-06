@@ -1,6 +1,6 @@
 module elm_instMod
   !-----------------------------------------------------------------------
-  ! initialize clm data types
+  ! initialize elm data types
   !
   use shr_kind_mod               , only : r8 => shr_kind_r8
   use shr_log_mod                , only : errMsg => shr_log_errMsg
@@ -34,7 +34,7 @@ module elm_instMod
   use SoilStateType              , only : soilstate_type
   use SolarAbsorbedType          , only : solarabs_type
   use SurfaceRadiationMod        , only : surfrad_type
-  use SurfaceAlbedoMod           , only : SurfaceAlbedoInitTimeConst !TODO - can this be merged into the type?
+  use SurfaceAlbedoType          , only : SurfaceAlbedoInitTimeConst
   use SurfaceAlbedoType          , only : surfalb_type
   use TemperatureType            , only : temperature_type
   use WaterfluxType              , only : waterflux_type

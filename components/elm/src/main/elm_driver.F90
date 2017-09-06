@@ -16,6 +16,7 @@ module elm_driver
   use elm_varctl             , only : use_cn, use_lch4, use_voc, use_noio, use_c13, use_c14
   use elm_varctl             , only : use_erosion
   use clm_time_manager       , only : get_step_size, get_curr_date, get_ref_date, get_nstep, is_beg_curr_day, get_curr_time_string
+  use clm_time_manager       , only : get_curr_calday, get_days_per_year
   use elm_varpar             , only : nlevsno, nlevgrnd, crop_prog
   use spmdMod                , only : masterproc, mpicom
   use decompMod              , only : get_proc_clumps, get_clump_bounds, get_proc_bounds, bounds_type
@@ -170,6 +171,7 @@ module elm_driver
   use elm_varctl                  , only : do_budgets, budget_inst, budget_daily, budget_month
   use elm_varctl                  , only : budget_ann, budget_ltann, budget_ltend
 
+  use timeinfoMod
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -239,7 +241,11 @@ contains
     nclumps = get_proc_clumps()
     
     if (do_budgets) call WaterBudget_Reset()
-
+    nstep_mod = get_nstep()
+    dtime_mod = real(get_step_size(),r8)
+    call get_curr_date(year_curr,mon_curr, day_curr,secs_curr)
+    dayspyr_mod = get_days_per_year()
+    jday_mod = get_curr_calday()
 
     ! ============================================================================
     ! Specified phenology
@@ -695,8 +701,7 @@ contains
        call CanopyTemperature(bounds_clump,                                   &
             filter(nc)%num_nolakec, filter(nc)%nolakec,                       &
             filter(nc)%num_nolakep, filter(nc)%nolakep,                       &
-            atm2lnd_vars, canopystate_vars, soilstate_vars, frictionvel_vars, &
-            alm_fates)
+            atm2lnd_vars, canopystate_vars, soilstate_vars, frictionvel_vars)
        call t_stopf('bgp1')
 
        ! ============================================================================
@@ -724,9 +729,7 @@ contains
             filter(nc)%num_nolakeurbanp, filter(nc)%nolakeurbanp,                        &
             atm2lnd_vars, canopystate_vars, cnstate_vars, energyflux_vars,               &
             frictionvel_vars, soilstate_vars, solarabs_vars, surfalb_vars,               &
-            ch4_vars, photosyns_vars,                                                    &
-            soil_water_retention_curve,                                                  &
-            alm_fates) 
+            ch4_vars, photosyns_vars )
        call t_stopf('canflux')
 
        ! Fluxes for all urban landunits
@@ -844,9 +847,7 @@ contains
             filter(nc)%num_snowc, filter(nc)%snowc,                          &
             filter(nc)%num_nosnowc, filter(nc)%nosnowc,canopystate_vars,     &
             atm2lnd_vars, soilstate_vars,                                    &
-            soilhydrology_vars, aerosol_vars,                                &
-            soil_water_retention_curve, ep_betr,                             &
-            alm_fates)
+            soilhydrology_vars, aerosol_vars)
 
        !  Calculate column-integrated aerosol masses, and
        !  mass concentrations for radiative calculations and output
@@ -1052,7 +1053,7 @@ contains
                    atm2lnd_vars,                                                 &
                    canopystate_vars, soilstate_vars, crop_vars, ch4_vars,        &
                    photosyns_vars, soilhydrology_vars, energyflux_vars,          &
-                   sedflux_vars, alm_fates)
+                   sedflux_vars)
 
              !===========================================================================================
              ! clm_interface: 'EcosystemDynNoLeaching' is divided into 2 subroutines (1 & 2): END
@@ -1145,7 +1146,7 @@ contains
             filter(nc)%num_urbanc, filter(nc)%urbanc,             &
             filter(nc)%num_do_smb_c, filter(nc)%do_smb_c,         &
             atm2lnd_vars, glc2lnd_vars,                           &
-            soilhydrology_vars, soilstate_vars, ep_betr)
+            soilhydrology_vars, soilstate_vars)
 
        else
 
@@ -1155,7 +1156,7 @@ contains
             filter(nc)%num_urbanc, filter(nc)%urbanc,         &                 
             filter(nc)%num_do_smb_c, filter(nc)%do_smb_c,     &                
             atm2lnd_vars, glc2lnd_vars,                       &
-            soilhydrology_vars, soilstate_vars, ep_betr)
+            soilhydrology_vars, soilstate_vars)
 
        end if
 
@@ -1286,8 +1287,7 @@ contains
                filter_inactive_and_active(nc)%urbanp,           &
                nextsw_cday, declinp1,                           &
                aerosol_vars, canopystate_vars,                  &
-               lakestate_vars, surfalb_vars,                    &
-               alm_fates)
+               lakestate_vars, surfalb_vars)
           call t_stopf('surfalb')
 
           ! Albedos for urban columns
@@ -1585,7 +1585,48 @@ contains
     integer :: num_allc          ! number of active column points
     integer :: filter_allc(bounds%endp-bounds%begp+1)    ! filter for all active column points
     ! -----------------------------------------------------------------
-
+    associate( &
+      h2ocan_patch       => veg_ws%h2ocan , &
+      h2ocan_col         => col_ws%h2ocan , &
+      qflx_ev_snow_patch => veg_wf%qflx_ev_snow , &
+      qflx_ev_snow_col   => col_wf%qflx_ev_snow, &
+      qflx_ev_soil_patch =>veg_wf%qflx_ev_soil ,&
+      qflx_ev_soil_col   =>col_wf%qflx_ev_soil ,&
+      qflx_ev_h2osfc_patch => veg_wf%qflx_ev_h2osfc , &
+      qflx_ev_h2osfc_col   => col_wf%qflx_ev_h2osfc , &
+      qflx_evap_soi_patch => veg_wf%qflx_evap_soi   , &
+      qflx_evap_soi_col   => col_wf%qflx_evap_soi   , &
+      qflx_evap_tot_patch => veg_wf%qflx_evap_tot   , &
+      qflx_evap_tot_col   => col_wf%qflx_evap_tot   , &
+      qflx_rain_grnd_patch => veg_wf%qflx_rain_grnd , &
+      qflx_rain_grnd_col   => col_wf%qflx_rain_grnd , &
+      qflx_snow_grnd_patch => veg_wf%qflx_snow_grnd , &
+      qflx_snow_grnd_col   => col_wf%qflx_snow_grnd , &
+      qflx_snwcp_liq_patch => veg_wf%qflx_snwcp_liq , &
+      qflx_snwcp_liq_col   => col_wf%qflx_snwcp_liq , &
+      qflx_snwcp_ice_patch => veg_wf%qflx_snwcp_ice , &
+      qflx_snwcp_ice_col   => col_wf%qflx_snwcp_ice , &
+      qflx_tran_veg_patch  => veg_wf%qflx_tran_veg  , &
+      qflx_tran_veg_col    => col_wf%qflx_tran_veg  , &
+      qflx_evap_grnd_patch => veg_wf%qflx_evap_grnd , &
+      qflx_evap_grnd_col   => col_wf%qflx_evap_grnd , &
+      qflx_prec_grnd_patch => veg_wf%qflx_prec_grnd , &
+      qflx_prec_grnd_col   => col_wf%qflx_prec_grnd , &
+      qflx_dew_grnd_patch  => veg_wf%qflx_dew_grnd  , &
+      qflx_dew_grnd_col    => col_wf%qflx_dew_grnd  , &
+      qflx_dirct_rain_patch => veg_wf%qflx_dirct_rain , &
+      qflx_dirct_rain_col   => col_wf%qflx_dirct_rain , &
+      qflx_leafdrip_patch   => veg_wf%qflx_leafdrip   , &
+      qflx_leafdrip_col     => col_wf%qflx_leafdrip   , &
+      qflx_sub_snow_patch   => veg_wf%qflx_sub_snow   , &
+      qflx_sub_snow_col     => col_wf%qflx_sub_snow   , &
+      qflx_dew_snow_patch   => veg_wf%qflx_dew_snow   , &
+      qflx_dew_snow_col     => col_wf%qflx_dew_snow   , &
+      qflx_irrig_patch     => veg_wf%qflx_irrig_patch , &
+      qflx_irrig_col       => col_wf%qflx_irrig       , &
+      qflx_evap_veg_patch  => veg_wf%qflx_evap_veg    , &
+      qflx_evap_veg_col    => col_wf%qflx_evap_veg     &
+      )
     ! Set up a filter for all active column points
 
     fc = 0
@@ -1609,44 +1650,45 @@ contains
     ! Averaging for patch water state variables
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_ws%h2ocan(bounds%begp:bounds%endp), &
-         col_ws%h2ocan(bounds%begc:bounds%endc))
+         h2ocan_patch(bounds%begp:bounds%endp), &
+         h2ocan_col(bounds%begc:bounds%endc))
 
     ! Averaging for patch evaporative flux variables
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_ev_snow(bounds%begp:bounds%endp), &
-         col_wf%qflx_ev_snow(bounds%begc:bounds%endc))
+         qflx_ev_snow_patch(bounds%begp:bounds%endp), &
+         qflx_ev_snow_col(bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_ev_soil(bounds%begp:bounds%endp), &
-         col_wf%qflx_ev_soil(bounds%begc:bounds%endc))
+         qflx_ev_soil_patch(bounds%begp:bounds%endp), &
+         qflx_ev_soil_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_ev_h2osfc(bounds%begp:bounds%endp), &
-         col_wf%qflx_ev_h2osfc(bounds%begc:bounds%endc))
+         qflx_ev_h2osfc_patch(bounds%begp:bounds%endp), &
+         qflx_ev_h2osfc_col  (bounds%begc:bounds%endc))
 
     ! Averaging for patch water flux variables
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_evap_soi(bounds%begp:bounds%endp), &
-         col_wf%qflx_evap_soi(bounds%begc:bounds%endc))
+         qflx_evap_soi_patch(bounds%begp:bounds%endp), &
+         qflx_evap_soi_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_evap_tot(bounds%begp:bounds%endp), &
-         col_wf%qflx_evap_tot(bounds%begc:bounds%endc))
+         qflx_evap_tot_patch(bounds%begp:bounds%endp), &
+         qflx_evap_tot_col(bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_rain_grnd(bounds%begp:bounds%endp), &
-         col_wf%qflx_rain_grnd(bounds%begc:bounds%endc))
-    
+         qflx_rain_grnd_patch(bounds%begp:bounds%endp), &
+         qflx_rain_grnd_col  (bounds%begc:bounds%endc))
+
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_snow_grnd(bounds%begp:bounds%endp), &
-         col_wf%qflx_snow_grnd(bounds%begc:bounds%endc))
-    
+         qflx_snow_grnd_patch(bounds%begp:bounds%endp), &
+         qflx_snow_grnd_col  (bounds%begc:bounds%endc))
+
     call p2c (bounds, num_allc, filter_allc, &
-         veg_wf%qflx_snwcp_liq(bounds%begp:bounds%endp), &
-         col_wf%qflx_snwcp_liq(bounds%begc:bounds%endc))
+         qflx_snwcp_liq_patch(bounds%begp:bounds%endp), &
+         qflx_snwcp_liq_col  (bounds%begc:bounds%endc))
+
     !TODO - WJS has suggested that at this point qflx_snwcp_liq_patch should
     ! now be set to nan in order to ensure that this variable is not used
     ! for the remainder of the timestep - other variables where this should
@@ -1659,56 +1701,59 @@ contains
     ! level.
 
     call p2c (bounds, num_allc, filter_allc, &
-         veg_wf%qflx_snwcp_ice(bounds%begp:bounds%endp), &
-         col_wf%qflx_snwcp_ice(bounds%begc:bounds%endc))
+         qflx_snwcp_ice_patch(bounds%begp:bounds%endp), &
+         qflx_snwcp_ice_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_tran_veg(bounds%begp:bounds%endp), &
-         col_wf%qflx_tran_veg(bounds%begc:bounds%endc))
+         qflx_tran_veg_patch(bounds%begp:bounds%endp), &
+         qflx_tran_veg_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_evap_grnd(bounds%begp:bounds%endp), &
-         col_wf%qflx_evap_grnd(bounds%begc:bounds%endc))
+         qflx_evap_grnd_patch(bounds%begp:bounds%endp), &
+         qflx_evap_grnd_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_allc, filter_allc, &
-         veg_wf%qflx_evap_soi(bounds%begp:bounds%endp), &
-         col_wf%qflx_evap_soi(bounds%begc:bounds%endc))
+         qflx_evap_soi_patch(bounds%begp:bounds%endp), &
+         qflx_evap_soi_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_prec_grnd(bounds%begp:bounds%endp), &
-         col_wf%qflx_prec_grnd(bounds%begc:bounds%endc))
+         qflx_prec_grnd_patch(bounds%begp:bounds%endp), &
+         qflx_prec_grnd_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_dew_grnd(bounds%begp:bounds%endp), &
-         col_wf%qflx_dew_grnd(bounds%begc:bounds%endc))
+         qflx_dew_grnd_patch(bounds%begp:bounds%endp), &
+         qflx_dew_grnd_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_dirct_rain(bounds%begp:bounds%endp), &
-         col_wf%qflx_dirct_rain(bounds%begc:bounds%endc))
+         qflx_dirct_rain_patch(bounds%begp:bounds%endp), &
+         qflx_dirct_rain_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_leafdrip(bounds%begp:bounds%endp), &
-         col_wf%qflx_leafdrip(bounds%begc:bounds%endc))
+         qflx_leafdrip_patch(bounds%begp:bounds%endp), &
+         qflx_leafdrip_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_sub_snow(bounds%begp:bounds%endp), &
-         col_wf%qflx_sub_snow(bounds%begc:bounds%endc))
+         qflx_sub_snow_patch(bounds%begp:bounds%endp), &
+         qflx_sub_snow_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_dew_snow(bounds%begp:bounds%endp), &
-         col_wf%qflx_dew_snow(bounds%begc:bounds%endc))
+         qflx_dew_snow_patch(bounds%begp:bounds%endp), &
+         qflx_dew_snow_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_irrig_patch(bounds%begp:bounds%endp), &
-         col_wf%qflx_irrig(bounds%begc:bounds%endc))
+         qflx_irrig_patch(bounds%begp:bounds%endp), &
+         qflx_irrig_col  (bounds%begc:bounds%endc))
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_tran_veg(bounds%begp:bounds%endp), &
-         col_wf%qflx_tran_veg(bounds%begc:bounds%endc) )
+         qflx_tran_veg_patch(bounds%begp:bounds%endp), &
+         qflx_tran_veg_col  (bounds%begc:bounds%endc) )
 
     call p2c (bounds, num_nolakec, filter_nolakec, &
-         veg_wf%qflx_evap_veg(bounds%begp:bounds%endp), &
-         col_wf%qflx_evap_veg (bounds%begc:bounds%endc))
+         qflx_evap_veg_patch(bounds%begp:bounds%endp), &
+         qflx_evap_veg_col  (bounds%begc:bounds%endc))
+
+    end associate
+
   end subroutine elm_drv_patch2col
 
   !------------------------------------------------------------------------

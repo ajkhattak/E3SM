@@ -23,6 +23,8 @@ module DecompCascadeBGCMod
   use ch4Mod                 , only : ch4_type
   use ColumnType             , only : col_pp
   use ColumnDataType         , only : col_es, col_cf 
+
+  use timeinfomod
   !
   implicit none
   save
@@ -38,52 +40,53 @@ module DecompCascadeBGCMod
   logical , public :: use_century_tfunc = .false.
   real(r8), public :: normalization_tref = 15._r8            ! reference temperature for normalizaion (degrees C)
   !
-  ! !PRIVATE DATA MEMBERS 
-  type, private :: DecompBGCParamsType
-     real(r8):: cn_s1_bgc     !C:N for SOM 1
-     real(r8):: cn_s2_bgc     !C:N for SOM 2
-     real(r8):: cn_s3_bgc     !C:N for SOM 3
-     
-     real(r8):: np_s1_new_bgc  !C:P for SOM 1
-     real(r8):: np_s2_new_bgc  !C:P for SOM 2
-     real(r8):: np_s3_new_bgc  !C:P for SOM 3
+  ! !PRIVATE DATA MEMBERS
+  type, public :: DecompBGCParamsType
 
-     real(r8):: cp_s1_new_bgc        !C:P for SOM 1
-     real(r8):: cp_s2_new_bgc        !C:P for SOM 2
-     real(r8):: cp_s3_new_bgc        !C:P for SOM 3
+     real(r8), pointer:: cn_s1_bgc     => null()!C:N for SOM 1
+     real(r8), pointer:: cn_s2_bgc     => null()!C:N for SOM 2
+     real(r8), pointer:: cn_s3_bgc     => null()!C:N for SOM 3
+
+     real(r8), pointer:: np_s1_new_bgc => null() !C:P for SOM 1
+     real(r8), pointer:: np_s2_new_bgc => null() !C:P for SOM 2
+     real(r8), pointer:: np_s3_new_bgc => null() !C:P for SOM 3
+
+     real(r8), pointer:: cp_s1_new_bgc => null()       !C:P for SOM 1
+     real(r8), pointer:: cp_s2_new_bgc => null()       !C:P for SOM 2
+     real(r8), pointer:: cp_s3_new_bgc => null()       !C:P for SOM 3
 
 
 
-     real(r8):: rf_l1s1_bgc   !respiration fraction litter 1 -> SOM 1
-     real(r8):: rf_l2s1_bgc
-     real(r8):: rf_l3s2_bgc
+     real(r8), pointer:: rf_l1s1_bgc  => null()  !respiration fraction litter 1 -> SOM 1
+     real(r8), pointer:: rf_l2s1_bgc  => null()
+     real(r8), pointer:: rf_l3s2_bgc  => null()
 
-     real(r8):: rf_s2s1_bgc    
-     real(r8):: rf_s2s3_bgc    
-     real(r8):: rf_s3s1_bgc    
+     real(r8), pointer:: rf_s2s1_bgc  => null()
+     real(r8), pointer:: rf_s2s3_bgc  => null()
+     real(r8), pointer:: rf_s3s1_bgc  => null()
+     real(r8), pointer:: rf_cwdl2_bgc => null()
+     real(r8), pointer:: rf_cwdl3_bgc => null()
 
-     real(r8):: rf_cwdl2_bgc 
-     real(r8):: rf_cwdl3_bgc
+     real(r8), pointer:: tau_l1_bgc    => null()! turnover time of  litter 1 (yr)
+     real(r8), pointer:: tau_l2_l3_bgc => null()! turnover time of  litter 2 and litter 3 (yr)
+     real(r8), pointer:: tau_s1_bgc    => null()! turnover time of  SOM 1 (yr)
+     real(r8), pointer:: tau_s2_bgc    => null()! turnover time of  SOM 2 (yr)
+     real(r8), pointer:: tau_s3_bgc    => null()! turnover time of  SOM 3 (yr)
+     real(r8), pointer:: tau_cwd_bgc   => null()! corrected fragmentation rate constant CWD
 
-     real(r8):: tau_l1_bgc    ! turnover time of  litter 1 (yr)
-     real(r8):: tau_l2_l3_bgc ! turnover time of  litter 2 and litter 3 (yr)
-     real(r8):: tau_s1_bgc    ! turnover time of  SOM 1 (yr)
-     real(r8):: tau_s2_bgc    ! turnover time of  SOM 2 (yr)
-     real(r8):: tau_s3_bgc    ! turnover time of  SOM 3 (yr)
-     real(r8):: tau_cwd_bgc   ! corrected fragmentation rate constant CWD
+     real(r8), pointer :: cwd_fcel_bgc => null()!cellulose fraction for CWD
+     real(r8), pointer :: cwd_flig_bgc => null()!
 
-     real(r8) :: cwd_fcel_bgc !cellulose fraction for CWD
-     real(r8) :: cwd_flig_bgc !
+     real(r8), pointer :: k_frag_bgc  => null() !fragmentation rate for CWD
+     real(r8), pointer :: minpsi_bgc  => null() !minimum soil water potential for heterotrophic resp
 
-     real(r8) :: k_frag_bgc   !fragmentation rate for CWD
-     real(r8) :: minpsi_bgc   !minimum soil water potential for heterotrophic resp
-     
-     integer  :: nsompools = 3
-     real(r8),allocatable :: spinup_vector(:) ! multipliers for soil decomp during accelerated spinup
+     integer , pointer :: nsompools   => null()!= 3
+     real(r8), pointer  :: spinup_vector(:) => null() ! multipliers for soil decomp during accelerated spinup
 
   end type DecompBGCParamsType
 
-  type(DecompBGCParamsType),private ::  DecompBGCParamsInst
+  type(DecompBGCParamsType), public, target ::  DecompBGCParamsInst
+  
   !-----------------------------------------------------------------------
 
 contains
@@ -107,7 +110,36 @@ contains
     character(len=100) :: tString ! temp. var for reading
     !-----------------------------------------------------------------------
 
+     allocate(DecompBGCParamsInst%cn_s1_bgc   )
+     allocate(DecompBGCParamsInst%cn_s2_bgc   )
+     allocate(DecompBGCParamsInst%cn_s3_bgc   )
+     allocate(DecompBGCParamsInst%np_s1_new_bgc)
+     allocate(DecompBGCParamsInst%np_s2_new_bgc)
+     allocate(DecompBGCParamsInst%np_s3_new_bgc)
+     allocate(DecompBGCParamsInst%cp_s1_new_bgc)
+     allocate(DecompBGCParamsInst%cp_s2_new_bgc)
+     allocate(DecompBGCParamsInst%cp_s3_new_bgc)
+     allocate(DecompBGCParamsInst%rf_l1s1_bgc )
+     allocate(DecompBGCParamsInst%rf_l2s1_bgc )
+     allocate(DecompBGCParamsInst%rf_l3s2_bgc )
+     allocate(DecompBGCParamsInst%rf_s2s1_bgc )
+     allocate(DecompBGCParamsInst%rf_s2s3_bgc )
+     allocate(DecompBGCParamsInst%rf_s3s1_bgc )
+     allocate(DecompBGCParamsInst%rf_cwdl2_bgc)
+     allocate(DecompBGCParamsInst%rf_cwdl3_bgc)
+     allocate(DecompBGCParamsInst%tau_l1_bgc  )
+     allocate(DecompBGCParamsInst%tau_l2_l3_bgc)
+     allocate(DecompBGCParamsInst%tau_s1_bgc  )
+     allocate(DecompBGCParamsInst%tau_s2_bgc  )
+     allocate(DecompBGCParamsInst%tau_s3_bgc  )
+     allocate(DecompBGCParamsInst%tau_cwd_bgc )
+     allocate(DecompBGCParamsInst%cwd_fcel_bgc)
+     allocate(DecompBGCParamsInst%cwd_flig_bgc)
+     allocate(DecompBGCParamsInst%k_frag_bgc  )
+     allocate(DecompBGCParamsInst%minpsi_bgc  )
+
     ! These are not read off of netcdf file
+    allocate(DecompBGCParamsInst%nsompools); DecompBGCParamsInst%nsompools = 3
     allocate(DecompBGCParamsInst%spinup_vector(DecompBGCParamsInst%nsompools))
     DecompBGCParamsInst%spinup_vector(:) = (/ 1.0_r8, 15.0_r8, 675.0_r8 /)
 
@@ -601,7 +633,6 @@ contains
     !  written by C. Koven based on original CLM4 decomposition cascade
     !
     ! !USES:
-    use clm_time_manager , only : get_days_per_year, get_curr_date, get_step_size
     use shr_const_mod    , only : SHR_CONST_PI
     use elm_varcon       , only : secspday
     !
@@ -682,12 +713,15 @@ contains
       mino2lim = ParamsShareInst%mino2lim
 
       if ( use_century_tfunc .and. normalize_q10_to_century_tfunc ) then
+#ifndef _OPENACC
          call endrun(msg='ERROR: cannot have both use_century_tfunc and normalize_q10_to_century_tfunc set as true'//&
               errMsg(__FILE__, __LINE__))
+#endif
       endif
 
-      days_per_year = get_days_per_year()
-      dt = real( get_step_size(), r8 ) 
+      days_per_year = dayspyr_mod
+      dt = dtime_mod
+      year = year_curr; mon = mon_curr; day = day_curr; sec = secs_curr
 
       ! the belowground parameters from century
       tau_l1 = 1./18.5
@@ -992,7 +1026,6 @@ contains
          end do
       end if
 
-      call get_curr_date(year, mon, day, sec)
       !Calcluate location and depth-specific acceleration factors
       do fc=1,num_soilc
           c = filter_soilc(fc)

@@ -9,21 +9,20 @@ module SoilFluxesMod
   use shr_log_mod	, only : errMsg => shr_log_errMsg
   use decompMod		, only : bounds_type
   use abortutils	, only : endrun
-  use perf_mod		, only : t_startf, t_stopf
+  use perfMod_GPU
   use elm_varctl	, only : iulog
   use elm_varpar	, only : nlevsno, nlevgrnd, nlevurb, max_patch_per_col
   use atm2lndType	, only : atm2lnd_type
   use CanopyStateType   , only : canopystate_type
   use SolarAbsorbedType , only : solarabs_type
-  use TemperatureType   , only : temperature_type
-  use WaterstateType    , only : waterstate_type
-  use WaterfluxType     , only : waterflux_type
   use TopounitDataType  , only : top_af
   use LandunitType	   , only : lun_pp                
   use ColumnType	      , only : col_pp
   use ColumnDataType    , only : col_es, col_ef, col_ws                
   use VegetationType    , only : veg_pp
   use VegetationDataType, only : veg_ef, veg_wf  
+
+  use timeinfoMod , only : dtime_mod
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -44,7 +43,6 @@ contains
     ! Update surface fluxes based on the new ground temperature
     !
     ! !USES:
-    use clm_time_manager , only : get_step_size
     use elm_varcon       , only : hvap, cpair, grav, vkc, tfrz, sb 
     use landunit_varcon  , only : istsoil, istcrop
     use column_varcon    , only : icol_roof, icol_sunwall, icol_shadewall, icol_road_perv
@@ -61,11 +59,13 @@ contains
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
     type(solarabs_type)    , intent(in)    :: solarabs_vars
     type(canopystate_type) , intent(in)    :: canopystate_vars
+    real(r8) :: dtime                                              ! land model time step (sec)
+
+
     !
     ! !LOCAL VARIABLES:
     integer  :: p,c,t,g,j,pi,l                                     ! indices
     integer  :: fc,fp                                              ! lake filtered column and pft indices
-    real(r8) :: dtime                                              ! land model time step (sec)
     real(r8) :: egsmax(bounds%begc:bounds%endc)                    ! max. evaporation which soil can provide at one time step
     real(r8) :: egirat(bounds%begc:bounds%endc)                    ! ratio of topsoil_evap_tot : egsmax
     real(r8) :: tinc(bounds%begc:bounds%endc)                      ! temperature difference of two time step
@@ -77,6 +77,9 @@ contains
     real(r8) :: t_grnd0(bounds%begc:bounds%endc)                   ! t_grnd of previous time step
     real(r8) :: lw_grnd
     real(r8) :: fsno_eff
+    real(r8) :: temp
+
+    character(len=256) :: event
     !-----------------------------------------------------------------------
 
     associate(                                                                &
@@ -157,11 +160,9 @@ contains
          errsoi_patch            => veg_ef%errsoi              & ! Output: [real(r8) (:)   ]  pft-level soil/lake energy conservation error (W/m**2)
          )
 
-      ! Get step size
-
-      dtime = get_step_size()
-
-      call t_startf('bgp2_loop_1')
+         dtime = dtime_mod
+      event = 'bgp2_loop_1'
+      call t_startGPU(event)
       do fc = 1,num_nolakec
          c = filter_nolakec(fc)
          j = col_pp%snl(c)+1
@@ -237,9 +238,10 @@ contains
             end if
          end do
       end do
-      call t_stopf('bgp2_loop_1')
-      call t_startf('bgp2_loop_2')
 
+      call t_stopGPU(event)
+      event = 'bgp2_loop_2'
+      call t_startGPU(event)
       ! Calculate ratio for rescaling pft-level fluxes to meet availability
 
       do fc = 1,num_nolakec
@@ -357,9 +359,10 @@ contains
          eflx_lh_grnd(p)   = qflx_evap_soi(p) * htvp(c)
 
       end do
-      call t_stopf('bgp2_loop_2')
-      call t_startf('bgp2_loop_3')
+      call t_stopGPU(event)
 
+      event = 'bgp2_loop_3'
+      call t_startGPU(event)
       ! Soil Energy balance check
 
       do fp = 1,num_nolakep
@@ -385,16 +388,24 @@ contains
             if ((col_pp%itype(c) /= icol_sunwall .and. col_pp%itype(c) /= icol_shadewall &
                  .and. col_pp%itype(c) /= icol_roof) .or. ( j <= nlevurb)) then
                ! area weight heat absorbed by snow layers
-               if (j >= col_pp%snl(c)+1 .and. j < 1) errsoi_patch(p) = errsoi_patch(p) &
-                    - frac_sno_eff(c)*(t_soisno(c,j)-tssbef(c,j))/fact(c,j)
-               if (j >= 1) errsoi_patch(p) = errsoi_patch(p) &
-                    - (t_soisno(c,j)-tssbef(c,j))/fact(c,j)
+               if (j >= col_pp%snl(c)+1 .and. j < 1) then
+                    errsoi_patch(p) = errsoi_patch(p) &
+                         - frac_sno_eff(c)*(t_soisno(c,j)-tssbef(c,j))/fact(c,j)
+               end if
+
+               if (j >= 1) then
+                    temp = t_soisno(c,j)-tssbef(c,j)
+                    temp = temp/fact(c,j)
+                    errsoi_patch(p) = errsoi_patch(p) - temp
+               end if
+
             end if
          end do
       end do
-      call t_stopf('bgp2_loop_3')
-      call t_startf('bgp2_loop_4')
+      call t_stopGPU(event)
 
+      event = 'bgp2_loop_4'
+      call t_startGPU(event)
       ! Outgoing long-wave radiation from vegetation + ground
       ! For conservation we put the increase of ground longwave to outgoing
       ! For urban patches, ulrad=0 and (1-fracveg_nosno)=1, and eflx_lwrad_out and eflx_lwrad_net 
@@ -438,8 +449,7 @@ contains
       call p2c(bounds, num_nolakec, filter_nolakec, &
            errsoi_patch(bounds%begp:bounds%endp), &
            errsoi_col(bounds%begc:bounds%endc))
-
-      call t_stopf('bgp2_loop_4')
+      call t_stopGPU(event)
 
     end associate 
 

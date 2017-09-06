@@ -179,11 +179,13 @@ module elm_varctl
   ! used to override an error check on reading in restart files
   logical, public :: override_bgc_restart_mismatch_dump = .false. 
 
-  ! Set in AllocationInit (TODO - had to move it here to avoid circular dependency)
-  logical, private:: carbon_only      
-  logical, private:: carbonnitrogen_only      
-  logical, private:: carbonphosphorus_only      
-
+  ! Set in AllocationInit (had to move it here to avoid circular dependency)
+  logical, public  :: carbon_only
+  logical, public  :: carbonnitrogen_only
+  logical, public  :: carbonphosphorus_only
+  
+  
+  
   !----------------------------------------------------------
   ! Physics
   !----------------------------------------------------------
@@ -421,7 +423,7 @@ module elm_varctl
   logical, public :: pf_hmode     = .false.                 ! switch for 'H' mode coupling (will be updated in interface)
   logical, public :: pf_tmode     = .false.                 ! switch for 'T' mode coupling (will be updated in interface)
   logical, public :: pf_frzmode   = .false.                 ! switch for 'freezing' mode availablity in PF-thmode (will be updated in interface)
-  logical, public :: initth_pf2clm= .false.                 ! switch for initializing CLM TH states from pflotran
+  logical, public :: initth_pf2elm= .false.                 ! switch for initializing CLM TH states from pflotran
   integer, public :: pf_elmnstep0 = 0                       ! the CLM timestep of start/restart
 
   ! cpl_bypass

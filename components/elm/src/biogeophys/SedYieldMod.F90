@@ -15,7 +15,6 @@ module SedYieldMod
   use elm_varpar        , only : nlevslp
   use atm2lndType       , only : atm2lnd_type
   use CanopyStateType   , only : CanopyState_type
-  !use EnergyFluxType    , only : energyflux_type
   use SoilHydrologyType , only : soilhydrology_type
   use SoilStateType     , only : soilstate_type
   use ColumnType        , only : col_pp
@@ -25,6 +24,8 @@ module SedYieldMod
   use TopounitDataType  , only : top_as, top_af ! Atmospheric state and flux variables
   use ColumnDataType    , only : col_ws, col_wf
   use VegetationDataType, only : veg_wf
+
+  use timeinfoMod
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -47,12 +48,10 @@ contains
     ! Calculate rainfall and runoff driven erosion 
     !
     ! !USES:
-    use clm_time_manager, only : get_step_size
     use elm_varctl      , only : iulog
     use landunit_varcon , only : istcrop, istsoil
     use pftvarcon       , only : gcpsi, pftcc
     use pftvarcon       , only : nc4_grass
-    use spmdMod         , only : masterproc
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds
@@ -111,7 +110,7 @@ contains
          )
 
          ! Get time step
-         dtime = get_step_size()
+         dtime = dtime_mod
 
          ! nolakec or other col filters
          do fc = 1, num_soilc

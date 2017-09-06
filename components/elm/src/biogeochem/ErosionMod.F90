@@ -7,7 +7,6 @@ module ErosionMod
   use shr_kind_mod      , only : r8 => shr_kind_r8
   use shr_log_mod       , only : errMsg => shr_log_errMsg
   use decompMod         , only : bounds_type
-  use clm_time_manager  , only : get_step_size
   use elm_varcon        , only : dzsoi_decomp
   use elm_varpar        , only : ndecomp_pools, nlevdecomp
   use CNDecompCascadeConType , only : decomp_cascade_con
@@ -15,6 +14,7 @@ module ErosionMod
   use SoilStateType     , only : soilstate_type
   use ColumnDataType    , only : col_cs, col_ns, col_ps
   use ColumnDataType    , only : col_cf, col_nf, col_pf
+  use timeinfoMod, only : dtime_mod 
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -36,8 +36,6 @@ contains
     ! Calculate erosion introduced soil C, N, P fluxes 
     !
     ! !USES:
-    use elm_varctl      , only : iulog
-    use spmdMod         , only : masterproc
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds
@@ -108,8 +106,7 @@ contains
          ppools_yield_vr  =>    col_pf%decomp_ppools_yield_vr   & ! Output: [real(r8) (:,:,:) ] vertically-resolved decomposing P loss (gP/m3/s)
          )
 
-         dt = real( get_step_size(), r8 )
-
+         dt = dtime_mod
          ! soil col filters
          do fc = 1, num_soilc
             c = filter_soilc(fc)

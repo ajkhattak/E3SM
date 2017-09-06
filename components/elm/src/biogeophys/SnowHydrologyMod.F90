@@ -25,6 +25,8 @@ module SnowHydrologyMod
   use LandunitType    , only : lun_pp                
   use ColumnType      , only : col_pp 
   use ColumnDataType  , only : col_es, col_ef, col_ws, col_wf  
+
+  use timeinfoMod
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -97,7 +99,6 @@ contains
     ! !USES:
     use elm_varcon        , only : denh2o, denice, wimp, ssi
     use landunit_varcon   , only : istsoil
-    use clm_time_manager  , only : get_step_size
     use AerosolMod        , only : AerosolFluxes
     use elm_varctl        , only : use_vsfm
     !
@@ -109,11 +110,11 @@ contains
     integer               , intent(in)    :: filter_nosnowc(:) ! column filter for non-snow points
     type(atm2lnd_type)    , intent(in)    :: atm2lnd_vars
     type(aerosol_type)    , intent(inout) :: aerosol_vars
+    real(r8)   :: dtime
     !
     ! !LOCAL VARIABLES:
     integer  :: g                                                  ! gridcell loop index
     integer  :: c, j, fc, l                                        ! do loop/array indices
-    real(r8) :: dtime                                              ! land model time step (sec)
     real(r8) :: qin(bounds%begc:bounds%endc)                       ! water flow into the elmement (mm/s) 
     real(r8) :: qout(bounds%begc:bounds%endc)                      ! water flow out of the elmement (mm/s)
     real(r8) :: qin_bc_phi  (bounds%begc:bounds%endc)              ! flux of hydrophilic BC into   layer [kg]
@@ -187,7 +188,7 @@ contains
 
       ! Determine model time step
 
-      dtime = get_step_size()
+      dtime = dtime_mod
 
       ! Renew the mass of ice lens (h2osoi_ice) and liquid (h2osoi_liq) in the
       ! surface snow layer resulting from sublimation (frost) / evaporation (condense)
@@ -506,7 +507,7 @@ contains
    end subroutine SnowWater
 
    !-----------------------------------------------------------------------
-   subroutine SnowCompaction(bounds, num_snowc, filter_snowc)
+   subroutine SnowCompaction(bounds, num_snowc, filter_snowc, dtime)
      !
      ! !DESCRIPTION:
      ! Determine the change in snow layer thickness due to compaction and
@@ -518,7 +519,6 @@ contains
      ! fraction after the melting versus before the melting.
      !
      ! !USES:
-     use clm_time_manager, only : get_step_size
      use elm_varcon      , only : denice, denh2o, tfrz, rpi
      use landunit_varcon , only : istice_mec, istdlak, istsoil, istcrop
      use elm_varctl      , only : subgridflag
@@ -527,10 +527,10 @@ contains
      type(bounds_type)      , intent(in) :: bounds          
      integer                , intent(in) :: num_snowc       ! number of column snow points in column filter
      integer                , intent(in) :: filter_snowc(:) ! column filter for snow points
+     real(r8), intent(in)  :: dtime
      !
      ! !LOCAL VARIABLES:
      integer :: j, l, c, fc                      ! indices
-     real(r8):: dtime                            ! land model time step (sec)
      ! parameters
      real(r8), parameter :: c2 = 23.e-3_r8       ! [m3/kg]
      real(r8), parameter :: c3 = 2.777e-6_r8     ! [1/s]
@@ -575,7 +575,6 @@ contains
 
        ! Get time step
 
-       dtime = get_step_size()
 
        ! Begin calculation - note that the following column loops are only invoked if snl(c) < 0
 
@@ -666,7 +665,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine CombineSnowLayers(bounds, num_snowc, filter_snowc, &
-        aerosol_vars)
+        aerosol_vars, dtime)
      !
      ! !DESCRIPTION:
      ! Combine snow layers that are less than a minimum thickness or mass
@@ -677,7 +676,6 @@ contains
      ! !USES:
      use landunit_varcon  , only : istsoil, istdlak, istsoil, istwet, istice, istice_mec, istcrop
      use LakeCon          , only : lsadz
-     use clm_time_manager , only : get_step_size
      use elm_varcon       , only : denh2o     
      !
      ! !ARGUMENTS:
@@ -685,6 +683,7 @@ contains
      integer                , intent(inout) :: num_snowc       ! number of column snow points in column filter
      integer                , intent(inout) :: filter_snowc(:) ! column filter for snow points
      type(aerosol_type)     , intent(inout) :: aerosol_vars
+     real(r8), intent(in)  :: dtime
      !
      ! !LOCAL VARIABLES:
      integer :: c, fc                            ! column indices
@@ -697,7 +696,6 @@ contains
      real(r8):: zwliq (bounds%begc:bounds%endc)  ! total liquid water in snow
      real(r8):: dzmin(5)                         ! minimum of top snow layer
      real(r8):: dzminloc(5)                      ! minimum of top snow layer (local)
-     real(r8):: dtime                            !land model time step (sec)
 
      data dzmin /0.010_r8, 0.015_r8, 0.025_r8, 0.055_r8, 0.115_r8/
      !-----------------------------------------------------------------------
@@ -738,7 +736,6 @@ contains
 
        ! Determine model time step
 
-       dtime = get_step_size()
 
        ! Check the mass of ice lens of snow, when the total is less than a small value,
        ! combine it with the underlying neighbor.
@@ -1258,9 +1255,11 @@ contains
              !mgf++ bugfix
              rds(c,2) = (rds(c,2)*(swliq(c,2)+swice(c,2)) + rds(c,1)*(zwliq+zwice))/(swliq(c,2)+swice(c,2)+zwliq+zwice)
                if ((rds(c,2) < 30.) .or. (rds(c,2) > 1500.)) then
+#ifndef _OPENACC
                   write (iulog,*) "2. SNICAR ERROR: snow grain radius of",rds(c,2),rds(c,1)
                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,2), swice(c,2),zwliq, zwice
                   write (iulog,*) "layers ", msno
+#endif
                endif
              !mgf--
 #else
@@ -1374,9 +1373,11 @@ contains
              !mgf++ bugfix
              rds(c,3) = (rds(c,3)*(swliq(c,3)+swice(c,3)) + rds(c,2)*(zwliq+zwice))/(swliq(c,3)+swice(c,3)+zwliq+zwice)
                if ((rds(c,3) < 30.) .or. (rds(c,3) > 1500.)) then
+#ifndef _OPENACC
                   write (iulog,*) "3. SNICAR ERROR: snow grain radius of",rds(c,3),rds(c,2)
                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,3), swice(c,3),zwliq, zwice
                   write (iulog,*) "layers ", msno
+#endif
                endif
              !mgf--
 #else
@@ -1490,9 +1491,11 @@ contains
              !mgf++ bugfix
              rds(c,4) = (rds(c,4)*(swliq(c,4)+swice(c,4)) + rds(c,3)*(zwliq+zwice))/(swliq(c,4)+swice(c,4)+zwliq+zwice)
                if ((rds(c,4) < 30.) .or. (rds(c,4) > 1500.)) then
+#ifndef _OPENACC
                   write (iulog,*) "4. SNICAR ERROR: snow grain radius of",rds(c,4),rds(c,3)
                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,4), swice(c,4),zwliq, zwice
                   write (iulog,*) "layers ", msno
+#endif
                endif
              !mgf--
 #else
@@ -1606,9 +1609,11 @@ contains
              !mgf++ bugfix
              rds(c,5) = (rds(c,5)*(swliq(c,5)+swice(c,5)) + rds(c,4)*(zwliq+zwice))/(swliq(c,5)+swice(c,5)+zwliq+zwice)
                if ((rds(c,5) < 30.) .or. (rds(c,5) > 1500.)) then
+#ifndef _OPENACC
                   write (iulog,*) "5. SNICAR ERROR: snow grain radius of",rds(c,5),rds(c,4)
                   write (iulog,*) "swliq, swice, zwliq, zwice", swliq(c,5), swice(c,5),zwliq, zwice
                   write (iulog,*) "layers ", msno
+#endif
                endif
              !mgf--
 #else
@@ -1665,9 +1670,11 @@ contains
                 if (j == 0) then
                    if ( abs(dztot(c)) > 1.e-10_r8 .or. abs(snwicetot(c)) > 1.e-7_r8 .or. &
                         abs(snwliqtot(c)) > 1.e-7_r8 ) then
+#ifndef _OPENACC
                       write(iulog,*)'Inconsistency in SnowDivision_Lake! c, remainders', &
                            'dztot, snwicetot, snwliqtot = ',c,dztot(c),snwicetot(c),snwliqtot(c)
                       call endrun(decomp_index=c, elmlevel=namec, msg=errmsg(__FILE__, __LINE__))
+#endif
                    end if
                 end if
              end do

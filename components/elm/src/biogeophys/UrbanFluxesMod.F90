@@ -27,6 +27,11 @@ module UrbanFluxesMod
   use ColumnDataType       , only : col_es, col_ef, col_ws  
   use VegetationType       , only : veg_pp                
   use VegetationDataType   , only : veg_es, veg_ef, veg_ws, veg_wf  
+  use clm_time_manager    , only : get_curr_date, get_step_size, get_nstep
+
+  use timeinfoMod  , only : nstep_mod, year_curr, mon_curr, day_curr, secs_curr
+  use timeinfoMod  , only : dtime_mod
+
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -264,15 +269,17 @@ contains
       end do
 
       ! Get time step
-      nstep = get_nstep()
+
+      nstep = nstep_mod
+      dtime = dtime_mod
+      year = year_curr
+      month = mon_curr
+      day = day_curr
+      secs = secs_curr
 
       ! Set constants (same as in Biogeophysics1Mod)
       beta(begl:endl) = 1._r8             ! Should be set to the same values as in Biogeophysics1Mod
       zii(begl:endl)  = 1000._r8          ! Should be set to the same values as in Biogeophysics1Mod
-
-      ! Get current date
-      dtime = get_step_size()
-      call get_curr_date (year, month, day, secs)
 
       ! Compute canyontop wind using Masson (2000)
 
@@ -286,6 +293,7 @@ contains
 
          ! Error checks
 
+#ifndef _OPENACC
          if (ht_roof(l) - z_d_town(l) <= z_0_town(l)) then
             write (iulog,*) 'aerodynamic parameter error in UrbanFluxes'
             write (iulog,*) 'h_r - z_d <= z_0'
@@ -302,7 +310,7 @@ contains
             write (iulog,*) 'elm model is stopping'
             call endrun(decomp_index=l, elmlevel=namel, msg=errmsg(__FILE__, __LINE__))
          end if
-
+#endif
          ! Magnitude of atmospheric wind
 
          ur(l) = max(1.0_r8,sqrt(forc_u(t)*forc_u(t)+forc_v(t)*forc_v(t)))
@@ -372,8 +380,8 @@ contains
       wtuq_shadewall_unscl(begl:endl)   = 0._r8
 
       ! Start stability iteration
-
-      do iter = 1,niters
+      iter = 0
+      ITERATION : do while(iter < niters)
 
          ! Get friction velocity, relation for potential
          ! temperature and humidity profiles of surface boundary layer.
@@ -382,7 +390,7 @@ contains
             call FrictionVelocity(begl, endl, &
                  num_urbanl, filter_urbanl, &
                  z_d_town(begl:endl), z_0_town(begl:endl), z_0_town(begl:endl), z_0_town(begl:endl), &
-                 obu(begl:endl), iter, ur(begl:endl), um(begl:endl), ustar(begl:endl), &
+                 obu(begl:endl), iter+1, ur(begl:endl), um(begl:endl), ustar(begl:endl), &
                  temp1(begl:endl), temp2(begl:endl), temp12m(begl:endl), temp22m(begl:endl), fm(begl:endl), &
                  frictionvel_vars, landunit_index=.true.)
          end if
@@ -580,10 +588,12 @@ contains
                   eflx_heat_from_ac_shadewall(l) = 0._r8
                end if
             else
+#ifndef _OPENACC
                write(iulog,*) 'c, ctype, pi = ', c, ctype(c), pi
                write(iulog,*) 'Column indices for: shadewall, sunwall, road_imperv, road_perv, roof: '
                write(iulog,*) icol_shadewall, icol_sunwall, icol_road_imperv, icol_road_perv, icol_roof
                call endrun(decomp_index=l, elmlevel=namel, msg="ERROR, ctype out of range"//errmsg(__FILE__, __LINE__))
+#endif
             end if
 
             taf_numer(l) = taf_numer(l) + t_grnd(c)*wtus(c)
@@ -656,7 +666,8 @@ contains
             obu(l) = zldis(l)/zeta
          end do
 
-      end do   ! end iteration
+         iter = iter + 1
+      end do ITERATION  ! end iteration
 
       ! Determine fluxes from canyon surfaces
 
@@ -808,6 +819,8 @@ contains
             exit
          end if
       end do
+
+#ifndef _OPENACC
       if ( found ) then
          write(iulog,*)'WARNING:  Total sensible heat does not equal sum of scaled heat fluxes for urban columns ',&
               ' nstep = ',nstep,' indexl= ',indexl,' eflx_err= ',eflx_err(indexl)
@@ -821,6 +834,7 @@ contains
             call endrun(decomp_index=indexl, elmlevel=namel, msg=errmsg(__FILE__, __LINE__))
          end if
       end if
+#endif
 
       found = .false.
       do fl = 1, num_urbanl
@@ -832,6 +846,8 @@ contains
             exit
          end if
       end do
+
+#ifndef _OPENACC
       if ( found ) then
          write(iulog,*)'WARNING:  Total water vapor flux does not equal sum of scaled water vapor fluxes for urban columns ',&
               ' nstep = ',nstep,' indexl= ',indexl,' qflx_err= ',qflx_err(indexl)
@@ -842,6 +858,7 @@ contains
             call endrun(decomp_index=indexl, elmlevel=namel, msg=errmsg(__FILE__, __LINE__))
          end if
       end if
+#endif
 
       ! Gather terms required to determine internal building temperature
 

@@ -21,9 +21,6 @@ module CanopyHydrologyMod
   use atm2lndType       , only : atm2lnd_type
   use AerosolType       , only : aerosol_type
   use CanopyStateType   , only : canopystate_type
-  use TemperatureType   , only : temperature_type
-  use WaterfluxType     , only : waterflux_type
-  use WaterstateType    , only : waterstate_type
   use TopounitDataType  , only : top_as, top_af ! Atmospheric state and flux variables
   use ColumnType        , only : col_pp 
   use ColumnDataType    , only : col_es, col_ws, col_wf  
@@ -32,6 +29,7 @@ module CanopyHydrologyMod
   use elm_varcon        , only : snw_rds_min
   use pftvarcon         , only : irrigated
   use GridcellType      , only : grc_pp
+  use timeinfoMod, only : dtime_mod
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -670,7 +668,7 @@ contains
 
        ! update surface water fraction (this may modify frac_sno)
        call FracH2oSfc(bounds, num_nolakec, filter_nolakec, &
-            col_wf%qflx_h2osfc2topsoi)
+             col_wf%qflx_h2osfc2topsoi, dtime)
 
      end associate 
 
@@ -733,7 +731,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine FracH2OSfc(bounds, num_h2osfc, filter_h2osfc, &
-        qflx_h2osfc2topsoi, no_update)
+         qflx_h2osfc2topsoi,dtime, no_update)
      !
      ! !DESCRIPTION:
      ! Determine fraction of land surfaces which are submerged  
@@ -743,13 +741,13 @@ contains
      use shr_const_mod   , only : shr_const_pi
      use shr_spfn_mod    , only : erf => shr_spfn_erf
      use landunit_varcon , only : istsoil, istcrop
-     use clm_time_manager   , only : get_step_size       
      !
      ! !ARGUMENTS:
      type(bounds_type)     , intent(in)           :: bounds           
      integer               , intent(in)           :: num_h2osfc       ! number of column points in column filter
      integer               , intent(in)           :: filter_h2osfc(:) ! column filter 
      real(r8)              , intent(inout)        :: qflx_h2osfc2topsoi(bounds%begc:bounds%endc)     
+     real(r8)              , intent(in)           :: dtime     
      integer               , intent(in), optional :: no_update        ! flag to make calculation w/o updating variables
      !
      ! !LOCAL VARIABLES:
@@ -757,7 +755,6 @@ contains
      real(r8):: d,fd,dfdd      ! temporary variable for frac_h2oscs iteration
      real(r8):: sigma          ! microtopography pdf sigma in mm
      real(r8):: min_h2osfc
-     real(r8):: dtime     
      !-----------------------------------------------------------------------
 
      associate(                                              & 
@@ -772,7 +769,6 @@ contains
           frac_h2osfc  => col_ws%frac_h2osfc    & ! Output: [real(r8) (:)   ] col fractional area with surface water greater than zero 
           )
 
-       dtime=get_step_size()           
        ! arbitrary lower limit on h2osfc for safer numerics...
        min_h2osfc=1.e-8_r8
 

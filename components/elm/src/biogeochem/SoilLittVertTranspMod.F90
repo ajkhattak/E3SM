@@ -16,6 +16,7 @@ module SoilLittVertTranspMod
   use ColumnDataType         , only : col_cs, c13_col_cs, c14_col_cs
   use ColumnDataType         , only : col_cf, c13_col_cf, c14_col_cf
   use ColumnDataType         , only : col_ns, col_nf, col_ps, col_pf
+  use timeinfoMod
   !
   implicit none
   save
@@ -24,13 +25,13 @@ module SoilLittVertTranspMod
   public :: readSoilLittVertTranspParams
 
   type, private :: SoilLittVertTranspParamsType
-     real(r8) :: som_diffus                 ! Soil organic matter diffusion
-     real(r8) :: cryoturb_diffusion_k       ! The cryoturbation diffusive constant
-                                            ! cryoturbation to the active layer thickness
-     real(r8) :: max_altdepth_cryoturbation ! (m) maximum active layer thickness for cryoturbation to occur
+     real(r8),pointer  :: som_diffus                => null() ! Soil organic matter diffusion
+     real(r8),pointer  :: cryoturb_diffusion_k      => null() ! The cryoturbation diffusive constant cryoturbation to the active layer thickness
+     real(r8),pointer  :: max_altdepth_cryoturbation => null() ! (m) maximum active layer thickness for cryoturbation to occur
   end type SoilLittVertTranspParamsType
 
-  type(SoilLittVertTranspParamsType),     private ::  SoilLittVertTranspParamsInst
+  type(SoilLittVertTranspParamsType), public ::  SoilLittVertTranspParamsInst
+  
 
   !
   real(r8), public :: som_adv_flux =  0._r8
@@ -58,6 +59,10 @@ contains
     !
     ! read in parameters
     !
+    allocate(SoilLittVertTranspParamsInst%som_diffus                )
+    allocate(SoilLittVertTranspParamsInst%cryoturb_diffusion_k      )
+    allocate(SoilLittVertTranspParamsInst%max_altdepth_cryoturbation)
+
      tString='som_diffus'
      call ncd_io(trim(tString),tempr, 'read', ncid, readvar=readv)
      if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(__FILE__, __LINE__))
@@ -92,7 +97,7 @@ contains
     ! Initial code by C. Koven and W. Riley
     !
     ! !USES:
-    use clm_time_manager , only : get_step_size, get_curr_date
+      
     use elm_varpar       , only : nlevdecomp, ndecomp_pools, nlevdecomp_full
     use elm_varcon       , only : zsoi, dzsoi_decomp, zisoi
     use TridiagonalMod   , only : Tridiagonal
@@ -103,6 +108,9 @@ contains
     integer                  , intent(in)    :: filter_soilc(:)  ! filter for soil columns
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
+    real(r8) :: dtime  ! land model time step (sec)
+    integer  :: year, mon, day, secs
+
     !
     ! !LOCAL VARIABLES:
     real(r8) :: diffus (bounds%begc:bounds%endc,1:nlevdecomp+1)    ! diffusivity (m2/s)  (includes spinup correction, if any)
@@ -132,11 +140,10 @@ contains
     integer  :: ntype
     integer  :: i_type,s,fc,c,j,l             ! indices
     integer  :: jtop(bounds%begc:bounds%endc) ! top level at each column
-    real(r8) :: dtime                         ! land model time step (sec)
     integer  :: zerolev_diffus
     real(r8) :: spinup_term                   ! spinup accelerated decomposition factor, used to accelerate transport as well
     real(r8) :: epsilon                       ! small number
-    integer  :: year, mon, day, sec
+
 
     !-----------------------------------------------------------------------
 
@@ -159,7 +166,11 @@ contains
       cryoturb_diffusion_k       = SoilLittVertTranspParamsInst%cryoturb_diffusion_k 
       max_altdepth_cryoturbation = SoilLittVertTranspParamsInst%max_altdepth_cryoturbation 
 
-      dtime = get_step_size()
+      dtime = dtime_mod
+      year = year_curr
+      mon = mon_curr
+      day = day_curr
+
 
       ntype = 3
       if ( use_c13 ) then
@@ -249,12 +260,12 @@ contains
                source            => c14_col_cf%decomp_cpools_sourcesink
                trcr_tendency_ptr => c14_col_cf%decomp_cpools_transport_tendency
             else
+#ifndef _OPENACC
                write(iulog,*) 'error.  ncase = 5, but c13 and c14 not both enabled.'
                call endrun(msg=errMsg(__FILE__, __LINE__))
+#endif
             endif
          end select
-
-	 call get_curr_date(year, mon, day, sec)
 
          if (use_vertsoilc) then
 

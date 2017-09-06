@@ -48,7 +48,6 @@ contains
     ! Do initialization for all columns that are newly-active in this time step
     !
     ! !USES:
-    use GetGlobalValuesMod , only : GetGlobalWrite
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds                        ! bounds
@@ -72,8 +71,7 @@ contains
              call copy_state(c, c_template, soilhydrology_vars)
           else
              write(iulog,*) subname// ' WARNING: No template column found to initialize newly-active column'
-             write(iulog,*) '-- keeping the state that was already in memory, possibly from arbitrary initialization'
-             call GetGlobalWrite(decomp_index=c, elmlevel=namec)
+             write(iulog,*)' WARNING: No template column found to initialize newly-active column'
           end if
        end if
     end do

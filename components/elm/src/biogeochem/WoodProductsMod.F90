@@ -14,7 +14,7 @@ module WoodProductsMod
   use ColumnDataType      , only : col_cs, c13_col_cs, c14_col_cs
   use ColumnDataType      , only : col_cf, c13_col_cf, c14_col_cf
   use ColumnDataType      , only : col_ns, col_nf, col_ps, col_pf
-
+  use timeInfoMod
   !
   implicit none
   save
@@ -37,16 +37,17 @@ contains
     ! !ARGUMENTS:
     integer                    , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                    , intent(in)    :: filter_soilc(:) ! filter for soil columns
+    real(r8)   :: dt       ! time step (seconds)
+
 
     !
     ! !LOCAL VARIABLES:
     integer  :: fc       ! lake filter indices
     integer  :: c        ! indices
-    real(r8) :: dt       ! time step (seconds)
     real(r8) :: kprod10  ! decay constant for 10-year product pool
     real(r8) :: kprod100 ! decay constant for 100-year product pool
     !-----------------------------------------------------------------------
-
+    dt = dtime_mod
     ! calculate column-level losses from product pools
     ! the following (1/s) rate constants result in ~90% loss of initial state over 10 and 100 years,
     ! respectively, using a discrete-time fractional decay algorithm.
@@ -77,8 +78,6 @@ contains
        col_pf%prod100p_loss(c)   = col_ps%prod100p(c)   * kprod100
     end do
 
-    ! set time steps
-    dt = real( get_step_size(), r8 )
 
     ! update wood product state variables
     do fc = 1,num_soilc

@@ -9,7 +9,6 @@ module PhosphorusStateUpdate3Mod
   use shr_kind_mod        , only: r8 => shr_kind_r8
   use decompMod           , only : bounds_type
   use elm_varpar          , only: nlevdecomp,ndecomp_pools,ndecomp_cascade_transitions
-  use clm_time_manager    , only : get_step_size
   use elm_varctl          , only : iulog, use_nitrif_denitrif
   use elm_varpar          , only : i_cwd, i_met_lit, i_cel_lit, i_lig_lit
   use elm_varctl          , only : use_erosion, ero_ccycle, use_fates
@@ -37,7 +36,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine PhosphorusStateUpdate3(bounds,num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       cnstate_vars)
+       cnstate_vars, dt )
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update all the prognostic phosphorus state
@@ -53,11 +52,12 @@ contains
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)         , intent(in)    :: cnstate_vars
+    real(r8), intent(in) :: dt         ! radiation time step (seconds)
+
     !
     ! !LOCAL VARIABLES:
     integer :: c,p,j,l,k        ! indices
     integer :: fp,fc      ! lake filter indices
-    real(r8):: dt         ! radiation time step (seconds)
 
    real(r8):: smax_c       ! parameter(gP/m2), maximum amount of sorbed P in equilibrium with solution P
    real(r8):: ks_sorption_c ! parameter(gP/m2), empirical constant for sorbed P in equilibrium with solution P 
@@ -76,8 +76,6 @@ contains
          )
 
       ! set time steps
-      dt = real( get_step_size(), r8 )
-
       !! immobilization/mineralization in litter-to-SOM and SOM-to-SOM fluxes
       !! - X.YANG
       do j = 1, nlevdecomp

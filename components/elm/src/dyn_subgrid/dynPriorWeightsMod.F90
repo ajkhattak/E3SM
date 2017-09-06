@@ -20,14 +20,13 @@ module dynPriorWeightsMod
   !
   ! !PUBLIC TYPES:
   public :: prior_weights_type
+  public :: set_prior_weights
 
   type prior_weights_type
      ! Components are public for ease-of-use and efficiency. However, these components
      ! should be treated as read-only!
-     real(r8), allocatable, public :: pwtcol(:)     ! prior pft weight on the column
-     logical , allocatable, public :: cactive(:)    ! prior col_pp%active flags
-   contains
-     procedure :: set_prior_weights      ! set prior weights to current weights
+     real(r8), pointer, public :: pwtcol(:)  => null()   ! prior pft weight on the column
+     logical , pointer, public :: cactive(:) => null()   ! prior col_pp%active flags
   end type prior_weights_type
 
   interface prior_weights_type
@@ -72,7 +71,7 @@ contains
     ! Set prior weights to current weights
     !
     ! !ARGUMENTS:
-    class(prior_weights_type) , intent(inout) :: this   ! this object
+    type(prior_weights_type) , intent(inout) :: this   ! this object
     type(bounds_type)         , intent(in)    :: bounds 
     !
     ! !LOCAL VARIABLES:

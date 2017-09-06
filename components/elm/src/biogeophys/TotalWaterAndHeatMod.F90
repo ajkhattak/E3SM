@@ -516,14 +516,14 @@ contains
                   heat_liquid = heat_liquid(c), &
                   latent_heat_liquid = latent_heat_liquid(c))
              heat_ice(c) = heat_ice(c) + &
-                  TempToHeat(temp = t_soisno(c,j), cv = (h2osoi_ice(c,j)*cpice))
+                  TempToHeat(t_soisno(c,j), (h2osoi_ice(c,j)*cpice))
           end do
        else if (h2osno(c) /= 0._r8) then
           ! No explicit snow layers, but there may still be some ice in h2osno (there is
           ! no liquid water in this case)
           j = 1
           heat_ice(c) = heat_ice(c) + &
-               TempToHeat(temp = t_soisno(c,j), cv = (h2osno(c)*cpice))
+               TempToHeat(t_soisno(c,j), (h2osno(c)*cpice))
        end if
 
        if (col_pp%hydrologically_active(c)) then
@@ -571,14 +571,14 @@ contains
              has_h2o = .false.
              if (j <= nlevurb) then
                 heat_dry_mass(c) = heat_dry_mass(c) + &
-                     TempToHeat(temp = t_soisno(c,j), cv = (cv_wall(l,j) * dz(c,j)))
+                     TempToHeat(t_soisno(c,j), (cv_wall(l,j) * dz(c,j)))
              end if
 
           else if (col_pp%itype(c) == icol_roof) then
              if (j <= nlevurb) then
                 has_h2o = .true.
                 heat_dry_mass(c) = heat_dry_mass(c) + &
-                     TempToHeat(temp = t_soisno(c,j), cv = (cv_roof(l,j) * dz(c,j)))
+                     TempToHeat(t_soisno(c,j), (cv_roof(l,j) * dz(c,j)))
              else
                 has_h2o = .false.
              end if
@@ -588,12 +588,12 @@ contains
 
              if (col_pp%itype(c) == icol_road_imperv .and. j <= nlev_improad(l)) then
                 heat_dry_mass(c) = heat_dry_mass(c) + &
-                     TempToHeat(temp = t_soisno(c,j), cv = (cv_improad(l,j) * dz(c,j)))
+                     TempToHeat(t_soisno(c,j),(cv_improad(l,j) * dz(c,j)))
              else if (lun_pp%itype(l) /= istwet .and. lun_pp%itype(l) /= istice .and. lun_pp%itype(l) /= istice_mec) then
                 ! Note that this also includes impervious roads below nlev_improad (where
                 ! we have soil)
                 heat_dry_mass(c) = heat_dry_mass(c) + &
-                     TempToHeat(temp = t_soisno(c,j), cv = (csol(c,j)*(1-watsat(c,j))*dz(c,j)))
+                     TempToHeat( t_soisno(c,j), (csol(c,j)*(1-watsat(c,j))*dz(c,j)))
              end if
           end if
 
@@ -605,7 +605,7 @@ contains
                   heat_liquid = heat_liquid(c), &
                   latent_heat_liquid = latent_heat_liquid(c))
              heat_ice(c) = heat_ice(c) + &
-                  TempToHeat(temp = t_soisno(c,j), cv = (h2osoi_ice(c,j)*cpice))
+                  TempToHeat(t_soisno(c,j), (h2osoi_ice(c,j)*cpice))
           end if
        end do
     end do
@@ -694,7 +694,7 @@ contains
                   heat_liquid = heat_liquid(c), &
                   latent_heat_liquid = latent_heat_liquid(c))
              heat_ice(c) = heat_ice(c) + &
-                  TempToHeat(temp = t_soisno(c,j), cv = (h2osoi_ice(c,j)*cpice))
+                  TempToHeat(t_soisno(c,j), (h2osoi_ice(c,j)*cpice))
           end do
        else if (h2osno(c) /= 0._r8) then
           ! TODO(wjs, 2017-03-16) (Copying this note from old code... I'm not positive
@@ -710,7 +710,7 @@ contains
           c = filter_lakec(fc)
 
           heat_dry_mass(c) = heat_dry_mass(c) + &
-               TempToHeat(temp = t_soisno(c,j), cv = (csol(c,j)*(1-watsat(c,j))*dz(c,j)))
+               TempToHeat( t_soisno(c,j), (csol(c,j)*(1-watsat(c,j))*dz(c,j)))
           call AccumulateLiquidWaterHeat( &
                temp = t_soisno(c,j), &
                h2o = h2osoi_liq(c,j), &
@@ -718,7 +718,7 @@ contains
                heat_liquid = heat_liquid(c), &
                latent_heat_liquid = latent_heat_liquid(c))
           heat_ice(c) = heat_ice(c) + &
-               TempToHeat(temp = t_soisno(c,j), cv = (h2osoi_ice(c,j)*cpice))
+               TempToHeat(t_soisno(c,j), (h2osoi_ice(c,j)*cpice))
        end do
     end do
 
@@ -888,7 +888,7 @@ contains
     if (present(cv_liquid)) then
        cv_liquid = cv_liquid + cv
     end if
-    heat_liquid = heat_liquid + TempToHeat(temp = temp, cv = cv)
+    heat_liquid = heat_liquid + TempToHeat(temp,  cv)
     latent_heat_liquid = latent_heat_liquid + h2o*hfus
   end subroutine AccumulateLiquidWaterHeat
 

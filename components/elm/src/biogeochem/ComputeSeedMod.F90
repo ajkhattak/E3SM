@@ -43,7 +43,7 @@ contains
 
 
   !-----------------------------------------------------------------------
-  subroutine ComputeSeedAmounts(bounds,                                &
+  subroutine ComputeSeedAmounts(p,                          &
        species,                                                        &
        leaf_patch, leaf_storage_patch, leaf_xfer_patch,                &
        compute_here_patch, ignore_current_state_patch,                 &
@@ -62,33 +62,28 @@ contains
     ! here.
     !
     ! !USES:
+    
     use pftvarcon       , only : noveg
-    use landunit_varcon , only : istsoil, istcrop
     !
-                                                                                  ! !ARGUMENTS:
-    type(bounds_type) , intent(in)     :: bounds
-    integer           , intent(in)     :: species                                 ! which C/N species we're operating on; should be one of the values in SpeciesMod
-    real(r8)          , intent(in)     :: leaf_patch( bounds%begp: )              ! current leaf C or N content (g/m2)
-    real(r8)          , intent(in)     :: leaf_storage_patch( bounds%begp: )      ! current leaf C or N storage content (g/m2)
-    real(r8)          , intent(in)     :: leaf_xfer_patch( bounds%begp: )         ! current leaf C or N xfer content (g/m2)
-
+    ! !ARGUMENTS:
+    integer, value    , intent(in)     :: p
+    integer           , intent(in)     :: species                ! which C/N species we're operating on; should be one of the values in SpeciesMod
+    real(r8)          , intent(in)     :: leaf_patch             ! current leaf C or N content (g/m2)
+    real(r8)          , intent(in)     :: leaf_storage_patch     ! current leaf C or N storage content (g/m2)
+    real(r8)          , intent(in)     :: leaf_xfer_patch        ! current leaf C or N xfer content (g/m2)
                                                                                   ! whether to compute outputs for each patch
-    logical           , intent(in)     :: compute_here_patch( bounds%begp: )
-
+    logical           , intent(in)     :: compute_here_patch
                                                                                   ! If ignore_current_state is true, then use default leaf proportions rather than
                                                                                   ! proportions based on current state.
-    logical           , intent(in)     :: ignore_current_state_patch( bounds%begp: )
-
-    real(r8)          , intent(inout)  :: seed_leaf_patch( bounds%begp: )         ! seed amount for leaf itself for this species (g/m2)
-    real(r8)          , intent(inout)  :: seed_leaf_storage_patch( bounds%begp: ) ! seed amount for leaf storage for this species (g/m2)
-    real(r8)          , intent(inout)  :: seed_leaf_xfer_patch( bounds%begp: )    ! seed amount for leaf xfer for this species (g/m2)
-    real(r8)          , intent(inout)  :: seed_deadstem_patch( bounds%begp: )     ! seed amount for deadstem for this species (g/m2)
+    logical           , intent(in)     :: ignore_current_state_patch
+    real(r8)          , intent(inout)  :: seed_leaf_patch          ! seed amount for leaf itself for this species (g/m2)
+    real(r8)          , intent(inout)  :: seed_leaf_storage_patch  ! seed amount for leaf storage for this species (g/m2)
+    real(r8)          , intent(inout)  :: seed_leaf_xfer_patch     ! seed amount for leaf xfer for this species (g/m2)
+    real(r8)          , intent(inout)  :: seed_deadstem_patch      ! seed amount for deadstem for this species (g/m2)
     real(r8), optional, intent(in)     :: pool_seed_param
-    real(r8), optional, intent(inout)  :: pool_seed_patch( bounds%begp: )
+    real(r8), optional, intent(inout)  :: pool_seed_patch
     !
     ! !LOCAL VARIABLES:
-    integer  :: fp, p, c, l
-    integer  :: begp, endp
     real(r8) :: my_leaf_seed
     real(r8) :: my_deadstem_seed
     real(r8) :: my_pool_seed
@@ -100,9 +95,6 @@ contains
     character(len=*), parameter :: subname = 'ComputeSeedAmounts'
     !-----------------------------------------------------------------------
 
-    begp = bounds%begp
-    endp = bounds%endp
-
     SHR_ASSERT_ALL((ubound(leaf_patch                 ) == (/endp/)), errMsg(__FILE__, __LINE__))
     SHR_ASSERT_ALL((ubound(leaf_storage_patch         ) == (/endp/)), errMsg(__FILE__, __LINE__))
     SHR_ASSERT_ALL((ubound(leaf_xfer_patch            ) == (/endp/)), errMsg(__FILE__, __LINE__))
@@ -113,32 +105,27 @@ contains
     SHR_ASSERT_ALL((ubound(seed_leaf_xfer_patch       ) == (/endp/)), errMsg(__FILE__, __LINE__))
     SHR_ASSERT_ALL((ubound(seed_deadstem_patch        ) == (/endp/)), errMsg(__FILE__, __LINE__))
     
+#ifndef _OPENACC
     if (present(pool_seed_patch)) then
        SHR_ASSERT_ALL((ubound(pool_seed_patch         ) == (/endp/)), errMsg(__FILE__, __LINE__))
        if (.not. present(pool_seed_param)) then
           call endrun(subname//': pool_seed_patch can only be provided with pool_seed_param')          
        end if
     end if
+#endif
 
-    
-    do p = bounds%begp,bounds%endp
-       c = veg_pp%column(p)
-
-       l = veg_pp%landunit(p)
-
-       if (compute_here_patch(p) .and. (lun_pp%itype(l) == istsoil .or. lun_pp%itype(l) == istcrop)) then
-
+    if (compute_here_patch) then
           my_leaf_seed = 0._r8
           my_deadstem_seed = 0._r8
           my_pool_seed = 0._r8
           pft_type = veg_pp%itype(p)
 
           call LeafProportions( &
-               ignore_current_state = ignore_current_state_patch(p), &
+               ignore_current_state = ignore_current_state_patch , &
                pft_type = pft_type, &
-               leaf = leaf_patch(p), &
-               leaf_storage = leaf_storage_patch(p), &
-               leaf_xfer = leaf_xfer_patch(p), &
+               leaf = leaf_patch , &
+               leaf_storage = leaf_storage_patch , &
+               leaf_xfer = leaf_xfer_patch , &
                pleaf = pleaf, &
                pstorage = pstor, &
                pxfer = pxfer)
@@ -156,21 +143,19 @@ contains
              end if
           end if
 
-          seed_leaf_patch(p)         = my_leaf_seed * pleaf
-          seed_leaf_storage_patch(p) = my_leaf_seed * pstor
-          seed_leaf_xfer_patch(p)    = my_leaf_seed * pxfer
-          seed_deadstem_patch(p)     = my_deadstem_seed
+          seed_leaf_patch          = my_leaf_seed * pleaf
+          seed_leaf_storage_patch  = my_leaf_seed * pstor
+          seed_leaf_xfer_patch     = my_leaf_seed * pxfer
+          seed_deadstem_patch      = my_deadstem_seed
           if (present(pool_seed_param)) then
-             pool_seed_patch(p) = my_pool_seed
+             pool_seed_patch  = my_pool_seed
           end if
-       else
-          seed_leaf_patch(p)         = 0._r8
-          seed_leaf_storage_patch(p) = 0._r8
-          seed_leaf_xfer_patch(p)    = 0._r8
-          seed_deadstem_patch(p)     = 0._r8
-       end if
-
-    end do
+    else
+          seed_leaf_patch          = 0._r8
+          seed_leaf_storage_patch  = 0._r8
+          seed_leaf_xfer_patch     = 0._r8
+          seed_deadstem_patch      = 0._r8
+    end if
 
   end subroutine ComputeSeedAmounts
 

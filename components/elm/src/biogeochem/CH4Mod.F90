@@ -35,7 +35,8 @@ module CH4Mod
   use ColumnDataType     , only : col_es, col_ws, col_wf, col_cf, col_nf              
   use VegetationType     , only : veg_pp
   use VegetationDataType , only : veg_wf, veg_cs, veg_cf
-  
+  use timeinfoMod
+
   !
   implicit none
   save
@@ -60,134 +61,135 @@ module CH4Mod
 
   type, private :: CH4ParamsType
      ! ch4 production constants
-     real(r8) :: q10ch4               ! additional Q10 for methane production ABOVE the soil decomposition temperature relationship
-     real(r8) :: q10ch4base           ! temperature at which the effective f_ch4 actually equals the constant f_ch4
-     real(r8) :: f_ch4                ! ratio of CH4 production to total C mineralization
-     real(r8) :: rootlitfrac          ! Fraction of soil organic matter associated with roots
-     real(r8) :: cnscalefactor        ! scale factor on CN decomposition for assigning methane flux
-     real(r8) :: redoxlag             ! Number of days to lag in the calculation of finundated_lag
-     real(r8) :: lake_decomp_fact     ! Base decomposition rate (1/s) at 25C
-     real(r8) :: redoxlag_vertical    ! time lag (days) to inhibit production for newly unsaturated layers
-     real(r8) :: pHmax                ! maximum pH for methane production(= 9._r8)
-     real(r8) :: pHmin                ! minimum pH for methane production(= 2.2_r8)
-     real(r8) :: oxinhib              ! inhibition of methane production by oxygen (m^3/mol)
+     real(r8), pointer :: q10ch4            => null()    ! additional Q10 for methane production ABOVE the soil decomposition temperature relationship
+     real(r8), pointer :: q10ch4base        => null()    ! temperature at which the effective f_ch4 actually equals the constant f_ch4
+     real(r8), pointer :: f_ch4             => null()    ! ratio of CH4 production to total C mineralization
+     real(r8), pointer :: rootlitfrac       => null()    ! Fraction of soil organic matter associated with roots
+     real(r8), pointer :: cnscalefactor     => null()    ! scale factor on CN decomposition for assigning methane flux
+     real(r8), pointer :: redoxlag          => null()    ! Number of days to lag in the calculation of finundated_lag
+     real(r8), pointer :: lake_decomp_fact  => null()    ! Base decomposition rate (1/s) at 25C
+     real(r8), pointer :: redoxlag_vertical => null()    ! time lag (days) to inhibit production for newly unsaturated layers
+     real(r8), pointer :: pHmax             => null()    ! maximum pH for methane production(= 9._r8)
+     real(r8), pointer :: pHmin             => null()    ! minimum pH for methane production(= 2.2_r8)
+     real(r8), pointer :: oxinhib           => null()    ! inhibition of methane production by oxygen (m^3/mol)
 
      ! ch4 oxidation constants
-     real(r8) :: vmax_ch4_oxid        ! oxidation rate constant (= 45.e-6_r8 * 1000._r8 / 3600._r8) [mol/m3-w/s];
-     real(r8) :: k_m                  ! Michaelis-Menten oxidation rate constant for CH4 concentration 
-     real(r8) :: q10_ch4oxid          ! Q10 oxidation constant
-     real(r8) :: smp_crit             ! Critical soil moisture potential
-     real(r8) :: k_m_o2               ! Michaelis-Menten oxidation rate constant for O2 concentration
-     real(r8) :: k_m_unsat            ! Michaelis-Menten oxidation rate constant for CH4 concentration
-     real(r8) :: vmax_oxid_unsat      ! (= 45.e-6_r8 * 1000._r8 / 3600._r8 / 10._r8) [mol/m3-w/s]
+     real(r8), pointer :: vmax_ch4_oxid     => null()     ! oxidation rate constant (= 45.e-6_r8 * 1000._r8 / 3600._r8) [mol/m3-w/s];
+     real(r8), pointer :: k_m               => null()     ! Michaelis-Menten oxidation rate constant for CH4 concentration
+     real(r8), pointer :: q10_ch4oxid       => null()     ! Q10 oxidation constant
+     real(r8), pointer :: smp_crit          => null()     ! Critical soil moisture potential
+     real(r8), pointer :: k_m_o2            => null()     ! Michaelis-Menten oxidation rate constant for O2 concentration
+     real(r8), pointer :: k_m_unsat         => null()     ! Michaelis-Menten oxidation rate constant for CH4 concentration
+     real(r8), pointer :: vmax_oxid_unsat   => null()     ! (= 45.e-6_r8 * 1000._r8 / 3600._r8 / 10._r8) [mol/m3-w/s]
 
      ! ch4 aerenchyma constants
-     real(r8) :: aereoxid             ! fraction of methane flux entering aerenchyma rhizosphere that will be
+     real(r8), pointer :: aereoxid => null()            ! fraction of methane flux entering aerenchyma rhizosphere that will be
 
      ! oxidized rather than emitted
-     real(r8) :: scale_factor_aere    ! scale factor on the aerenchyma area for sensitivity tests
-     real(r8) :: nongrassporosratio   ! Ratio of root porosity in non-grass to grass, used for aerenchyma transport
-     real(r8) :: unsat_aere_ratio     ! Ratio to multiply upland vegetation aerenchyma porosity by compared to inundated systems (= 0.05_r8 / 0.3_r8)
-     real(r8) :: porosmin             ! minimum aerenchyma porosity (unitless)(= 0.05_r8) 
+     real(r8), pointer :: scale_factor_aere  => null()   ! scale factor on the aerenchyma area for sensitivity tests
+     real(r8), pointer :: nongrassporosratio => null()   ! Ratio of root porosity in non-grass to grass, used for aerenchyma transport
+     real(r8), pointer :: unsat_aere_ratio   => null()   ! Ratio to multiply upland vegetation aerenchyma porosity by compared to inundated systems (= 0.05_r8 / 0.3_r8)
+     real(r8), pointer :: porosmin           => null()   ! minimum aerenchyma porosity (unitless)(= 0.05_r8)
 
      ! ch4 ebbulition constants
-     real(r8) :: vgc_max              ! ratio of saturation pressure triggering ebullition
+     real(r8), pointer :: vgc_max => null()              ! ratio of saturation pressure triggering ebullition
 
      ! ch4 transport constants
-     real(r8) :: satpow               ! exponent on watsat for saturated soil solute diffusion
-     real(r8) :: scale_factor_gasdiff ! For sensitivity tests; convection would allow this to be > 1
-     real(r8) :: scale_factor_liqdiff ! For sensitivity tests; convection would allow this to be > 1
-     real(r8) :: capthick             ! min thickness before assuming h2osfc is impermeable (mm) (= 100._r8)
+     real(r8), pointer :: satpow               => null() ! exponent on watsat for saturated soil solute diffusion
+     real(r8), pointer :: scale_factor_gasdiff => null() ! For sensitivity tests; convection would allow this to be > 1
+     real(r8), pointer :: scale_factor_liqdiff => null() ! For sensitivity tests; convection would allow this to be > 1
+     real(r8), pointer :: capthick             => null() ! min thickness before assuming h2osfc is impermeable (mm) (= 100._r8)
 
      ! additional constants
-     real(r8) :: f_sat                ! volumetric soil water defining top of water table or where production is allowed (=0.95)
-     real(r8) :: qflxlagd             ! days to lag qflx_surf_lag in the tropics (days) ( = 30._r8)
-     real(r8) :: highlatfact          ! multiple of qflxlagd for high latitudes	(= 2._r8)	
-     real(r8) :: q10lakebase          ! (K) base temperature for lake CH4 production (= 298._r8)
-     real(r8) :: atmch4               ! Atmospheric CH4 mixing ratio to prescribe if not provided by the atmospheric model (= 1.7e-6_r8) (mol/mol)
-     real(r8) :: rob                  ! ratio of root length to vertical depth ("root obliquity") (= 3._r8)
+     real(r8), pointer :: f_sat        => null()         ! volumetric soil water defining top of water table or where production is allowed (=0.95)
+     real(r8), pointer :: qflxlagd     => null()         ! days to lag qflx_surf_lag in the tropics (days) ( = 30._r8)
+     real(r8), pointer :: highlatfact  => null()         ! multiple of qflxlagd for high latitudes	(= 2._r8)
+     real(r8), pointer :: q10lakebase  => null()         ! (K) base temperature for lake CH4 production (= 298._r8)
+     real(r8), pointer :: atmch4       => null()         ! Atmospheric CH4 mixing ratio to prescribe if not provided by the atmospheric model (= 1.7e-6_r8) (mol/mol)
+     real(r8), pointer :: rob          => null()         ! ratio of root length to vertical depth ("root obliquity") (= 3._r8)
   end type CH4ParamsType
-  type(CH4ParamsType), private ::  CH4ParamsInst
+  type(CH4ParamsType), public ::  CH4ParamsInst
+  
 
   type, public :: ch4_type
-     real(r8), pointer, private :: ch4_prod_depth_sat_col     (:,:) ! col CH4 production rate from methanotrophs (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_prod_depth_unsat_col   (:,:) ! col CH4 production rate from methanotrophs (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_prod_depth_lake_col    (:,:) ! col CH4 production rate from methanotrophs (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_oxid_depth_sat_col     (:,:) ! col CH4 consumption rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_oxid_depth_unsat_col   (:,:) ! col CH4 consumption rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_oxid_depth_lake_col    (:,:) ! col CH4 consumption rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_aere_depth_sat_col     (:,:) ! col CH4 loss rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_aere_depth_unsat_col   (:,:) ! col CH4 loss rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_tran_depth_sat_col     (:,:) ! col CH4 loss rate via transpiration in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_tran_depth_unsat_col   (:,:) ! col CH4 loss rate via transpiration in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_ebul_depth_sat_col     (:,:) ! col CH4 loss rate via ebullition in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_ebul_depth_unsat_col   (:,:) ! col CH4 loss rate via ebullition in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: ch4_ebul_total_sat_col     (:)   ! col Total col CH4 ebullition (mol/m2/s)
-     real(r8), pointer, private :: ch4_ebul_total_unsat_col   (:)   ! col Total col CH4 ebullition (mol/m2/s)
-     real(r8), pointer, private :: ch4_surf_aere_sat_col      (:)   ! col CH4 aerenchyma flux to atmosphere (after oxidation) (mol/m2/s)
-     real(r8), pointer, private :: ch4_surf_aere_unsat_col    (:)   ! col CH4 aerenchyma flux to atmosphere (after oxidation) (mol/m2/s)
-     real(r8), pointer, private :: ch4_surf_ebul_sat_col      (:)   ! col CH4 ebullition flux to atmosphere (after oxidation) (mol/m2/s)
-     real(r8), pointer, private :: ch4_surf_ebul_unsat_col    (:)   ! col CH4 ebullition flux to atmosphere (after oxidation) (mol/m2/s)
-     real(r8), pointer, private :: ch4_surf_ebul_lake_col     (:)   ! col CH4 ebullition flux to atmosphere (after oxidation) (mol/m2/s)
-     real(r8), pointer, private :: co2_aere_depth_sat_col     (:,:) ! col CO2 loss rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: co2_aere_depth_unsat_col   (:,:) ! col CO2 loss rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: o2_oxid_depth_sat_col      (:,:) ! col O2 consumption rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: o2_oxid_depth_unsat_col    (:,:) ! col O2 consumption rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: o2_aere_depth_sat_col      (:,:) ! col O2 gain rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: o2_aere_depth_unsat_col    (:,:) ! col O2 gain rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: co2_decomp_depth_sat_col   (:,:) ! col CO2 production during decomposition in each soil layer (nlevsoi) (mol/m3/s)
-     real(r8), pointer, private :: co2_decomp_depth_unsat_col (:,:) ! col CO2 production during decomposition in each soil layer (nlevsoi) (mol/m3/s)
-     real(r8), pointer, private :: co2_oxid_depth_sat_col     (:,:) ! col CO2 production rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: co2_oxid_depth_unsat_col   (:,:) ! col CO2 production rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
-     real(r8), pointer, private :: conc_o2_lake_col           (:,:) ! col O2 conc in each soil layer (mol/m3) (nlevsoi)
-     real(r8), pointer, private :: conc_ch4_sat_col           (:,:) ! col CH4 conc in each soil layer (mol/m3) (nlevsoi)
-     real(r8), pointer, private :: conc_ch4_unsat_col         (:,:) ! col CH4 conc in each soil layer (mol/m3) (nlevsoi)
-     real(r8), pointer, private :: conc_ch4_lake_col          (:,:) ! col CH4 conc in each soil layer (mol/m3) (nlevsoi)
-     real(r8), pointer, private :: ch4_surf_diff_sat_col      (:)   ! col CH4 surface flux (mol/m2/s)
-     real(r8), pointer, private :: ch4_surf_diff_unsat_col    (:)   ! col CH4 surface flux (mol/m2/s)
-     real(r8), pointer, private :: ch4_surf_diff_lake_col     (:)   ! col CH4 surface flux (mol/m2/s)
-     real(r8), pointer, private :: ch4_dfsat_flux_col         (:)   ! col CH4 flux to atm due to decreasing fsat (kg C/m^2/s) [+]
+     real(r8), pointer :: ch4_prod_depth_sat_col     (:,:) =>null()! col CH4 production rate from methanotrophs (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_prod_depth_unsat_col   (:,:) =>null()! col CH4 production rate from methanotrophs (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_prod_depth_lake_col    (:,:) =>null()! col CH4 production rate from methanotrophs (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_oxid_depth_sat_col     (:,:) =>null()! col CH4 consumption rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_oxid_depth_unsat_col   (:,:) =>null()! col CH4 consumption rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_oxid_depth_lake_col    (:,:) =>null()! col CH4 consumption rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_aere_depth_sat_col     (:,:) =>null()! col CH4 loss rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_aere_depth_unsat_col   (:,:) =>null()! col CH4 loss rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_tran_depth_sat_col     (:,:) =>null()! col CH4 loss rate via transpiration in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_tran_depth_unsat_col   (:,:) =>null()! col CH4 loss rate via transpiration in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_ebul_depth_sat_col     (:,:) =>null()! col CH4 loss rate via ebullition in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_ebul_depth_unsat_col   (:,:) =>null()! col CH4 loss rate via ebullition in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: ch4_ebul_total_sat_col     (:)   =>null()! col Total col CH4 ebullition (mol/m2/s)
+     real(r8), pointer :: ch4_ebul_total_unsat_col   (:)   =>null()! col Total col CH4 ebullition (mol/m2/s)
+     real(r8), pointer :: ch4_surf_aere_sat_col      (:)   =>null()! col CH4 aerenchyma flux to atmosphere (after oxidation) (mol/m2/s)
+     real(r8), pointer :: ch4_surf_aere_unsat_col    (:)   =>null()! col CH4 aerenchyma flux to atmosphere (after oxidation) (mol/m2/s)
+     real(r8), pointer :: ch4_surf_ebul_sat_col      (:)   =>null()! col CH4 ebullition flux to atmosphere (after oxidation) (mol/m2/s)
+     real(r8), pointer :: ch4_surf_ebul_unsat_col    (:)   =>null()! col CH4 ebullition flux to atmosphere (after oxidation) (mol/m2/s)
+     real(r8), pointer :: ch4_surf_ebul_lake_col     (:)   =>null()! col CH4 ebullition flux to atmosphere (after oxidation) (mol/m2/s)
+     real(r8), pointer :: co2_aere_depth_sat_col     (:,:) =>null()! col CO2 loss rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: co2_aere_depth_unsat_col   (:,:) =>null()! col CO2 loss rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: o2_oxid_depth_sat_col      (:,:) =>null()! col O2 consumption rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: o2_oxid_depth_unsat_col    (:,:) =>null()! col O2 consumption rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: o2_aere_depth_sat_col      (:,:) =>null()! col O2 gain rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: o2_aere_depth_unsat_col    (:,:) =>null()! col O2 gain rate via aerenchyma in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: co2_decomp_depth_sat_col   (:,:) =>null()! col CO2 production during decomposition in each soil layer (nlevsoi) (mol/m3/s)
+     real(r8), pointer :: co2_decomp_depth_unsat_col (:,:) =>null()! col CO2 production during decomposition in each soil layer (nlevsoi) (mol/m3/s)
+     real(r8), pointer :: co2_oxid_depth_sat_col     (:,:) =>null()! col CO2 production rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: co2_oxid_depth_unsat_col   (:,:) =>null()! col CO2 production rate via oxidation in each soil layer (mol/m3/s) (nlevsoi)
+     real(r8), pointer :: conc_o2_lake_col           (:,:) =>null()! col O2 conc in each soil layer (mol/m3) (nlevsoi)
+     real(r8), pointer :: conc_ch4_sat_col           (:,:) =>null()! col CH4 conc in each soil layer (mol/m3) (nlevsoi)
+     real(r8), pointer :: conc_ch4_unsat_col         (:,:) =>null()! col CH4 conc in each soil layer (mol/m3) (nlevsoi)
+     real(r8), pointer :: conc_ch4_lake_col          (:,:) =>null()! col CH4 conc in each soil layer (mol/m3) (nlevsoi)
+     real(r8), pointer :: ch4_surf_diff_sat_col      (:)   =>null()! col CH4 surface flux (mol/m2/s)
+     real(r8), pointer :: ch4_surf_diff_unsat_col    (:)   =>null()! col CH4 surface flux (mol/m2/s)
+     real(r8), pointer :: ch4_surf_diff_lake_col     (:)   =>null()! col CH4 surface flux (mol/m2/s)
+     real(r8), pointer :: ch4_dfsat_flux_col         (:)   =>null()! col CH4 flux to atm due to decreasing fsat (kg C/m^2/s) [+]
 
-     real(r8), pointer, private :: zwt_ch4_unsat_col          (:)   ! col depth of water table for unsaturated fraction (m)
-     real(r8), pointer, private :: fsat_bef_col               (:)   ! col fsat from previous timestep
-     real(r8), pointer, private :: lake_soilc_col             (:,:) ! col total soil organic matter found in level (g C / m^3) (nlevsoi)
-     real(r8), pointer, private :: totcolch4_col              (:)   ! col total methane found in soil col (g C / m^2)
-     real(r8), pointer, private :: annsum_counter_col         (:)   ! col seconds since last annual accumulator turnover
-     real(r8), pointer, private :: tempavg_somhr_col          (:)   ! col temporary average SOM heterotrophic resp. (gC/m2/s)
-     real(r8), pointer, private :: annavg_somhr_col           (:)   ! col annual average SOM heterotrophic resp. (gC/m2/s)
-     real(r8), pointer, private :: tempavg_finrw_col          (:)   ! col respiration-weighted annual average of finundated
-     real(r8), pointer, private :: annavg_finrw_col           (:)   ! col respiration-weighted annual average of finundated
-     real(r8), pointer, private :: sif_col                    (:)   ! col (unitless) ratio applied to sat. prod. to account for seasonal inundation
-     real(r8), pointer, private :: ch4stress_unsat_col        (:,:) ! col Ratio of methane available to the total per-timestep methane sinks (nlevsoi)
-     real(r8), pointer, private :: ch4stress_sat_col          (:,:) ! col Ratio of methane available to the total per-timestep methane sinks (nlevsoi)
-     real(r8), pointer, private :: qflx_surf_lag_col          (:)   ! col time-lagged surface runoff (mm H2O /s)
-     real(r8), pointer, private :: finundated_lag_col         (:)   ! col time-lagged fractional inundated area
-     real(r8), pointer, private :: layer_sat_lag_col          (:,:) ! col Lagged saturation status of soil layer in the unsaturated zone (1 = sat)
-     real(r8), pointer, private :: zwt0_col                   (:)   ! col coefficient for determining finundated (m)
-     real(r8), pointer, private :: f0_col                     (:)   ! col maximum inundated fraction for a gridcell (for methane code)
-     real(r8), pointer, private :: p3_col                     (:)   ! col coefficient for determining finundated (m)
-     real(r8), pointer, private :: pH_col                     (:)   ! col pH values for methane production
+     real(r8), pointer :: zwt_ch4_unsat_col          (:)   =>null()! col depth of water table for unsaturated fraction (m)
+     real(r8), pointer :: fsat_bef_col               (:)   =>null()! col fsat from previous timestep
+     real(r8), pointer :: lake_soilc_col             (:,:) =>null()! col total soil organic matter found in level (g C / m^3) (nlevsoi)
+     real(r8), pointer :: totcolch4_col              (:)   =>null()! col total methane found in soil col (g C / m^2)
+     real(r8), pointer :: annsum_counter_col         (:)   =>null()! col seconds since last annual accumulator turnover
+     real(r8), pointer :: tempavg_somhr_col          (:)   =>null()! col temporary average SOM heterotrophic resp. (gC/m2/s)
+     real(r8), pointer :: annavg_somhr_col           (:)   =>null()! col annual average SOM heterotrophic resp. (gC/m2/s)
+     real(r8), pointer :: tempavg_finrw_col          (:)   =>null()! col respiration-weighted annual average of finundated
+     real(r8), pointer :: annavg_finrw_col           (:)   =>null()! col respiration-weighted annual average of finundated
+     real(r8), pointer :: sif_col                    (:)   =>null()! col (unitless) ratio applied to sat. prod. to account for seasonal inundation
+     real(r8), pointer :: ch4stress_unsat_col        (:,:) =>null()! col Ratio of methane available to the total per-timestep methane sinks (nlevsoi)
+     real(r8), pointer :: ch4stress_sat_col          (:,:) =>null()! col Ratio of methane available to the total per-timestep methane sinks (nlevsoi)
+     real(r8), pointer :: qflx_surf_lag_col          (:)   =>null()! col time-lagged surface runoff (mm H2O /s)
+     real(r8), pointer :: finundated_lag_col         (:)   =>null()! col time-lagged fractional inundated area
+     real(r8), pointer :: layer_sat_lag_col          (:,:) =>null()! col Lagged saturation status of soil layer in the unsaturated zone (1 = sat)
+     real(r8), pointer :: zwt0_col                   (:)   =>null()! col coefficient for determining finundated (m)
+     real(r8), pointer :: f0_col                     (:)   =>null()! col maximum inundated fraction for a gridcell (for methane code)
+     real(r8), pointer :: p3_col                     (:)   =>null()! col coefficient for determining finundated (m)
+     real(r8), pointer :: pH_col                     (:)   =>null()! col pH values for methane production
+    !
+     real(r8), pointer :: c_atm_grc                  (:,:) =>null()! grc atmospheric conc of CH4, O2, CO2 (mol/m3)
+     real(r8), pointer :: ch4co2f_grc                (:)   =>null()! grc CO2 production from CH4 oxidation (g C/m**2/s)
+     real(r8), pointer :: ch4prodg_grc               (:)   =>null()! grc average CH4 production (g C/m^2/s)
      !
-     real(r8), pointer, private :: c_atm_grc                  (:,:) ! grc atmospheric conc of CH4, O2, CO2 (mol/m3)
-     real(r8), pointer, private :: ch4co2f_grc                (:)   ! grc CO2 production from CH4 oxidation (g C/m**2/s)
-     real(r8), pointer, private :: ch4prodg_grc               (:)   ! grc average CH4 production (g C/m^2/s)
-     !
-     real(r8), pointer, public :: finundated_col             (:)   ! col fractional inundated area (excluding dedicated wetland cols)
-     real(r8), pointer, public :: o2stress_unsat_col         (:,:) ! col Ratio of oxygen available to that demanded by roots, aerobes, & methanotrophs (nlevsoi)
-     real(r8), pointer, public :: o2stress_sat_col           (:,:) ! col Ratio of oxygen available to that demanded by roots, aerobes, & methanotrophs (nlevsoi)
-     real(r8), pointer, public :: conc_o2_sat_col            (:,:) ! col O2 conc in each soil layer (mol/m3) (nlevsoi)
-     real(r8), pointer, public :: conc_o2_unsat_col          (:,:) ! col O2 conc in each soil layer (mol/m3) (nlevsoi)
-     real(r8), pointer, public :: o2_decomp_depth_sat_col    (:,:) ! col O2 consumption during decomposition in each soil layer (nlevsoi) (mol/m3/s)
-     real(r8), pointer, public :: o2_decomp_depth_unsat_col  (:,:) ! col O2 consumption during decomposition in each soil layer (nlevsoi) (mol/m3/s)
-     real(r8), pointer, public :: ch4_surf_flux_tot_col      (:)   ! col CH4 surface flux (to atm) (kg C/m**2/s)
+     real(r8), pointer :: finundated_col             (:)  =>null() ! col fractional inundated area (excluding dedicated wetland cols)
+     real(r8), pointer :: o2stress_unsat_col         (:,:)=>null() ! col Ratio of oxygen available to that demanded by roots, aerobes, & methanotrophs (nlevsoi)
+     real(r8), pointer :: o2stress_sat_col           (:,:)=>null() ! col Ratio of oxygen available to that demanded by roots, aerobes, & methanotrophs (nlevsoi)
+     real(r8), pointer :: conc_o2_sat_col            (:,:)=>null() ! col O2 conc in each soil layer (mol/m3) (nlevsoi)
+     real(r8), pointer :: conc_o2_unsat_col          (:,:)=>null() ! col O2 conc in each soil layer (mol/m3) (nlevsoi)
+     real(r8), pointer :: o2_decomp_depth_sat_col    (:,:)=>null() ! col O2 consumption during decomposition in each soil layer (nlevsoi) (mol/m3/s)
+     real(r8), pointer :: o2_decomp_depth_unsat_col  (:,:)=>null() ! col O2 consumption during decomposition in each soil layer (nlevsoi) (mol/m3/s)
+     real(r8), pointer :: ch4_surf_flux_tot_col      (:)  =>null() ! col CH4 surface flux (to atm) (kg C/m**2/s)
 
-     real(r8), pointer, public :: grnd_ch4_cond_patch        (:)   ! patch tracer conductance for boundary layer [m/s]
-     real(r8), pointer, public :: grnd_ch4_cond_col          (:)   ! col tracer conductance for boundary layer [m/s]
+     real(r8), pointer :: grnd_ch4_cond_patch        (:) => null()  ! patch tracer conductance for boundary layer [m/s]
+     real(r8), pointer :: grnd_ch4_cond_col          (:) => null()  ! col tracer conductance for boundary layer [m/s]
 
    contains
 
      procedure, public  :: Init 
-     procedure, private :: InitAllocate
+     procedure, public :: InitAllocate
      procedure, private :: InitHistory  
      procedure, private :: InitCold     
      procedure, public  :: Restart         
@@ -219,7 +221,7 @@ contains
     ! Allocate module variables and data structures
     !
     ! !USES:
-    use shr_infnan_mod, only: nan => shr_infnan_nan, assignment(=)
+    use shr_infnan_mod, only: spval => shr_infnan_nan, assignment(=)
     use elm_varpar    , only: nlevgrnd
     !
     ! !ARGUMENTS:
@@ -1057,6 +1059,7 @@ contains
     !
     ! !USES:
     use shr_kind_mod , only : r8 => shr_kind_r8
+    use shr_infnan_mod, only: spval => shr_infnan_nan, assignment(=)
     use ncdio_pio    , only : file_desc_t,ncd_io
     use CH4varcon    , only : use_aereoxid_prog
     !
@@ -1071,6 +1074,42 @@ contains
     real(r8)           :: tempr ! temporary to read in constant
     character(len=100) :: tString ! temp. var for reading
     !--------------------------------------------------------------------
+
+    allocate(CH4ParamsInst%q10ch4           )
+    allocate(CH4ParamsInst%q10ch4base       )
+    allocate(CH4ParamsInst%f_ch4            )
+    allocate(CH4ParamsInst%rootlitfrac      )
+    allocate(CH4ParamsInst%cnscalefactor    )
+    allocate(CH4ParamsInst%redoxlag         )
+    allocate(CH4ParamsInst%lake_decomp_fact )
+    allocate(CH4ParamsInst%redoxlag_vertical)
+    allocate(CH4ParamsInst%pHmax            )
+    allocate(CH4ParamsInst%pHmin            )
+    allocate(CH4ParamsInst%oxinhib          )
+    allocate(CH4ParamsInst%vmax_ch4_oxid    )
+    allocate(CH4ParamsInst%k_m              )
+    allocate(CH4ParamsInst%q10_ch4oxid      )
+    allocate(CH4ParamsInst%smp_crit         )
+    allocate(CH4ParamsInst%k_m_o2           )
+    allocate(CH4ParamsInst%k_m_unsat        )
+    allocate(CH4ParamsInst%vmax_oxid_unsat  )
+    allocate(CH4ParamsInst%aereoxid         )
+    allocate(CH4ParamsInst%scale_factor_aere )
+    allocate(CH4ParamsInst%nongrassporosratio)
+    allocate(CH4ParamsInst%unsat_aere_ratio  )
+    allocate(CH4ParamsInst%porosmin          )
+    allocate(CH4ParamsInst%vgc_max           )
+    allocate(CH4ParamsInst%satpow              )
+    allocate(CH4ParamsInst%scale_factor_gasdiff)
+    allocate(CH4ParamsInst%scale_factor_liqdiff)
+    allocate(CH4ParamsInst%capthick            )
+    allocate(CH4ParamsInst%f_sat               )
+    allocate(CH4ParamsInst%qflxlagd            )
+    allocate(CH4ParamsInst%highlatfact         )
+    allocate(CH4ParamsInst%q10lakebase         )
+    allocate(CH4ParamsInst%atmch4              )
+    allocate(CH4ParamsInst%rob                 )
+
 
     if ( .not. use_aereoxid_prog ) then
         tString='aereoxid'
@@ -1404,15 +1443,14 @@ contains
       qflxlagd          = CH4ParamsInst%qflxlagd
       highlatfact       = CH4ParamsInst%highlatfact
 
-      dtime = get_step_size()
-      nstep = get_nstep()
+      dtime = dtime_mod !get_step_size()
       dtime_ch4 = dtime
       redoxlags = redoxlag*secspday ! days --> s
       redoxlags_vertical = redoxlag_vertical*secspday ! days --> s
       rgasm = rgas / 1000._r8
 
       jwt(begc:endc)            = huge(1)
-      totcolch4_bef(begc:endc)  = nan
+      totcolch4_bef(begc:endc)  = spval
 
       ! Initialize local fluxes to zero: necessary for columns outside the filters because averaging up to gridcell will be done
       ch4_surf_flux_tot(begc:endc) = 0._r8
@@ -1525,7 +1563,7 @@ contains
       call ch4_annualupdate(bounds, &
            num_soilc, filter_soilc, &
            num_soilp, filter_soilp, &
-           ch4_vars)
+           ch4_vars, dtime, 365.d0)
 
       ! Determine rootfr_col and also check for inactive columns
 
@@ -1551,8 +1589,8 @@ contains
          call p2c (bounds, nlevgrnd, &
               rootfraction(bounds%begp:bounds%endp, :), &
               rootfr_col(bounds%begc:bounds%endc, :), &
-              'unity')
-         
+              0)
+
          do j=1, nlevsoi
             do fc = 1, num_soilc
                c = filter_soilc(fc)
@@ -1586,13 +1624,12 @@ contains
       ! Loop over saturated and unsaturated, non-lakes
       !------------------------------------------------
 
-      do sat = 0, 1 ! 0 == unsaturated; 1 = saturated
+      sat = 0
+      !ITERATION : do while (sat <= 1 ) ! 0 == unsaturated; 1 = saturated
 
-         ! Get index of water table
-         if (sat == 0) then ! unsaturated
-
+        ! Get index of water table
             call get_jwt (bounds, num_soilc, filter_soilc, jwt(begc:endc), &
-                 soilstate_vars)
+                 soilstate_vars )
 
             do fc = 1, num_soilc
                c = filter_soilc(fc)
@@ -1618,26 +1655,19 @@ contains
                end do
             end do
 
-         else ! saturated
-            do fc = 1, num_soilc
-               c = filter_soilc(fc)
-               jwt(c) = 0
-            end do
-         endif
-
          ! calculate CH4 production in each soil layer
          call ch4_prod (bounds, &
               num_soilc, filter_soilc, &
               num_soilp, filter_soilp, &
               jwt(begc:endc), sat, lake, &
               soilstate_vars, &
-              ch4_vars)
+              ch4_vars, dtime)
 
          ! calculate CH4 oxidation in each soil layer
          call ch4_oxid (bounds, &
               num_soilc, filter_soilc, &
               jwt(begc:endc), sat, lake, &
-              soilstate_vars, ch4_vars)
+              soilstate_vars, ch4_vars, dtime)
 
          ! calculate CH4 aerenchyma losses in each soil layer
          call ch4_aere (bounds, &
@@ -1645,23 +1675,67 @@ contains
               num_soilp, filter_soilp, &
               jwt(begc:endc), sat, lake, &
               canopystate_vars, soilstate_vars, energyflux_vars, &
-              ch4_vars)
+              ch4_vars, dtime)
 
          ! calculate CH4 ebullition losses in each soil layer
          call ch4_ebul (bounds, &
               num_soilc, filter_soilc, &
               jwt(begc:endc), sat, lake, &
               atm2lnd_vars, lakestate_vars, soilstate_vars, &
-              ch4_vars)
+              ch4_vars, dtime)
 
          ! Solve CH4 reaction/diffusion equation 
          ! Competition for oxygen will occur here.
          call ch4_tran (bounds, &
               num_soilc, filter_soilc, &
               jwt(begc:endc), dtime_ch4, sat, lake, &
-              soilstate_vars, ch4_vars)
+              soilstate_vars, ch4_vars, dtime)
 
-      enddo ! sat/unsat
+       !
+       sat = 1
+       do fc = 1, num_soilc
+          c = filter_soilc(fc)
+          jwt(c) = 0
+       end do
+
+       ! calculate CH4 production in each soil layer
+       call ch4_prod (bounds, &
+            num_soilc, filter_soilc, &
+            num_soilp, filter_soilp, &
+            jwt(begc:endc), sat, lake, &
+            soilstate_vars, &
+            ch4_vars, dtime)
+
+       ! calculate CH4 oxidation in each soil layer
+       call ch4_oxid (bounds, &
+            num_soilc, filter_soilc, &
+            jwt(begc:endc), sat, lake, &
+            soilstate_vars, ch4_vars, dtime)
+
+       ! calculate CH4 aerenchyma losses in each soil layer
+       call ch4_aere (bounds, &
+            num_soilc, filter_soilc, &
+            num_soilp, filter_soilp, &
+            jwt(begc:endc), sat, lake, &
+            canopystate_vars, soilstate_vars, energyflux_vars, &
+            ch4_vars, dtime)
+
+       ! calculate CH4 ebullition losses in each soil layer
+       call ch4_ebul (bounds, &
+            num_soilc, filter_soilc, &
+            jwt(begc:endc), sat, lake, &
+            atm2lnd_vars, lakestate_vars, soilstate_vars, &
+            ch4_vars, dtime)
+
+       ! Solve CH4 reaction/diffusion equation
+       ! Competition for oxygen will occur here.
+       call ch4_tran (bounds, &
+            num_soilc, filter_soilc, &
+            jwt(begc:endc), dtime_ch4, sat, lake, &
+            soilstate_vars, ch4_vars, dtime)
+
+
+      !end do ! sat/unsat
 
       !-------------------------------------------------
       ! Now do over lakes
@@ -1680,13 +1754,13 @@ contains
               num_lakec, filter_lakec, &
               0, dummyfilter, jwt(begc:endc), sat, lake, &
               soilstate_vars, &
-              ch4_vars)
+              ch4_vars, dtime)
 
          ! calculate CH4 oxidation in each lake layer
          call ch4_oxid (bounds, &
               num_lakec, filter_lakec, &
               jwt(begc:endc), sat, lake, &
-              soilstate_vars, ch4_vars)
+              soilstate_vars, ch4_vars, dtime)
 
          ! calculate CH4 aerenchyma losses in each lake layer
          ! The p filter will not be used here; the relevant column vars will just be set to 0.
@@ -1694,21 +1768,21 @@ contains
               num_lakec, filter_lakec, &
               0, dummyfilter, jwt(begc:endc), sat, lake, &
               canopystate_vars, soilstate_vars, energyflux_vars, &
-              ch4_vars)
+              ch4_vars, dtime)
 
          ! calculate CH4 ebullition losses in each lake layer
          call ch4_ebul (bounds, &
               num_lakec, filter_lakec, &
               jwt(begc:endc), sat, lake, &
               atm2lnd_vars, lakestate_vars, soilstate_vars, &
-              ch4_vars)
+              ch4_vars, dtime)
 
          ! Solve CH4 reaction/diffusion equation 
          ! Competition for oxygen will occur here.
          call ch4_tran (bounds, &
               num_lakec, filter_lakec, &
               jwt(begc:endc), dtime_ch4, sat, lake, &
-              soilstate_vars, ch4_vars)
+              soilstate_vars, ch4_vars, dtime)
 
       end if
 
@@ -1859,15 +1933,15 @@ contains
       ! Now average up to gridcell for fluxes
       call c2g( bounds, &
            ch4_oxid_tot(begc:endc), ch4co2f(begg:endg),        &
-           c2l_scale_type= 'unity', l2g_scale_type='unity' )
+           c2l_scale_type= 0, l2g_scale_type=0 )
 
       call c2g( bounds, &
            ch4_prod_tot(begc:endc), ch4prodg(begg:endg),       &
-           c2l_scale_type= 'unity', l2g_scale_type='unity' )
+           c2l_scale_type= 0, l2g_scale_type=0 )
 
       call c2g( bounds, &
            nem_col(begc:endc), nem_grc(begg:endg),               &
-           c2l_scale_type= 'unity', l2g_scale_type='unity' )
+           c2l_scale_type= 0, l2g_scale_type=0 )
 
     end associate
 
@@ -1877,7 +1951,7 @@ contains
   subroutine ch4_prod (bounds, num_methc, filter_methc, num_methp, &
        filter_methp, jwt, sat, lake, &
        soilstate_vars, &
-       ch4_vars)
+       ch4_vars, dtime)
     !
     ! !DESCRIPTION:
     ! Production is done below the water table, based on CN heterotrophic respiration.
@@ -1903,12 +1977,13 @@ contains
     logical                 , intent(in)    :: lake                ! function called with lake filter
     type(soilstate_type)    , intent(inout) :: soilstate_vars
     type(ch4_type)          , intent(inout) :: ch4_vars
+    real(r8), intent(in) :: dtime
+
     !
     ! !LOCAL VARIABLES:
     integer  :: p,c,j,g          ! indices
     integer  :: fc               ! column index
     integer  :: fp               ! PATCH index
-    real(r8) :: dtime
     real(r8) :: base_decomp      ! base rate (mol/m2/s)
     real(r8) :: q10lake          ! For now, take to be the same as q10ch4 * 1.5.
     real(r8) :: q10lakebase      ! (K) base temperature for lake CH4 production
@@ -1991,7 +2066,6 @@ contains
          co2_decomp_depth => ch4_vars%co2_decomp_depth_sat_col   ! Output: [real(r8) (:,:)]  CO2 production during decomposition in each soil layer (nlevsoi) (mol/m3/s)
       endif
 
-      dtime = get_step_size()
 
       q10ch4           = CH4ParamsInst%q10ch4
       q10ch4base       = CH4ParamsInst%q10ch4base
@@ -2011,7 +2085,7 @@ contains
 
       ! PATCH loop to calculate vertically resolved column-averaged root respiration
       if (.not. lake) then
-         rr_vr(bounds%begc:bounds%endc,:) = nan
+         rr_vr(bounds%begc:bounds%endc,:) = spval
 
          do fp = 1, num_methc
             c = filter_methc(fp)
@@ -2211,14 +2285,13 @@ contains
   subroutine ch4_oxid (bounds, &
        num_methc, filter_methc, &
        jwt, sat, lake, &
-       soilstate_vars, ch4_vars)
+       soilstate_vars, ch4_vars, dtime)
     !
     ! !DESCRIPTION:
     ! Oxidation is based on double Michaelis-Mentin kinetics, and is adjusted for low soil moisture.
     ! Oxidation will be limited by available oxygen in ch4_tran.
     
     ! !USES:
-    use clm_time_manager, only : get_step_size
     !
     ! !ARGUMENTS:
     type(bounds_type)      , intent(in) :: bounds    
@@ -2227,13 +2300,13 @@ contains
     integer                , intent(in) :: jwt( bounds%begc: ) ! index of the soil layer right above the water table (-) [col]
     integer                , intent(in) :: sat                 ! 0 = unsaturated; 1 = saturated
     logical                , intent(in) :: lake                ! function called with lake filter
-    type(soilstate_type)   , intent(in) :: soilstate_vars
+    type(soilstate_type)   , intent(inout) :: soilstate_vars
     type(ch4_type)         , intent(in) :: ch4_vars
+    real(r8), intent(in) :: dtime                         ! land model time step (sec)
     !
     ! !LOCAL VARIABLES:
     integer :: c,j                            ! indices
     integer :: fc                             ! column index
-    real(r8) :: dtime                         ! land model time step (sec)
     real(r8):: t0                             ! Base temperature for Q10
     real(r8):: porevol                        ! air-filled volume ratio to total soil volume
     real(r8):: h2osoi_vol_min                 ! h2osoi_vol restricted to be below watsat
@@ -2291,7 +2364,6 @@ contains
       endif
 
       ! Get land model time step
-      dtime = get_step_size()
 
       ! Set oxidation parameters
       vmax_ch4_oxid   = CH4ParamsInst%vmax_ch4_oxid
@@ -2364,7 +2436,7 @@ contains
        num_methp, filter_methp, &
        jwt, sat, lake, &
        canopystate_vars, soilstate_vars, energyflux_vars, &
-       ch4_vars)
+       ch4_vars, dtime)
     !
     ! !DESCRIPTION:
     ! Arctic c3 grass (which is often present in fens) and all vegetation in inundated areas is assumed to have
@@ -2375,7 +2447,6 @@ contains
 
     ! !USES:
     use elm_varcon       , only : rpi
-    use clm_time_manager , only : get_step_size
     use pftvarcon        , only : nc3_arctic_grass, crop, nc3_nonarctic_grass, nc4_grass, noveg
     use CH4varcon        , only : transpirationloss, usefrootc, use_aereoxid_prog
     !
@@ -2390,8 +2461,9 @@ contains
     logical                , intent(in)    :: lake             ! function called with lake filter
     type(canopystate_type) , intent(in)    :: canopystate_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
-    type(energyflux_type)  , intent(in)    :: energyflux_vars
+    type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
+    real(r8)               , intent(in) :: dtime
     !
     ! !LOCAL VARIABLES:
     integer  :: p,c,g,j                ! indices
@@ -2406,7 +2478,7 @@ contains
     real(r8) :: area_tiller            ! cross-sectional area of tillers (m^2/m^2)
     real(r8) :: tranloss               ! loss due to transpiration (mol / m3 /s)
     real(r8) :: aere, aeretran, oxaere ! (mol / m3 /s)
-    real(r8) :: k_h_cc, k_h_inv, dtime, oxdiffus, anpp, nppratio, h2osoi_vol_min, conc_ch4_wat
+    real(r8) :: k_h_cc, k_h_inv, oxdiffus, anpp, nppratio, h2osoi_vol_min, conc_ch4_wat
     real(r8) :: aerecond               ! aerenchyma conductance (m/s)
     ! ch4 aerenchyma parameters
     real(r8) :: aereoxid               ! fraction of methane flux entering aerenchyma rhizosphere 
@@ -2480,7 +2552,6 @@ contains
          ch4_prod_depth   =>  ch4_vars%ch4_prod_depth_sat_col   ! Input:  [real(r8) (:,:)]  production of CH4 in each soil layer (nlevsoi) (mol/m3/s)
       endif
 
-      dtime = get_step_size()
 
       ! Set aerenchyma parameters
       aereoxid           = CH4ParamsInst%aereoxid
@@ -2619,7 +2690,7 @@ contains
        num_methc, filter_methc, &
        jwt, sat, lake, &
        atm2lnd_vars, lakestate_vars, soilstate_vars, &
-       ch4_vars)
+       ch4_vars, dtime)
     !
     ! !DESCRIPTION:
     ! Bubbling is based on temperature & pressure dependent solubility (k_h_cc), 
@@ -2628,8 +2699,8 @@ contains
     ! Bubbles are released to the water table surface in ch4_tran.
 
     ! !USES:
-    use clm_time_manager   , only : get_step_size
-    use LakeCon           
+      
+    use LakeCon
     !
     ! !ARGUMENTS:
     type(bounds_type)      , intent(in)    :: bounds    
@@ -2642,12 +2713,13 @@ contains
     type(lakestate_type)   , intent(in)    :: lakestate_vars 
     type(soilstate_type)   , intent(in)    :: soilstate_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
+    real(r8) ,intent(in)  :: dtime   ! land model time step (sec)
+
     !
     ! !LOCAL VARIABLES:
     integer :: c,j,t    ! indices
     integer :: fc       ! soil filter column index
     integer :: fp       ! soil filter pft index
-    real(r8) :: dtime   ! land model time step (sec)
     real(r8) :: vgc     ! volumetric CH4 content (m3 CH4/m3 pore air)
     real(r8) :: vgc_min ! minimum aqueous CH4 content when ebullition ceases
     real(r8) :: k_h_inv ! 
@@ -2696,7 +2768,6 @@ contains
       endif
 
       ! Get land model time step
-      dtime = get_step_size()
       vgc_max = CH4ParamsInst%vgc_max
 
       bubble_f = 0.57_r8 ! CH4 content in gas bubbles (Kellner et al. 2006)
@@ -2754,7 +2825,7 @@ contains
   subroutine ch4_tran (bounds, &
        num_methc, filter_methc, &
        jwt, dtime_ch4, sat, lake, &
-       soilstate_vars, ch4_vars)
+       soilstate_vars, ch4_vars, dtime)
     !
     ! !DESCRIPTION:
     ! Solves the reaction & diffusion equation for the timestep.  First "competition" between processes for
@@ -2766,7 +2837,6 @@ contains
     ! Then CH4 diffusive flux is calculated and consistency is checked.
 
     ! !USES:
-    use clm_time_manager   , only : get_step_size, get_nstep
     use TridiagonalMod     , only : Tridiagonal
     use CH4varcon          , only : ch4frzout, use_aereoxid_prog
     !
@@ -2780,6 +2850,8 @@ contains
     real(r8)               , intent(in)    :: dtime_ch4           ! time step for ch4 calculations
     type(soilstate_type)   , intent(in)    :: soilstate_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
+    real(r8) ,intent(in)  :: dtime                               ! land model time step (sec)
+
     !
     ! !LOCAL VARIABLES:
     integer :: c,j,g,p,s,i,ll                                              ! indices
@@ -2787,7 +2859,6 @@ contains
     integer :: fp                                                          ! soil filter pft index
     integer  :: jtop(bounds%begc:bounds%endc)                              ! top level at each column
     integer :: iter                                                        ! iteration counter when dtime_ch4 < dtime
-    real(r8) :: dtime                                                      ! land model time step (sec)
     real(r8) :: at (bounds%begc:bounds%endc,0:nlevsoi)                     ! "a" vector for tridiagonal matrix
     real(r8) :: bt (bounds%begc:bounds%endc,0:nlevsoi)                     ! "b" vector for tridiagonal matrix
     real(r8) :: ct (bounds%begc:bounds%endc,0:nlevsoi)                     ! "c" vector for tridiagonal matrix
@@ -2920,8 +2991,6 @@ contains
       endif
 
       ! Get land model time step
-      dtime = get_step_size()
-      nstep = get_nstep()
 
       ! Set transport parameters
       satpow               = CH4ParamsInst%satpow
@@ -3616,12 +3685,11 @@ contains
   subroutine ch4_annualupdate(bounds, &
        num_methc, filter_methc, &
        num_methp, filter_methp, &
-       ch4_vars)
+       ch4_vars, dt, dayspyr)
     !
     ! !DESCRIPTION: Annual mean fields.
     !
     ! !USES:
-    use clm_time_manager, only: get_step_size, get_days_per_year, get_nstep
     use elm_varcon      , only: secspday
     !
     ! !ARGUMENTS:
@@ -3630,14 +3698,16 @@ contains
     integer                , intent(in)    :: filter_methc(:)   ! filter for soil columns
     integer                , intent(in)    :: num_methp         ! number of soil points in pft filter
     integer                , intent(in)    :: filter_methp(:)   ! patch filter for soil points
-    !type(carbonflux_type)  , intent(inout) :: carbonflux_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
+    real(r8),  intent(in)   :: dt        ! time step (seconds)
+    real(r8), intent(in) :: dayspyr
+
+
     !
     ! !LOCAL VARIABLES:
     integer :: c,p       ! indices
     integer :: fc        ! soil column filter indices
     integer :: fp        ! soil pft filter indices
-    real(r8):: dt        ! time step (seconds)
     real(r8):: secsperyear
     logical :: newrun
     !-----------------------------------------------------------------------
@@ -3660,8 +3730,7 @@ contains
          )
 
       ! set time steps
-      dt = real(get_step_size(), r8)
-      secsperyear = real( get_days_per_year() * secspday, r8)
+      secsperyear = real( dayspyr * secspday, r8)
 
       newrun = .false.
 

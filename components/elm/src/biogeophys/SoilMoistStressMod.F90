@@ -231,9 +231,7 @@ contains
     use decompMod       , only : bounds_type
     use CanopyStateType , only : canopystate_type
     use EnergyFluxType  , only : energyflux_type
-    use TemperatureType , only : temperature_type
     use SoilStateType   , only : soilstate_type
-    use WaterSTateType  , only : waterstate_type
     use SimpleMathMod   , only : array_normalization
     use VegetationType       , only : veg_pp
     !
@@ -313,8 +311,7 @@ contains
   !--------------------------------------------------------------------------------
   subroutine calc_root_moist_stress_clm45default(bounds, &
        nlevgrnd, fn, filterp, rootfr_unf, &
-       soilstate_vars, energyflux_vars, &
-       soil_water_retention_curve) 
+       soilstate_vars, energyflux_vars)
     !
     ! DESCRIPTIONS
     ! compute the root water stress using the default clm45 approach
@@ -325,11 +322,8 @@ contains
     use decompMod            , only : bounds_type
     use elm_varcon           , only : tfrz      !temperature where water freezes [K], this is taken as constant at the moment
     use VegetationPropertiesType     , only : veg_vp
-    use TemperatureType      , only : temperature_type
     use SoilStateType        , only : soilstate_type
     use EnergyFluxType       , only : energyflux_type
-    use WaterSTateType       , only : waterstate_type
-    use SoilWaterRetentionCurveMod, only : soil_water_retention_curve_type
     use VegetationType            , only : veg_pp
     use elm_varctl       , only : use_hydrstress
     !
@@ -342,7 +336,6 @@ contains
     real(r8)               , intent(in)    :: rootfr_unf(bounds%begp: , 1: ) 
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
-    class(soil_water_retention_curve_type), intent(in) :: soil_water_retention_curve
     !
     ! !LOCAL VARIABLES:
     real(r8), parameter :: btran0 = 0.0_r8  ! initial value
@@ -389,7 +382,8 @@ contains
                s_node = max(h2osoi_liqvol(c,j)/eff_porosity(c,j),0.01_r8)
 
                !smp_node = max(smpsc(veg_pp%itype(p)), -sucsat(c,j)*s_node**(-bsw(c,j)))
-               call soil_water_retention_curve%soil_suction(sucsat(c,j), s_node, bsw(c,j), smp_node)
+               smp_node = -sucsat(c,j)*s_node**( -bsw(c,j) )
+
                smp_node = max(smpsc(veg_pp%itype(p)), smp_node)
 
                rresis(p,j) = min( (eff_porosity(c,j)/watsat(c,j))* &
@@ -410,7 +404,7 @@ contains
                !smp_node_lf = max(smpsc(veg_pp%itype(p)), -sucsat(c,j)*(h2osoi_vol(c,j)/watsat(c,j))**(-bsw(c,j)))
                s_node = h2osoi_vol(c,j)/watsat(c,j)
 
-               call soil_water_retention_curve%soil_suction(sucsat(c,j), s_node, bsw(c,j), smp_node_lf)
+               smp_node_lf = -sucsat(c,j)*s_node**( -bsw(c,j) )
 
                !smp_node_lf =  -sucsat(c,j)*(h2osoi_vol(c,j)/watsat(c,j))**(-bsw(c,j))
                smp_node_lf = max(smpsc(veg_pp%itype(p)), smp_node_lf) 
@@ -437,8 +431,7 @@ contains
 
   !--------------------------------------------------------------------------------
   subroutine calc_root_moist_stress(bounds, nlevgrnd, fn, filterp, &
-       canopystate_vars, energyflux_vars,  soilstate_vars, &
-       soil_water_retention_curve)
+       canopystate_vars, energyflux_vars,  soilstate_vars)
     !
     ! DESCRIPTIONS
     ! compute the root water stress using different approaches
@@ -463,7 +456,6 @@ contains
     type(canopystate_type) , intent(in)    :: canopystate_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
-    class(soil_water_retention_curve_type), intent(in) :: soil_water_retention_curve
     !
     ! !LOCAL VARIABLES:
     integer :: p, f, j, c, l                                   ! indices
@@ -496,8 +488,7 @@ contains
             filterp = filterp,                          &
             energyflux_vars=energyflux_vars,            &
             soilstate_vars=soilstate_vars,              &
-            rootfr_unf=rootfr_unf(bounds%begp:bounds%endp,1:nlevgrnd), &
-            soil_water_retention_curve=soil_water_retention_curve)
+            rootfr_unf=rootfr_unf(bounds%begp:bounds%endp,1:nlevgrnd))
 
     case default
        call endrun(subname // ':: a root moisture stress function must be specified!')     

@@ -78,7 +78,9 @@ contains
                soilstate_vars, soilbeta(bounds%begc:bounds%endc))
 
        case default
-          call endrun(subname // ':: a soilevap stress function must be specified!')     
+#ifndef _OPENACC
+          call endrun('calc_soilevap_stress' //':: a soilevap stress function must be specified!')
+#endif
        end select
 
      end associate

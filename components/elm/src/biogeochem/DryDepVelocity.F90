@@ -79,8 +79,8 @@ Module DryDepVelocity
 
    contains
 
-     procedure , public  :: Init 
-     procedure , private :: InitAllocate 
+     procedure , public  :: Init
+     procedure , public  :: InitAllocate
 
   end type drydepvel_type
   !----------------------------------------------------------------------- 
@@ -103,6 +103,7 @@ CONTAINS
     ! !USES:
     use shr_infnan_mod , only : nan => shr_infnan_nan, assignment(=)
     use seq_drydep_mod , only : n_drydep, drydep_method, DD_XLND
+    use elm_varcon     , only : spval
     !
     ! !ARGUMENTS:
     class(drydepvel_type) :: this
@@ -116,7 +117,7 @@ CONTAINS
 
     ! Dry Deposition Velocity 
     if ( n_drydep > 0 .and. drydep_method == DD_XLND )then
-       allocate(this%velocity_patch(begp:endp, n_drydep));  this%velocity_patch(:,:) = nan 
+       allocate(this%velocity_patch(begp:endp, n_drydep));  this%velocity_patch(:,:) = spval
     end if
 
   end subroutine InitAllocate
@@ -283,12 +284,14 @@ CONTAINS
             if (elmveg == nc3crop                             ) wesveg = 2
             if (elmveg == nc3irrig                            ) wesveg = 2
             if (elmveg >= npcropmin .and. elmveg <= npcropmax ) wesveg = 2
+#ifndef _OPENACC
             if (wesveg == wveg_unset )then
                write(iulog,*) 'elmveg = ', elmveg, 'lun_pp%itype = ', lun_pp%itype(l)
                call endrun(decomp_index=pi, elmlevel=namep, &
                     msg='ERROR: Not able to determine Wesley vegetation type'//&
                     errMsg(__FILE__, __LINE__))
             end if
+#endif
 
             ! creat seasonality index used to index wesely data tables from LAI,  Bascially 
             !if elai is between max lai from input data and half that max the index_season=1 

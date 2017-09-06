@@ -27,140 +27,31 @@ module SurfaceAlbedoMod
   use ColumnDataType    , only : col_es, col_ws  
   use VegetationType    , only : veg_pp
   use VegetationDataType, only : veg_es, veg_ws  
+
+  use SurfaceAlbedoType , only : lake_melt_icealb, alblak, alblakwi
+  use SurfaceAlbedoType , only : albice, albsat, albdry, isoicol
+  use elm_instMod , only : alm_fates
   !
   implicit none
   save
   !
   ! !PUBLIC MEMBER FUNCTIONS:
-  public :: SurfaceAlbedoInitTimeConst
   public :: SurfaceAlbedo  ! Surface albedo and two-stream fluxes
   !
   ! !PRIVATE MEMBER FUNCTIONS:
   private :: SoilAlbedo    ! Determine ground surface albedo
   private :: TwoStream     ! Two-stream fluxes for canopy radiative transfer
   !
-  ! !PUBLIC DATA MEMBERS:
-  ! The CLM default albice values are too high.
-  ! Full-spectral albedo for land ice is ~0.5 (Paterson, Physics of Glaciers, 1994, p. 59)
-  ! This is the value used in CAM3 by Pritchard et al., GRL, 35, 2008.
-
-  ! albedo land ice by waveband (1=vis, 2=nir)
-  real(r8), public  :: albice(numrad) = (/ 0.80_r8, 0.55_r8 /)
-
-  ! namelist default setting for inputting alblakwi
-  real(r8), public  :: lake_melt_icealb(numrad) = (/ 0.10_r8, 0.10_r8/)
-
-  ! albedo frozen lakes by waveband (1=vis, 2=nir) 
-  ! unclear what the reference is for this
-  real(r8), private :: alblak(numrad) = (/0.60_r8, 0.40_r8/)
-
-  ! albedo of melting lakes due to puddling, open water, or white ice
-  ! From D. Mironov (2010) Boreal Env. Research
-  ! To revert albedo of melting lakes to the cold snow-free value, set
-  ! lake_melt_icealb namelist to 0.60, 0.40 like alblak above.
-  real(r8), private :: alblakwi(numrad)            
-
   ! Coefficient for calculating ice "fraction" for lake surface albedo
   ! From D. Mironov (2010) Boreal Env. Research
   real(r8), parameter :: calb = 95.6_r8   
+  
 
-  !
-  ! !PRIVATE DATA FUNCTIONS:
-  real(r8), allocatable, private :: albsat(:,:) ! wet soil albedo by color class and waveband (1=vis,2=nir)
-  real(r8), allocatable, private :: albdry(:,:) ! dry soil albedo by color class and waveband (1=vis,2=nir)
-  integer , allocatable, private :: isoicol(:)  ! column soil color class
+
   !-----------------------------------------------------------------------
 
 contains
 
-  !-----------------------------------------------------------------------
-  subroutine SurfaceAlbedoInitTimeConst(bounds)
-    !
-    ! !DESCRIPTION:
-    ! Initialize module time constant variables
-    !
-    ! !USES:
-    use shr_log_mod, only : errMsg => shr_log_errMsg
-    use fileutils  , only : getfil
-    use abortutils , only : endrun
-    use ncdio_pio  , only : file_desc_t, ncd_defvar, ncd_io, ncd_pio_openfile, ncd_pio_closefile
-    use spmdMod    , only : masterproc
-    !
-    ! !ARGUMENTS:
-    type(bounds_type), intent(in) :: bounds  
-    !
-    ! !LOCAL VARIABLES:
-    integer            :: c,g          ! indices
-    integer            :: mxsoil_color ! maximum number of soil color classes
-    type(file_desc_t)  :: ncid         ! netcdf id
-    character(len=256) :: locfn        ! local filename
-    integer            :: ier          ! error status
-    logical            :: readvar 
-    integer  ,pointer  :: soic2d (:)   ! read in - soil color 
-    !---------------------------------------------------------------------
-
-    ! Allocate module variable for soil color
-
-    allocate(isoicol(bounds%begc:bounds%endc)) 
-
-    ! Determine soil color and number of soil color classes 
-    ! if number of soil color classes is not on input dataset set it to 8
-
-    call getfil (fsurdat, locfn, 0)
-    call ncd_pio_openfile (ncid, locfn, 0)
-
-    call ncd_io(ncid=ncid, varname='mxsoil_color', flag='read', data=mxsoil_color, readvar=readvar)
-    if ( .not. readvar ) mxsoil_color = 8  
-
-    allocate(soic2d(bounds%begg:bounds%endg)) 
-    call ncd_io(ncid=ncid, varname='SOIL_COLOR', flag='read', data=soic2d, dim1name=grlnd, readvar=readvar)
-    if (.not. readvar) then
-       call endrun(msg=' ERROR: SOIL_COLOR NOT on surfdata file'//errMsg(__FILE__, __LINE__)) 
-    end if
-    do c = bounds%begc, bounds%endc
-       g = col_pp%gridcell(c)
-       isoicol(c) = soic2d(g)
-    end do
-    deallocate(soic2d)
-
-    call ncd_pio_closefile(ncid)
-
-    ! Determine saturated and dry soil albedos for n color classes and 
-    ! numrad wavebands (1=vis, 2=nir)
-
-    allocate(albsat(mxsoil_color,numrad), albdry(mxsoil_color,numrad), stat=ier)
-    if (ier /= 0) then
-       write(iulog,*)'allocation error for albsat, albdry'
-       call endrun(msg=errMsg(__FILE__, __LINE__)) 
-    end if
-
-    if (masterproc) then
-       write(iulog,*) 'Attempting to read soil colo data .....'
-    end if
-    
-    if (mxsoil_color == 8) then
-       albsat(1:8,1) = (/0.12_r8,0.11_r8,0.10_r8,0.09_r8,0.08_r8,0.07_r8,0.06_r8,0.05_r8/)
-       albsat(1:8,2) = (/0.24_r8,0.22_r8,0.20_r8,0.18_r8,0.16_r8,0.14_r8,0.12_r8,0.10_r8/)
-       albdry(1:8,1) = (/0.24_r8,0.22_r8,0.20_r8,0.18_r8,0.16_r8,0.14_r8,0.12_r8,0.10_r8/)
-       albdry(1:8,2) = (/0.48_r8,0.44_r8,0.40_r8,0.36_r8,0.32_r8,0.28_r8,0.24_r8,0.20_r8/)
-    else if (mxsoil_color == 20) then
-       albsat(1:20,1) = (/0.25_r8,0.23_r8,0.21_r8,0.20_r8,0.19_r8,0.18_r8,0.17_r8,0.16_r8,&
-            0.15_r8,0.14_r8,0.13_r8,0.12_r8,0.11_r8,0.10_r8,0.09_r8,0.08_r8,0.07_r8,0.06_r8,0.05_r8,0.04_r8/)
-       albsat(1:20,2) = (/0.50_r8,0.46_r8,0.42_r8,0.40_r8,0.38_r8,0.36_r8,0.34_r8,0.32_r8,&
-            0.30_r8,0.28_r8,0.26_r8,0.24_r8,0.22_r8,0.20_r8,0.18_r8,0.16_r8,0.14_r8,0.12_r8,0.10_r8,0.08_r8/)
-       albdry(1:20,1) = (/0.36_r8,0.34_r8,0.32_r8,0.31_r8,0.30_r8,0.29_r8,0.28_r8,0.27_r8,&
-            0.26_r8,0.25_r8,0.24_r8,0.23_r8,0.22_r8,0.20_r8,0.18_r8,0.16_r8,0.14_r8,0.12_r8,0.10_r8,0.08_r8/)
-       albdry(1:20,2) = (/0.61_r8,0.57_r8,0.53_r8,0.51_r8,0.49_r8,0.48_r8,0.45_r8,0.43_r8,&
-            0.41_r8,0.39_r8,0.37_r8,0.35_r8,0.33_r8,0.31_r8,0.29_r8,0.27_r8,0.25_r8,0.23_r8,0.21_r8,0.16_r8/)
-    else
-       write(iulog,*)'maximum color class = ',mxsoil_color,' is not supported'
-       call endrun(msg=errMsg(__FILE__, __LINE__)) 
-    end if
-
-    ! Set alblakwi
-    alblakwi(:) = lake_melt_icealb(:)
-
-  end subroutine SurfaceAlbedoInitTimeConst
 
   !-----------------------------------------------------------------------
   subroutine SurfaceAlbedo(bounds,     &
@@ -169,10 +60,9 @@ contains
         num_urbanc   , filter_urbanc,  &
         num_urbanp   , filter_urbanp,  &
         nextsw_cday  , declinp1,       &
-        aerosol_vars, canopystate_vars,&
-        lakestate_vars, surfalb_vars,  &
-        alm_fates)
-    !
+        aerosol_vars, canopystate_vars, &
+        lakestate_vars, surfalb_vars &
+        )
     ! !DESCRIPTION:
     ! Surface albedo and two-stream fluxes
     ! Surface albedos. Also fluxes (per unit incoming direct and diffuse
@@ -201,8 +91,7 @@ contains
     use shr_orb_mod
     use clm_time_manager   , only : get_nstep
     use abortutils         , only : endrun
-    use elm_varctl         , only : iulog, subgridflag, use_snicar_frc, use_fates, use_snicar_ad
-    use ELMFatesInterfaceMod, only : hlm_fates_interface_type
+    use elm_varctl         , only : iulog, subgridflag, use_snicar_frc, use_snicar_ad
 
     !
     ! !ARGUMENTS:
@@ -221,7 +110,6 @@ contains
      type(canopystate_type) , intent(in)    :: canopystate_vars
      type(lakestate_type)   , intent(in)    :: lakestate_vars
      type(surfalb_type)     , intent(inout) :: surfalb_vars
-     type(hlm_fates_interface_type), intent(inout)  :: alm_fates
     !
     ! !LOCAL VARIABLES:
      integer  :: i                                                                         ! index for layers [idx]
@@ -947,9 +835,11 @@ contains
           saisum = saisum + tsai_z(p,iv)
        end do
        if (abs(laisum-elai(p)) > 1.e-06_r8 .or. abs(saisum-esai(p)) > 1.e-06_r8) then
+#ifndef _OPENACC
           write (iulog,*) 'multi-layer canopy error 01 in SurfaceAlbedo: ',&
                nrad(p),elai(p),laisum,esai(p),saisum
           call endrun(decomp_index=p, elmlevel=namep, msg=errmsg(__FILE__, __LINE__))
+#endif
        end if
 
        ! Repeat to find canopy layers buried by snow
@@ -987,9 +877,11 @@ contains
              saisum = saisum + tsai_z(p,iv)
           end do
           if (abs(laisum-tlai(p)) > 1.e-06_r8 .or. abs(saisum-tsai(p)) > 1.e-06_r8) then
+#ifndef _OPENACC
              write (iulog,*) 'multi-layer canopy error 02 in SurfaceAlbedo: ',nrad(p),ncan(p)
              write (iulog,*) tlai(p),elai(p),blai(p),laisum,tsai(p),esai(p),bsai(p),saisum
              call endrun(decomp_index=p, elmlevel=namep, msg=errmsg(__FILE__, __LINE__))
+#endif
           end if
        end if
 
@@ -1038,9 +930,11 @@ contains
     ! Only perform on vegetated pfts where coszen > 0
 
     if(use_fates)then
+#ifndef _OPENACC
        call alm_fates%wrap_canopy_radiation(bounds, &
             num_vegsol, filter_vegsol, &
             coszen_patch(bounds%begp:bounds%endp), surfalb_vars)
+#endif
     else
        
       call TwoStream (bounds, filter_vegsol, num_vegsol, &

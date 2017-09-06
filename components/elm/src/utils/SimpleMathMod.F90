@@ -1,6 +1,5 @@
 module SimpleMathMod
 
-#include "shr_assert.h"
   !------------------------------------------------------------------------------
   !
   ! DESCRIPTIONS:
@@ -84,7 +83,6 @@ contains
   !
   !USES
   use shr_kind_mod, only: r8 => shr_kind_r8
-  use shr_log_mod    , only : errMsg => shr_log_errMsg  
   implicit none
   integer,  intent(in) :: lbj1         !left bound of dim 1
   integer,  intent(in) :: lbj2         !left bound of dim 2
@@ -102,8 +100,6 @@ contains
   real(r8) :: arr_sum(lbj1:ubj1)
 
   ! Enforce expected array sizes
-  SHR_ASSERT_ALL((ubound(arr2d_inout) == (/ubj1, ubj2/)),      errMsg(__FILE__, __LINE__))
-  
 
   arr_sum(:) = 0._r8  
   do j2 = lbj2, ubj2  
@@ -140,7 +136,6 @@ contains
   ! USES
   !
   use shr_kind_mod, only: r8 => shr_kind_r8
-  use shr_log_mod    , only : errMsg => shr_log_errMsg   
   implicit none
   integer,  intent(in) :: lbj1         !left bound of dim 1
   integer,  intent(in) :: lbj2         !left bound of dim 2
@@ -155,8 +150,6 @@ contains
   integer :: j, f, p
   
   ! Enforce expected array sizes
-  SHR_ASSERT_ALL((ubound(arr2d_inout) == (/ubj1, ubj2/)),      errMsg(__FILE__, __LINE__))
-  SHR_ASSERT_ALL((ubound(arr1d_in) == (/ubj1/)),            errMsg(__FILE__, __LINE__))
 
 
   do j = lbj2, ubj2
@@ -183,8 +176,6 @@ contains
   !USES
   !
   use shr_kind_mod, only: r8 => shr_kind_r8
-  use shr_assert_mod , only : shr_assert
-  use shr_log_mod    , only : errMsg => shr_log_errMsg  
   implicit none
   real(r8), intent(in) :: arr1d_in(:)     !scaling factor
   integer,  intent(in) :: which_dim        !which dimension is scaled
@@ -197,8 +188,6 @@ contains
   sz2=size(arr2d_inout,2)
   
   if(which_dim==1)then
-    ! Enforce expected array sizes   
-    call shr_assert(sz1    == size(arr1d_in), errMsg(__FILE__, __LINE__))
     
     do j2 = 1, sz2
       do j1 = 1, sz1
@@ -208,8 +197,6 @@ contains
       enddo
     enddo
   else
-    ! Enforce expected array sizes   
-    call shr_assert(sz2    == size(arr1d_in), errMsg(__FILE__, __LINE__))  
 
     do j2 = 1, sz2
       do j1 = 1, sz1
@@ -223,4 +210,46 @@ contains
   return
   end subroutine array_div_vector_nofilter
   
+  PURE INTEGER FUNCTION MAXLOC_(ARR)
+        !$ACC ROUTINE SEQ
+        use shr_kind_mod, only: r8 => shr_kind_r8
+        REAL(R8),DIMENSION(:),INTENT(IN) :: ARR
+        REAL(R8),DIMENSION(SIZE(ARR)) :: LIS
+        REAL(R8) :: VAL
+        INTEGER :: I
+        VAL=MAXVAL(ARR)
+        DO I=1,SIZE(ARR),1
+            IF(ARR(I)==VAL)THEN
+                MAXLOC_=I
+                RETURN
+            END IF
+        END DO
+    END FUNCTION MAXLOC_
+
+    subroutine matvec_acc(START,END_,RES,A,X)
+      
+      !As of Cuda 10.1 calling cuBlas functions from device code
+      !is not supported.  So must have create any blas routines with
+      !acc routine seq manually.  This is for square matrices Matrix Vector Multiplication
+      !used only in PhotosynthesisMod::calcstressroot so far
+
+      use shr_kind_mod , only : r8 => shr_kind_r8
+      INTEGER, INTENT(IN) :: START, END_ !section of matrices/vector to multiply
+      REAL(R8) , INTENT(INOUT) :: RES(START:END_)
+      REAL(R8) , INTENT(IN)  :: A(START:END_,START:END_), X(START:END_)
+      REAL(R8)  :: transA(START:END_,START:END_)
+      REAL(R8) :: SUM
+      INTEGER :: COL, ROW
+
+      transA = transpose(A)
+
+      DO COL = START, END_
+
+        RES(COL) = DOT_PRODUCT(transA(start:end_,col),X(start:end_))
+
+      END DO
+
+    end subroutine matvec_acc
+
+
 end module SimpleMathMod

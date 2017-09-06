@@ -12,6 +12,7 @@ module WaterBudgetMod
   use SoilHydrologyType , only : soilhydrology_type
   use GridcellDataType  , only : grc_ws
   use ColumnDataType    , only : col_ws
+  use timeinfoMod
 
   implicit none
   save
@@ -665,7 +666,7 @@ contains
     ! Set grid-level water states at the beginning of a month
     !
     ! !USES:
-    use subgridAveMod    , only : p2c, c2g
+    use subgridAveMod    , only : p2c, c2g, urbanf, unity
     use elm_varpar       , only : nlevgrnd, nlevsoi, nlevurb
     use elm_varcon       , only : spval
     use column_varcon    , only : icol_roof, icol_sunwall, icol_shadewall 
@@ -687,26 +688,25 @@ contains
          )
 
       ! Get current and previous dates to determine if a new month started
-      call get_prev_date(year_curr, month_curr, day_curr, sec_curr);
-      call get_prev_date(year_prev, month_prev, day_prev, sec_prev)
+
 
       ! If at the beginning of a simulation, save grid-level TWS based on
       ! 'begwb' from the current time step
-      if ( day_curr == 1 .and. sec_curr == 0 .and. get_nstep() <= 1 ) then
+      if ( day_curr == 1 .and. secs_curr == 0 .and. nstep_mod <= 1 ) then
          call c2g( bounds, &
               begwb(bounds%begc:bounds%endc), &
               tws_month_beg_grc(bounds%begg:bounds%endg), &
-              c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+              c2l_scale_type= urbanf, l2g_scale_type=unity )
       endif
 
       ! If multiple steps into a simulation and the last time step was the
       ! end of a month, save grid-level TWS based on 'endwb' from the last
       ! time step
-      if (get_nstep() > 1 .and. day_prev == 1 .and. sec_prev == 0) then
+      if (nstep_mod  > 1 .and. day_prev == 1 .and. secs_prev == 0) then
          call c2g( bounds, &
               endwb(bounds%begc:bounds%endc), &
               tws_month_beg_grc(bounds%begg:bounds%endg), &
-              c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+              c2l_scale_type= urbanf, l2g_scale_type=unity )
       endif
 
     end associate
@@ -720,9 +720,8 @@ contains
     ! Set grid-level water states at the end of a month
     !
     ! !USES:
-    use subgridAveMod    , only : c2g
+    use subgridAveMod    , only : c2g, urbanf, unity
     use elm_varcon       , only : spval
-    use clm_time_manager , only : get_curr_date, get_nstep
     !
     ! !ARGUMENTS:
     type(bounds_type)         , intent(in)    :: bounds
@@ -737,13 +736,12 @@ contains
          )
 
       ! If this is the end of a month, save grid-level total water storage
-      call get_curr_date(year, mon, day, sec);
 
-      if (get_nstep() >= 1 .and. (day == 1 .and. sec == 0)) then
+      if (nstep_mod >= 1 .and. (day_curr == 1 .and. secs_curr == 0)) then
          call c2g( bounds, &
               endwb(bounds%begc:bounds%endc), &
               tws_month_end_grc(bounds%begg:bounds%endg), &
-              c2l_scale_type= 'urbanf', l2g_scale_type='unity' )
+              c2l_scale_type= urbanf, l2g_scale_type=unity)
       else
          tws_month_end_grc(bounds%begg:bounds%endg) = spval
       end if

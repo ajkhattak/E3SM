@@ -34,7 +34,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine SurfaceRunoff (bounds, num_hydrologyc, filter_hydrologyc, &
-       num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars)
+       num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars, dtime)
     !
     ! !DESCRIPTION:
     ! Calculate surface runoff
@@ -44,7 +44,6 @@ contains
     use column_varcon   , only : icol_roof, icol_sunwall, icol_shadewall
     use column_varcon   , only : icol_road_imperv, icol_road_perv
     use elm_varpar      , only : nlevsoi, nlevgrnd, maxpatch_pft
-    use clm_time_manager, only : get_step_size
     use elm_varpar      , only : nlayer, nlayert
     use elm_varctl      , only : use_var_soil_thick
     use abortutils      , only : endrun
@@ -58,11 +57,11 @@ contains
     integer                  , intent(in)    :: filter_urbanc(:)     ! column filter for urban points
     type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
     type(soilstate_type)     , intent(in)    :: soilstate_vars
+    real(r8), intent(in)  :: dtime
     !
     ! !LOCAL VARIABLES:
     integer  :: c,j,fc,g,l,i                               !indices
     integer  :: nlevbed                                    !# levels to bedrock
-    real(r8) :: dtime                                      !land model time step (sec)
     real(r8) :: xs(bounds%begc:bounds%endc)                !excess soil water above urban ponding limit
     real(r8) :: vol_ice(bounds%begc:bounds%endc,1:nlevgrnd) !partial volume of ice lens in layer
     real(r8) :: fff(bounds%begc:bounds%endc)               !decay factor (m-1)
@@ -119,7 +118,6 @@ contains
 
       ! Get time step
 
-      dtime = get_step_size()
 
       do fc = 1, num_hydrologyc
          c = filter_hydrologyc(fc)
@@ -183,7 +181,9 @@ contains
          endif
          if (origflag == 1) then
             if (use_vichydro) then
+#ifndef _OPENACC
                call endrun(msg="VICHYDRO is not available for origflag=1"//errmsg(__FILE__, __LINE__))
+#endif
             else
                fcov(c) = (1._r8 - fracice(c,1)) * fsat(c) + fracice(c,1)
             end if
@@ -247,7 +247,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine Infiltration(bounds, num_hydrologyc, filter_hydrologyc, num_urbanc, filter_urbanc, &
-        soilhydrology_vars, soilstate_vars)
+        soilhydrology_vars, soilstate_vars, dtime)
      !
      ! !DESCRIPTION:
      ! Calculate infiltration into surface soil layer (minus the evaporation)
@@ -259,7 +259,6 @@ contains
      use elm_varcon       , only : denh2o, denice, roverg, wimp, pc, mu, tfrz
      use column_varcon    , only : icol_roof, icol_road_imperv, icol_sunwall, icol_shadewall, icol_road_perv
      use landunit_varcon  , only : istsoil, istcrop
-     use clm_time_manager , only : get_step_size
      !
      ! !ARGUMENTS:
      type(bounds_type)        , intent(in)    :: bounds               
@@ -269,11 +268,11 @@ contains
      integer                  , intent(in)    :: filter_urbanc(:)     ! column filter for urban points
      type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
      type(soilstate_type)     , intent(inout) :: soilstate_vars
+     real(r8), intent(in)  :: dtime
      !
      ! !LOCAL VARIABLES:
      integer  :: c,j,l,fc                                   ! indices
      integer  :: nlevbed                                    !# levels to bedrock
-     real(r8) :: dtime                                      ! land model time step (sec)
      real(r8) :: s1,su,v                                    ! variable to calculate qinmax
      real(r8) :: qinmax                                     ! maximum infiltration capacity (mm/s)
      real(r8) :: vol_ice(bounds%begc:bounds%endc,1:nlevgrnd) ! partial volume of ice lens in layer
@@ -355,7 +354,6 @@ contains
           icefrac              =>    soilhydrology_vars%icefrac_col            & ! Output: [real(r8) (:,:) ]  fraction of ice                                 
               )
 
-       dtime = get_step_size()
 
        ! Infiltration into surface soil layer (minus the evaporation)
        do fc = 1, num_hydrologyc
@@ -523,13 +521,13 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine WaterTable(bounds, num_hydrologyc, filter_hydrologyc, num_urbanc, filter_urbanc, &
-        soilhydrology_vars, soilstate_vars)
+        soilhydrology_vars, soilstate_vars, dtime)
      !
      ! !DESCRIPTION:
      ! Calculate watertable, considering aquifer recharge but no drainage.
      !
      ! !USES:
-     use clm_time_manager , only : get_step_size
+      
      use elm_varcon       , only : pondmx, tfrz, watmin,denice,denh2o
      use elm_varpar       , only : nlevsoi, nlevgrnd
      use column_varcon    , only : icol_roof, icol_road_imperv
@@ -545,11 +543,11 @@ contains
      integer                  , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
      type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
      type(soilstate_type)     , intent(in)    :: soilstate_vars
+     real(r8), intent(in)  :: dtime
      !
      ! !LOCAL VARIABLES:
      integer  :: c,j,fc,i,l,g                            ! indices
      integer  :: nlevbed                                 ! # layers to bedrock
-     real(r8) :: dtime                                   ! land model time step (sec)
      real(r8) :: xs(bounds%begc:bounds%endc)             ! water needed to bring soil moisture to watmin (mm)
      real(r8) :: dzmm(bounds%begc:bounds%endc,1:nlevgrnd) ! layer thickness (mm)
      integer  :: jwt(bounds%begc:bounds%endc)            ! index of the soil layer right above the water table (-)
@@ -629,7 +627,6 @@ contains
 
        ! Get time step
 
-       dtime = get_step_size()
 
        ! Convert layer thicknesses from m to mm
 
@@ -865,13 +862,13 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine Drainage(bounds, num_hydrologyc, filter_hydrologyc, num_urbanc, filter_urbanc,  &
-        soilhydrology_vars, soilstate_vars)
+        soilhydrology_vars, soilstate_vars, dtime)
      !
      ! !DESCRIPTION:
      ! Calculate subsurface drainage
      !
      ! !USES:
-     use clm_time_manager , only : get_step_size
+      
      use elm_varpar       , only : nlevsoi, nlevgrnd, nlayer, nlayert
      use elm_varcon       , only : pondmx, tfrz, watmin,rpi, secspday, nlvic
      use column_varcon    , only : icol_roof, icol_road_imperv, icol_road_perv
@@ -888,12 +885,12 @@ contains
      integer                  , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
      type(soilstate_type)     , intent(in)    :: soilstate_vars
      type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
+     real(r8), intent(in)  :: dtime
      !
      ! !LOCAL VARIABLES:
      character(len=32) :: subname = 'Drainage'           ! subroutine name
      integer  :: c,j,fc,i                                ! indices
      integer  :: nlevbed                                 ! # layers to bedrock
-     real(r8) :: dtime                                   ! land model time step (sec)
      real(r8) :: xs(bounds%begc:bounds%endc)             ! water needed to bring soil moisture to watmin (mm)
      real(r8) :: dzmm(bounds%begc:bounds%endc,1:nlevgrnd) ! layer thickness (mm)
      integer  :: jwt(bounds%begc:bounds%endc)            ! index of the soil layer right above the water table (-)
@@ -995,7 +992,6 @@ contains
 
        ! Get time step
 
-       dtime = get_step_size()
 
        ! Convert layer thicknesses from m to mm
 
@@ -1218,7 +1214,9 @@ contains
              ! add ice impedance factor to baseflow
              if(origflag == 1) then 
                 if (use_vichydro) then
+#ifndef _OPENACC
                    call endrun(msg="VICHYDRO is not available for origflag=1"//errmsg(__FILE__, __LINE__))
+#endif
                 else
                    fracice_rsub(c) = max(0._r8,exp(-3._r8*(1._r8-(icefracsum/dzsum))) &
                         - exp(-3._r8))/(1.0_r8-exp(-3._r8))
@@ -1301,9 +1299,9 @@ contains
                 rsub_top_tot = - rsub_top(c) * dtime
                 !should never be positive... but include for completeness
                 if(rsub_top_tot > 0.) then !rising water table
-
+#ifndef _OPENACC
                    call endrun(msg="RSUB_TOP IS POSITIVE in Drainage!"//errmsg(__FILE__, __LINE__))
-
+#endif
                 else ! deepening water table
                    if (use_vichydro) then
                       wtsub_vic = 0._r8
@@ -1507,13 +1505,13 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine DrainageVSFM(bounds, num_hydrologyc, filter_hydrologyc, num_urbanc, filter_urbanc,  &
-        soilhydrology_vars, soilstate_vars)
+        soilhydrology_vars, soilstate_vars, dtime)
      !
      ! !DESCRIPTION:
      ! Calculate subsurface drainage
      !
      ! !USES:
-     use clm_time_manager , only : get_step_size
+      
      use elm_varpar       , only : nlevsoi, nlevgrnd, nlayer, nlayert
      use elm_varcon       , only : pondmx, tfrz, watmin,rpi, secspday, nlvic
      use column_varcon    , only : icol_roof, icol_road_imperv, icol_road_perv
@@ -1529,11 +1527,11 @@ contains
      integer                  , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
      type(soilstate_type)     , intent(in)    :: soilstate_vars
      type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
+     real(r8), intent(in)  :: dtime
      !
      ! !LOCAL VARIABLES:
      character(len=32) :: subname = 'Drainage'           ! subroutine name
      integer  :: c,j,fc,i                                ! indices
-     real(r8) :: dtime                                   ! land model time step (sec)
      real(r8) :: xs(bounds%begc:bounds%endc)             ! water needed to bring soil moisture to watmin (mm)
      real(r8) :: dzmm(bounds%begc:bounds%endc,1:nlevgrnd) ! layer thickness (mm)
      integer  :: jwt(bounds%begc:bounds%endc)            ! index of the soil layer right above the water table (-)
@@ -1636,7 +1634,6 @@ contains
 
        ! Get time step
 
-       dtime = get_step_size()
 
        ! Convert layer thicknesses from m to mm
 
@@ -1852,7 +1849,9 @@ contains
              ! add ice impedance factor to baseflow
              if(origflag == 1) then
                 if (use_vichydro) then
+#ifndef _OPENACC
                    call endrun(msg="VICHYDRO is not available for origflag=1"//errmsg(__FILE__, __LINE__))
+#endif
                 else
                    fracice_rsub(c) = max(0._r8,exp(-3._r8*(1._r8-(icefracsum/dzsum))) &
                         - exp(-3._r8))/(1.0_r8-exp(-3._r8))

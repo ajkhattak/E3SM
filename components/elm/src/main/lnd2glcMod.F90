@@ -25,8 +25,6 @@ module lnd2glcMod
   use column_varcon   , only : col_itype_to_icemec_class
   use landunit_varcon , only : istice_mec, istsoil
   use abortutils      , only : endrun
-  use WaterFluxType   , only : waterflux_type
-  use TemperatureType , only : temperature_type
   use LandunitType    , only : lun_pp                
   use ColumnType      , only : col_pp
   use ColumnDataType  , only : col_es, col_wf  

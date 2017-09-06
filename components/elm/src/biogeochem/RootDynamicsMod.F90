@@ -7,7 +7,6 @@ module RootDynamicsMod
   !
   ! !USES:
   use shr_kind_mod        , only : r8 => shr_kind_r8
-  use clm_time_manager    , only : get_step_size
   use elm_varpar          , only : nlevsoi, nlevgrnd
   use elm_varctl          , only : use_vertsoilc
   use decompMod           , only : bounds_type
@@ -115,7 +114,6 @@ contains
          )
 
       ! set time steps
-      dt = get_step_size()
 
       !initialize to 0
       w_limit(bounds%begp:bounds%endp)              = 0._r8

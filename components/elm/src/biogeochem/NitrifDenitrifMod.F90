@@ -1,4 +1,4 @@
-module CNNitrifDenitrifMod
+module NitrifDenitrifMod
 
   !-----------------------------------------------------------------------
   ! Calculate nitrification and denitrification rates
@@ -25,19 +25,21 @@ module CNNitrifDenitrifMod
   public :: nitrif_denitrif
   public :: readNitrifDenitrifParams
   !
-  type, private :: NitrifDenitrifParamsType
-   real(r8) :: k_nitr_max               !  maximum nitrification rate constant (1/s)
-   real(r8) :: surface_tension_water    !  surface tension of water(J/m^2), Arah an and Vinten 1995
-   real(r8) :: rij_kro_a                !  Arah and Vinten 1995)
-   real(r8) :: rij_kro_alpha            !  parameter to calculate anoxic fraction of soil  (Arah and Vinten 1995)
-   real(r8) :: rij_kro_beta             !  (Arah and Vinten 1995)
-   real(r8) :: rij_kro_gamma            !  (Arah and Vinten 1995)
-   real(r8) :: rij_kro_delta            !  (Arah and Vinten 1995)
+  type, public :: NitrifDenitrifParamsType
+   real(r8), pointer :: k_nitr_max             => null()   !  maximum nitrification rate constant (1/s)
+   real(r8), pointer :: surface_tension_water  => null()   !  surface tension of water(J/m^2), Arah an and Vinten 1995
+   real(r8), pointer :: rij_kro_a              => null()   !  Arah and Vinten 1995)
+   real(r8), pointer :: rij_kro_alpha          => null()   !  parameter to calculate anoxic fraction of soil  (Arah and Vinten 1995)
+   real(r8), pointer :: rij_kro_beta           => null()   !  (Arah and Vinten 1995)
+   real(r8), pointer :: rij_kro_gamma          => null()   !  (Arah and Vinten 1995)
+   real(r8), pointer :: rij_kro_delta          => null()   !  (Arah and Vinten 1995)
   end type NitrifDenitrifParamsType
 
-  type(NitrifDenitrifParamsType),private ::  NitrifDenitrifParamsInst
+  type(NitrifDenitrifParamsType) , public ::  NitrifDenitrifParamsInst
+  
 
   logical, public :: no_frozen_nitrif_denitrif = .false.  ! stop nitrification and denitrification in frozen soils
+  
   !-----------------------------------------------------------------------
 
 contains
@@ -60,6 +62,15 @@ contains
     !
     ! read in constants
     !
+
+    allocate(NitrifDenitrifParamsInst%k_nitr_max           )
+    allocate(NitrifDenitrifParamsInst%surface_tension_water)
+    allocate(NitrifDenitrifParamsInst%rij_kro_a            )
+    allocate(NitrifDenitrifParamsInst%rij_kro_alpha        )
+    allocate(NitrifDenitrifParamsInst%rij_kro_beta         )
+    allocate(NitrifDenitrifParamsInst%rij_kro_gamma        )
+    allocate(NitrifDenitrifParamsInst%rij_kro_delta        )
+
     tString='k_nitr_max'
     call ncd_io(trim(tString),tempr, 'read', ncid, readvar=readv)
     if ( .not. readv ) call endrun(msg=trim(errCode)//trim(tString)//errMsg(__FILE__, __LINE__))
@@ -105,7 +116,7 @@ contains
     !  calculate nitrification and denitrification rates
     !
     ! !USES:
-    use clm_time_manager  , only : get_curr_date, get_step_size
+      
     use SharedParamsMod , only : anoxia_wtsat,ParamsShareInst
     !
     ! !ARGUMENTS:
@@ -378,4 +389,4 @@ contains
 
  end subroutine nitrif_denitrif
 
-end module CNNitrifDenitrifMod
+end module NitrifDenitrifMod

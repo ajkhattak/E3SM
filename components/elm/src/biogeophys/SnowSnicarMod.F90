@@ -22,6 +22,8 @@ module SnowSnicarMod
   use ColumnType      , only : col_pp
   use ColumnDataType  , only : col_es, col_ws, col_wf  
   !
+  use timeinfoMod
+
   implicit none
   save
   !
@@ -217,7 +219,6 @@ contains
     !
     ! !USES:
     use elm_varpar       , only : nlevsno, numrad
-    use clm_time_manager , only : get_nstep
     use shr_const_mod    , only : SHR_CONST_PI
     !
     ! !ARGUMENTS:
@@ -299,8 +300,7 @@ contains
     real(r8):: omega_star(-nlevsno+1:0)           ! transformed (i.e. Delta-Eddington) SSA of snow+aerosol layer (lyr) [frc]
     real(r8):: g_star(-nlevsno+1:0)               ! transformed (i.e. Delta-Eddington) asymmetry paramater of snow+aerosol layer
                                                   ! (lyr) [frc]
-   
-    integer :: nstep                              ! current timestep [nbr] (debugging only)
+
     integer :: g_idx, c_idx, l_idx                ! gridcell, column, and landunit indices [idx]
     integer :: bnd_idx                            ! spectral band index (1 <= bnd_idx <= numrad_snw) [idx]
     integer :: rds_idx                            ! snow effective radius index for retrieving
@@ -329,6 +329,8 @@ contains
     real(r8):: lon_coord                          ! gridcell longitude (debugging only)
     integer :: sfctype                            ! underlying surface type (debugging only)
     real(r8):: pi                                 ! 3.1415...
+
+    integer :: nstep
 
     ! intermediate variables for radiative transfer approximation:
     real(r8):: gamma1(-nlevsno+1:0)               ! two-stream coefficient from Toon et al. (lyr) [unitless]
@@ -389,7 +391,7 @@ contains
       DELTA = 1
 
       ! Get current timestep
-      nstep = get_nstep()
+      nstep = nstep_mod
 
       ! Loop over all non-urban columns
       ! (when called from CSIM, there is only one column)
@@ -485,6 +487,7 @@ contains
 
 
             ! Error check for snow grain size:
+#ifndef _OPENACC
             do i=snl_top,snl_btm,1
                if ((snw_rds_lcl(i) < snw_rds_min_tbl) .or. (snw_rds_lcl(i) > snw_rds_max_tbl)) then
                   write (iulog,*) "SNICAR ERROR: snow grain radius of ", snw_rds_lcl(i), " out of bounds."
@@ -496,6 +499,7 @@ contains
                   call endrun(decomp_index=c_idx, elmlevel=namec, msg=errmsg(__FILE__, __LINE__))
                endif
             enddo
+#endif
 
             ! Incident flux weighting parameters
             !  - sum of all VIS bands must equal 1
@@ -1016,6 +1020,7 @@ contains
                      err_idx = err_idx + 1
                   elseif((trip == 1).and.(flg_dover == 4).and.(err_idx >= 20)) then
                      flg_dover = 0
+#ifndef _OPENACC
                      write(iulog,*) "SNICAR ERROR: FOUND A WORMHOLE. STUCK IN INFINITE LOOP! Called from: ", flg_snw_ice
                      write(iulog,*) "SNICAR STATS: snw_rds(0)= ", snw_rds(c_idx,0)
                      write(iulog,*) "SNICAR STATS: L_snw(0)= ", L_snw(0)
@@ -1031,6 +1036,8 @@ contains
                      write(iulog,*) "landunit type", lun_pp%itype(l_idx)
                      write(iulog,*) "frac_sno: ", frac_sno(c_idx)
                      call endrun(decomp_index=c_idx, elmlevel=namec, msg=errmsg(__FILE__, __LINE__))
+
+#endif
                   else
                      flg_dover = 0
                   endif
@@ -1041,16 +1048,18 @@ contains
                ! Incident direct+diffuse radiation equals (absorbed+bulk_transmitted+bulk_reflected)
                energy_sum = (mu_not*pi*flx_slrd_lcl(bnd_idx)) + flx_slri_lcl(bnd_idx) - (F_abs_sum + F_btm_net + F_sfc_pls)
                if (abs(energy_sum) > 0.00001_r8) then
+#ifndef _OPENACC
                   write (iulog,"(a,e13.6,a,i6,a,i6)") "SNICAR ERROR: Energy conservation error of : ", energy_sum, &
                        " at timestep: ", nstep, " at column: ", c_idx
                   call endrun(decomp_index=c_idx, elmlevel=namec, msg=errmsg(__FILE__, __LINE__))
+#endif
                endif
 
                albout_lcl(bnd_idx) = albedo
 
                ! Check that albedo is less than 1
                if (albout_lcl(bnd_idx) > 1.0) then
-
+#ifndef _OPENACC
                   write (iulog,*) "SNICAR ERROR: Albedo > 1.0 at c: ", c_idx, " NSTEP= ",nstep
                   write (iulog,*) "SNICAR STATS: bnd_idx= ",bnd_idx
                   write (iulog,*) "SNICAR STATS: albout_lcl(bnd)= ",albout_lcl(bnd_idx), &
@@ -1078,6 +1087,7 @@ contains
                   write (iulog,*) "SNICAR STATS: snw_rds(0)= ", snw_rds(c_idx,0)
 
                   call endrun(decomp_index=c_idx, elmlevel=namec, msg=errmsg(__FILE__, __LINE__))
+#endif
                endif
 
             enddo   ! loop over wvl bands
@@ -1156,7 +1166,7 @@ contains
     !   I am aware.
     !
     ! !USES:
-    use clm_time_manager , only : get_step_size, get_nstep
+      
     use elm_varpar       , only : nlevsno
     use elm_varcon       , only : spval
     use shr_const_mod    , only : SHR_CONST_RHOICE, SHR_CONST_PI
@@ -1223,7 +1233,7 @@ contains
   
 
       ! set timestep and step interval
-      dtime = get_step_size()
+      dtime = dtime_mod
 
       ! loop over columns that have at least one snow layer
       do fc = 1, num_snowc
@@ -1411,167 +1421,204 @@ contains
   end subroutine SnowAge_grain
 
   !-----------------------------------------------------------------------
-   subroutine SnowOptics_init( )
-     
-     use fileutils  , only : getfil
-     use elm_varctl , only : fsnowoptics
-     use spmdMod    , only : masterproc
-     use ncdio_pio  , only : file_desc_t, ncd_io, ncd_pio_openfile, ncd_pio_closefile
-     use ncdio_pio  , only : ncd_pio_openfile, ncd_inqfdims, ncd_pio_closefile, ncd_inqdid, ncd_inqdlen
+     subroutine SnowOptics_init( )
 
-     type(file_desc_t)  :: ncid                        ! netCDF file id
-     character(len=256) :: locfn                       ! local filename
-     character(len= 32) :: subname = 'SnowOptics_init' ! subroutine name
-     integer            :: ier                         ! error status
+      use fileutils  , only : getfil
+      use elm_varctl , only : fsnowoptics
+      use spmdMod    , only : masterproc
+      use ncdio_pio  , only : file_desc_t, ncd_io, ncd_pio_openfile, ncd_pio_closefile
+      use ncdio_pio  , only : ncd_pio_openfile, ncd_inqfdims, ncd_pio_closefile, ncd_inqdid, ncd_inqdlen
 
-    !mgf++
-    logical :: readvar      ! determine if variable was read from NetCDF file
-    !mgf--
+      type(file_desc_t)  :: ncid                        ! netCDF file id
+      character(len=256) :: locfn                       ! local filename
+      character(len= 32) :: subname = 'SnowOptics_init' ! subroutine name
+      integer            :: ier                         ! error status
 
+     !mgf++
+     logical :: readvar      ! determine if variable was read from NetCDF file
+     !mgf--
+
+      !
+      ! Open optics file:
+      if(masterproc) write(iulog,*) 'Attempting to read snow optical properties .....'
+      call getfil (fsnowoptics, locfn, 0)
+      call ncd_pio_openfile(ncid, locfn, 0)
+      if(masterproc) write(iulog,*) subname,trim(fsnowoptics)
+
+      ! direct-beam snow Mie parameters:
+      call ncd_io('ss_alb_ice_drc', ss_alb_snw_drc,            'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'asm_prm_ice_drc',asm_prm_snw_drc,          'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'ext_cff_mss_ice_drc', ext_cff_mss_snw_drc, 'read', ncid, posNOTonfile=.true.)
+      !
+      ! diffuse snow Mie parameters
+      call ncd_io( 'ss_alb_ice_dfs', ss_alb_snw_dfs,           'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'asm_prm_ice_dfs', asm_prm_snw_dfs,         'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'ext_cff_mss_ice_dfs', ext_cff_mss_snw_dfs, 'read', ncid, posNOTonfile=.true.)
+      
+      
+      
+      
+      
+      
+      
+      
+      !
+#ifdef MODAL_AER
+     !mgf++
+     ! size-dependent BC parameters and BC enhancement factors
+     if (masterproc) write(iulog,*) 'Attempting to read optical properties for within-ice BC (modal aerosol treatment) ...'
      !
-     ! Open optics file:
-     if(masterproc) write(iulog,*) 'Attempting to read snow optical properties .....'
-     call getfil (fsnowoptics, locfn, 0)
-     call ncd_pio_openfile(ncid, locfn, 0)
-     if(masterproc) write(iulog,*) subname,trim(fsnowoptics)
-
-     ! direct-beam snow Mie parameters:
-     call ncd_io('ss_alb_ice_drc', ss_alb_snw_drc,            'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'asm_prm_ice_drc',asm_prm_snw_drc,          'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'ext_cff_mss_ice_drc', ext_cff_mss_snw_drc, 'read', ncid, posNOTonfile=.true.)
-
-     ! diffuse snow Mie parameters
-     call ncd_io( 'ss_alb_ice_dfs', ss_alb_snw_dfs,           'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'asm_prm_ice_dfs', asm_prm_snw_dfs,         'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'ext_cff_mss_ice_dfs', ext_cff_mss_snw_dfs, 'read', ncid, posNOTonfile=.true.)
-
-#ifdef MODAL_AER
-    !mgf++
-    ! size-dependent BC parameters and BC enhancement factors
-    if (masterproc) write(iulog,*) 'Attempting to read optical properties for within-ice BC (modal aerosol treatment) ...'
-
-    ! BC species 1 Mie parameters
-    call ncd_io( 'ss_alb_bc_mam', ss_alb_bc1,           'read', ncid, readvar=readvar, posNOTonfile=.true.)
-    if (.not. readvar) call endrun()
-    call ncd_io( 'asm_prm_bc_mam', asm_prm_bc1,         'read', ncid, readvar=readvar, posNOTonfile=.true.)
-    if (.not. readvar) call endrun()
-    call ncd_io( 'ext_cff_mss_bc_mam', ext_cff_mss_bc1, 'read', ncid, readvar=readvar, posNOTonfile=.true.)
-    if (.not. readvar) call endrun()
-
-    ! BC species 2 Mie parameters (identical, before enhancement factors applied)
-    call ncd_io( 'ss_alb_bc_mam', ss_alb_bc2,           'read', ncid, readvar=readvar, posNOTonfile=.true.)
-    if (.not. readvar) call endrun()
-    call ncd_io( 'asm_prm_bc_mam', asm_prm_bc2,         'read', ncid, readvar=readvar, posNOTonfile=.true.)
-    if (.not. readvar) call endrun()
-    call ncd_io( 'ext_cff_mss_bc_mam', ext_cff_mss_bc2, 'read', ncid, readvar=readvar, posNOTonfile=.true.)
-    if (.not. readvar) call endrun()
-
-    ! size-dependent BC absorption enhancement factors for within-ice BC
-    call ncd_io( 'bcint_enh_mam', bcenh, 'read', ncid, readvar=readvar, posNOTonfile=.true.)
-    if (.not. readvar) call endrun()
-
-#else
-    ! bulk aerosol treatment
      ! BC species 1 Mie parameters
-     call ncd_io( 'ss_alb_bcphil', ss_alb_bc1,           'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'asm_prm_bcphil', asm_prm_bc1,         'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'ext_cff_mss_bcphil', ext_cff_mss_bc1, 'read', ncid, posNOTonfile=.true.)
-
-     ! BC species 2 Mie parameters
-     call ncd_io( 'ss_alb_bcphob', ss_alb_bc2,           'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'asm_prm_bcphob', asm_prm_bc2,         'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'ext_cff_mss_bcphob', ext_cff_mss_bc2, 'read', ncid, posNOTonfile=.true.)
-
-    !mgf--
-#endif
-
-     ! OC species 1 Mie parameters
-     call ncd_io( 'ss_alb_ocphil', ss_alb_oc1,           'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'asm_prm_ocphil', asm_prm_oc1,         'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'ext_cff_mss_ocphil', ext_cff_mss_oc1, 'read', ncid, posNOTonfile=.true.)
-
-     ! OC species 2 Mie parameters
-     call ncd_io( 'ss_alb_ocphob', ss_alb_oc2,           'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'asm_prm_ocphob', asm_prm_oc2,         'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'ext_cff_mss_ocphob', ext_cff_mss_oc2, 'read', ncid, posNOTonfile=.true.)
-
-     ! dust species 1 Mie parameters
-     call ncd_io( 'ss_alb_dust01', ss_alb_dst1,           'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'asm_prm_dust01', asm_prm_dst1,         'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'ext_cff_mss_dust01', ext_cff_mss_dst1, 'read', ncid, posNOTonfile=.true.)
-
-     ! dust species 2 Mie parameters
-     call ncd_io( 'ss_alb_dust02', ss_alb_dst2,           'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'asm_prm_dust02', asm_prm_dst2,         'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'ext_cff_mss_dust02', ext_cff_mss_dst2, 'read', ncid, posNOTonfile=.true.)
-
-     ! dust species 3 Mie parameters
-     call ncd_io( 'ss_alb_dust03', ss_alb_dst3,           'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'asm_prm_dust03', asm_prm_dst3,         'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'ext_cff_mss_dust03', ext_cff_mss_dst3, 'read', ncid, posNOTonfile=.true.)
-
-     ! dust species 4 Mie parameters
-     call ncd_io( 'ss_alb_dust04', ss_alb_dst4,           'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'asm_prm_dust04', asm_prm_dst4,         'read', ncid, posNOTonfile=.true.)
-     call ncd_io( 'ext_cff_mss_dust04', ext_cff_mss_dst4, 'read', ncid, posNOTonfile=.true.)
-
-
-     call ncd_pio_closefile(ncid)
-     if (masterproc) then
-
-        write(iulog,*) 'Successfully read snow optical properties'
-        ! print some diagnostics:
-        write (iulog,*) 'SNICAR: Mie single scatter albedos for direct-beam ice, rds=100um: ', &
-             ss_alb_snw_drc(71,1), ss_alb_snw_drc(71,2), ss_alb_snw_drc(71,3),     &
-             ss_alb_snw_drc(71,4), ss_alb_snw_drc(71,5)
-        write (iulog,*) 'SNICAR: Mie single scatter albedos for diffuse ice, rds=100um: ',     &
-             ss_alb_snw_dfs(71,1), ss_alb_snw_dfs(71,2), ss_alb_snw_dfs(71,3),     &
-             ss_alb_snw_dfs(71,4), ss_alb_snw_dfs(71,5)
-        if (DO_SNO_OC) then
-           write (iulog,*) 'SNICAR: Including OC aerosols from snow radiative transfer calculations'
-        else
-           write (iulog,*) 'SNICAR: Excluding OC aerosols from snow radiative transfer calculations'
-        endif
-
-#ifdef MODAL_AER
-       !mgf++
-       ! unique dimensionality for modal aerosol optical properties
-       write (iulog,*) 'SNICAR: Subset of Mie single scatter albedos for BC: ', &
-            ss_alb_bc1(1,1), ss_alb_bc1(1,2), ss_alb_bc1(2,1), ss_alb_bc1(5,1), ss_alb_bc1(1,10), ss_alb_bc2(1,10)
-       write (iulog,*) 'SNICAR: Subset of Mie mass extinction coefficients for BC: ', &
-            ext_cff_mss_bc2(1,1), ext_cff_mss_bc2(1,2), ext_cff_mss_bc2(2,1), ext_cff_mss_bc2(5,1), ext_cff_mss_bc2(1,10),&
-            ext_cff_mss_bc1(1,10)
-       write (iulog,*) 'SNICAR: Subset of Mie asymmetry parameters for BC: ', &
-            asm_prm_bc1(1,1), asm_prm_bc1(1,2), asm_prm_bc1(2,1), asm_prm_bc1(5,1), asm_prm_bc1(1,10), asm_prm_bc2(1,10)
-       write (iulog,*) 'SNICAR: Subset of BC absorption enhancement factors: ', &
-            bcenh(1,1,1), bcenh(1,2,1), bcenh(1,1,2), bcenh(2,1,1), bcenh(5,10,1), bcenh(5,1,8), bcenh(5,10,8)
-       ! test comparison: ncks -H -C -F -d wvl,5 -d ncl_rds,1 -d ice_rds,8 -v ss_alb_bc_mam,asm_prm_bc_mam,ext_cff_mss_bc_mam,bcint_enh_mam snicar_optics_5bnd_mam_c160322.nc
-       !mgf--
+     call ncd_io( 'ss_alb_bc_mam', ss_alb_bc1,           'read', ncid, readvar=readvar, posNOTonfile=.true.)
+     if (.not. readvar) call endrun()
+     call ncd_io( 'asm_prm_bc_mam', asm_prm_bc1,         'read', ncid, readvar=readvar, posNOTonfile=.true.)
+     if (.not. readvar) call endrun()
+     call ncd_io( 'ext_cff_mss_bc_mam', ext_cff_mss_bc1, 'read', ncid, readvar=readvar, posNOTonfile=.true.)
+     if (.not. readvar) call endrun()
+     !
+     ! BC species 2 Mie parameters (identical, before enhancement factors applied)
+     call ncd_io( 'ss_alb_bc_mam', ss_alb_bc2,           'read', ncid, readvar=readvar, posNOTonfile=.true.)
+     if (.not. readvar) call endrun()
+     call ncd_io( 'asm_prm_bc_mam', asm_prm_bc2,         'read', ncid, readvar=readvar, posNOTonfile=.true.)
+     if (.not. readvar) call endrun()
+     call ncd_io( 'ext_cff_mss_bc_mam', ext_cff_mss_bc2, 'read', ncid, readvar=readvar, posNOTonfile=.true.)
+     if (.not. readvar) call endrun()
+     !
+     ! size-dependent BC absorption enhancement factors for within-ice BC
+     call ncd_io( 'bcint_enh_mam', bcenh, 'read', ncid, readvar=readvar, posNOTonfile=.true.)
+     if (.not. readvar) call endrun()
+     
+     !
 #else
-        write (iulog,*) 'SNICAR: Mie single scatter albedos for hydrophillic BC: ', &
-             ss_alb_bc1(1), ss_alb_bc1(2), ss_alb_bc1(3), ss_alb_bc1(4), ss_alb_bc1(5)
-        write (iulog,*) 'SNICAR: Mie single scatter albedos for hydrophobic BC: ', &
-             ss_alb_bc2(1), ss_alb_bc2(2), ss_alb_bc2(3), ss_alb_bc2(4), ss_alb_bc2(5)
+     ! bulk aerosol treatment
+      ! BC species 1 Mie parameters
+      call ncd_io( 'ss_alb_bcphil', ss_alb_bc1,           'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'asm_prm_bcphil', asm_prm_bc1,         'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'ext_cff_mss_bcphil', ext_cff_mss_bc1, 'read', ncid, posNOTonfile=.true.)
+      !
+      ! BC species 2 Mie parameters
+      call ncd_io( 'ss_alb_bcphob', ss_alb_bc2,           'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'asm_prm_bcphob', asm_prm_bc2,         'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'ext_cff_mss_bcphob', ext_cff_mss_bc2, 'read', ncid, posNOTonfile=.true.)
+      !
+     !mgf--
 #endif
+    
+    
+    
+    
+    
+    
+    
+    
+      !
+      ! OC species 1 Mie parameters
+      call ncd_io( 'ss_alb_ocphil',      ss_alb_oc1,      'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'asm_prm_ocphil',     asm_prm_oc1,     'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'ext_cff_mss_ocphil', ext_cff_mss_oc1, 'read', ncid, posNOTonfile=.true.)
+      !
+      ! OC species 2 Mie parameters
+      call ncd_io( 'ss_alb_ocphob', ss_alb_oc2,           'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'asm_prm_ocphob', asm_prm_oc2,         'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'ext_cff_mss_ocphob', ext_cff_mss_oc2, 'read', ncid, posNOTonfile=.true.)
+      !
+      ! dust species 1 Mie parameters
+      call ncd_io( 'ss_alb_dust01', ss_alb_dst1,           'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'asm_prm_dust01', asm_prm_dst1,         'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'ext_cff_mss_dust01', ext_cff_mss_dst1, 'read', ncid, posNOTonfile=.true.)
+      !
+      ! dust species 2 Mie parameters
+      call ncd_io( 'ss_alb_dust02', ss_alb_dst2,           'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'asm_prm_dust02', asm_prm_dst2,         'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'ext_cff_mss_dust02', ext_cff_mss_dst2, 'read', ncid, posNOTonfile=.true.)
+      !
+      ! dust species 3 Mie parameters
+      call ncd_io( 'ss_alb_dust03', ss_alb_dst3,           'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'asm_prm_dust03', asm_prm_dst3,         'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'ext_cff_mss_dust03', ext_cff_mss_dst3, 'read', ncid, posNOTonfile=.true.)
+      !
+      ! dust species 4 Mie parameters
+      call ncd_io( 'ss_alb_dust04', ss_alb_dst4,           'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'asm_prm_dust04', asm_prm_dst4,         'read', ncid, posNOTonfile=.true.)
+      call ncd_io( 'ext_cff_mss_dust04', ext_cff_mss_dst4, 'read', ncid, posNOTonfile=.true.)
+      !
+      !
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
 
-        if (DO_SNO_OC) then
-           write (iulog,*) 'SNICAR: Mie single scatter albedos for hydrophillic OC: ', &
-                ss_alb_oc1(1), ss_alb_oc1(2), ss_alb_oc1(3), ss_alb_oc1(4), ss_alb_oc1(5)
-           write (iulog,*) 'SNICAR: Mie single scatter albedos for hydrophobic OC: ', &
-                ss_alb_oc2(1), ss_alb_oc2(2), ss_alb_oc2(3), ss_alb_oc2(4), ss_alb_oc2(5)
-        endif
-        write (iulog,*) 'SNICAR: Mie single scatter albedos for dust species 1: ', &
-             ss_alb_dst1(1), ss_alb_dst1(2), ss_alb_dst1(3), ss_alb_dst1(4), ss_alb_dst1(5)
-        write (iulog,*) 'SNICAR: Mie single scatter albedos for dust species 2: ', &
-             ss_alb_dst2(1), ss_alb_dst2(2), ss_alb_dst2(3), ss_alb_dst2(4), ss_alb_dst2(5)
-        write (iulog,*) 'SNICAR: Mie single scatter albedos for dust species 3: ', &
-             ss_alb_dst3(1), ss_alb_dst3(2), ss_alb_dst3(3), ss_alb_dst3(4), ss_alb_dst3(5)
-        write (iulog,*) 'SNICAR: Mie single scatter albedos for dust species 4: ', &
-             ss_alb_dst4(1), ss_alb_dst4(2), ss_alb_dst4(3), ss_alb_dst4(4), ss_alb_dst4(5)
-        write(iulog,*)
-     end if
-
-   end subroutine SnowOptics_init
+      call ncd_pio_closefile(ncid)
+      if (masterproc) then
+        !
+         write(iulog,*) 'Successfully read snow optical properties'
+         ! print some diagnostics:
+         write (iulog,*) 'SNICAR: Mie single scatter albedos for direct-beam ice, rds=100um: ', &
+              ss_alb_snw_drc(71,1), ss_alb_snw_drc(71,2), ss_alb_snw_drc(71,3),     &
+              ss_alb_snw_drc(71,4), ss_alb_snw_drc(71,5)
+         write (iulog,*) 'SNICAR: Mie single scatter albedos for diffuse ice, rds=100um: ',     &
+              ss_alb_snw_dfs(71,1), ss_alb_snw_dfs(71,2), ss_alb_snw_dfs(71,3),     &
+              ss_alb_snw_dfs(71,4), ss_alb_snw_dfs(71,5)
+         if (DO_SNO_OC) then
+            write (iulog,*) 'SNICAR: Including OC aerosols from snow radiative transfer calculations'
+         else
+            write (iulog,*) 'SNICAR: Excluding OC aerosols from snow radiative transfer calculations'
+         endif
+         !
+#ifdef MODAL_AER
+        !mgf++
+        ! unique dimensionality for modal aerosol optical properties
+        write (iulog,*) 'SNICAR: Subset of Mie single scatter albedos for BC: ', &
+             ss_alb_bc1(1,1), ss_alb_bc1(1,2), ss_alb_bc1(2,1), ss_alb_bc1(5,1), ss_alb_bc1(1,10), ss_alb_bc2(1,10)
+        write (iulog,*) 'SNICAR: Subset of Mie mass extinction coefficients for BC: ', &
+             ext_cff_mss_bc2(1,1), ext_cff_mss_bc2(1,2), ext_cff_mss_bc2(2,1), ext_cff_mss_bc2(5,1), ext_cff_mss_bc2(1,10),&
+             ext_cff_mss_bc1(1,10)
+        write (iulog,*) 'SNICAR: Subset of Mie asymmetry parameters for BC: ', &
+             asm_prm_bc1(1,1), asm_prm_bc1(1,2), asm_prm_bc1(2,1), asm_prm_bc1(5,1), asm_prm_bc1(1,10), asm_prm_bc2(1,10)
+        write (iulog,*) 'SNICAR: Subset of BC absorption enhancement factors: ', &
+             bcenh(1,1,1), bcenh(1,2,1), bcenh(1,1,2), bcenh(2,1,1), bcenh(5,10,1), bcenh(5,1,8), bcenh(5,10,8)
+        ! test comparison: ncks -H -C -F -d wvl,5 -d ncl_rds,1 -d ice_rds,8 -v ss_alb_bc_mam,asm_prm_bc_mam,ext_cff_mss_bc_mam,bcint_enh_mam snicar_optics_5bnd_mam_c160322.nc
+        !mgf--
+#else
+         write (iulog,*) 'SNICAR: Mie single scatter albedos for hydrophillic BC: ', &
+              ss_alb_bc1(1), ss_alb_bc1(2), ss_alb_bc1(3), ss_alb_bc1(4), ss_alb_bc1(5)
+         write (iulog,*) 'SNICAR: Mie single scatter albedos for hydrophobic BC: ', &
+              ss_alb_bc2(1), ss_alb_bc2(2), ss_alb_bc2(3), ss_alb_bc2(4), ss_alb_bc2(5)
+#endif
+        !
+         if (DO_SNO_OC) then
+            write (iulog,*) 'SNICAR: Mie single scatter albedos for hydrophillic OC: ', &
+                 ss_alb_oc1(1), ss_alb_oc1(2), ss_alb_oc1(3), ss_alb_oc1(4), ss_alb_oc1(5)
+            write (iulog,*) 'SNICAR: Mie single scatter albedos for hydrophobic OC: ', &
+                 ss_alb_oc2(1), ss_alb_oc2(2), ss_alb_oc2(3), ss_alb_oc2(4), ss_alb_oc2(5)
+         endif
+         write (iulog,*) 'SNICAR: Mie single scatter albedos for dust species 1: ', &
+              ss_alb_dst1(1), ss_alb_dst1(2), ss_alb_dst1(3), ss_alb_dst1(4), ss_alb_dst1(5)
+         write (iulog,*) 'SNICAR: Mie single scatter albedos for dust species 2: ', &
+              ss_alb_dst2(1), ss_alb_dst2(2), ss_alb_dst2(3), ss_alb_dst2(4), ss_alb_dst2(5)
+         write (iulog,*) 'SNICAR: Mie single scatter albedos for dust species 3: ', &
+              ss_alb_dst3(1), ss_alb_dst3(2), ss_alb_dst3(3), ss_alb_dst3(4), ss_alb_dst3(5)
+         write (iulog,*) 'SNICAR: Mie single scatter albedos for dust species 4: ', &
+              ss_alb_dst4(1), ss_alb_dst4(2), ss_alb_dst4(3), ss_alb_dst4(4), ss_alb_dst4(5)
+         write(iulog,*)
+      end if
+      !
+    end subroutine SnowOptics_init
 
    !-----------------------------------------------------------------------
    subroutine SnowAge_init( )

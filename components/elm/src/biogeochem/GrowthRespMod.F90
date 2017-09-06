@@ -12,6 +12,13 @@ module GrowthRespMod
   use VegetationType        , only : veg_pp  
   use VegetationDataType    , only : veg_cf  
   !
+
+  use shr_log_mod   , only : errMsg => shr_log_errMsg
+  use decompMod       , only : bounds_type
+  use ColumnDataType  , only : column_carbon_flux
+  use ColumnType      , only : col_pp
+
+
   implicit none
   save
   private

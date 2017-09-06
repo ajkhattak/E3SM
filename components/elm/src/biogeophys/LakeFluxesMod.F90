@@ -7,7 +7,6 @@ module LakeFluxesMod
   !
   ! !USES
   use shr_kind_mod         , only : r8 => shr_kind_r8
-  use shr_log_mod          , only : errMsg => shr_log_errMsg
   use decompMod            , only : bounds_type
   use atm2lndType          , only : atm2lnd_type
   use FrictionVelocityType , only : frictionvel_type

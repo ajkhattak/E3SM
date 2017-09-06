@@ -19,7 +19,7 @@ module GapMortalityMod
   use VegetationDataType  , only : veg_ps, veg_pf 
 
   use elm_varctl          , only : nu_com
-
+  use timeinfoMod , only : dayspyr_mod
   !
   implicit none
   save
@@ -29,12 +29,14 @@ module GapMortalityMod
   public :: GapMortality
   public :: readGapMortParams
 
-  type, private :: CNGapMortParamsType
-      real(r8):: am     ! mortality rate based on annual rate, fractional mortality (1/yr)
-      real(r8):: k_mort ! coeff. of growth efficiency in mortality equation
+  type, public :: CNGapMortParamsType
+      real(r8), pointer :: am     => null() ! mortality rate based on annual rate, fractional mortality (1/yr)
+      real(r8), pointer :: k_mort => null() ! coeff. of growth efficiency in mortality equation
   end type CNGapMortParamsType
 
-  type(CNGapMortParamsType),private ::  CNGapMortParamsInst
+  type(CNGapMortParamsType),public ::  CNGapMortParamsInst
+
+  
   !-----------------------------------------------------------------------
 
 contains
@@ -59,6 +61,8 @@ contains
     real(r8)           :: tempr ! temporary to read in constant
     character(len=100) :: tString ! temp. var for reading
     !-----------------------------------------------------------------------
+    allocate(CNGapMortParamsInst%am     )
+    allocate(CNGapMortParamsInst%k_mort )
 
     tString='r_mort'
     call ncd_io(varname=trim(tString),data=tempr, flag='read', ncid=ncid, readvar=readv)
@@ -81,7 +85,7 @@ contains
     ! Gap-phase mortality routine for coupled carbon-nitrogen code (CN)
     !
     ! !USES:
-    use clm_time_manager , only: get_days_per_year
+    
     use elm_varcon       , only: secspday
     use pftvarcon        , only: npcropmin
     use elm_varctl       , only: spinup_state, spinup_mortality_factor
@@ -101,6 +105,7 @@ contains
     real(r8):: m             ! rate for fractional mortality (1/s)
     real(r8):: mort_max      ! asymptotic max mortality rate (/yr)
     real(r8):: k_mort = 0.3  ! coeff of growth efficiency in mortality equation
+    real(r8):: dayspyr
     !-----------------------------------------------------------------------
 
     associate(                                                                                              & 
@@ -110,6 +115,7 @@ contains
          
          )
 
+      dayspyr = dayspyr_mod
       ! set the mortality rate based on annual rate
       am = CNGapMortParamsInst%am
       ! set coeff of growth efficiency in mortality equation 
@@ -129,7 +135,7 @@ contains
          end if
 
 
-         m  = am/(get_days_per_year() * secspday)
+        m  = am/(dayspyr * secspday)
 
          !------------------------------------------------------
          ! patch-level gap mortality carbon fluxes

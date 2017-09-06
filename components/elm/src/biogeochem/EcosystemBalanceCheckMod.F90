@@ -20,7 +20,7 @@ module EcosystemBalanceCheckMod
 
   use CNDecompCascadeConType , only : decomp_cascade_con
   use elm_varpar          , only: ndecomp_cascade_transitions
-  use subgridAveMod       , only : p2c, c2g
+  use subgridAveMod       , only : p2c, c2g, unity
   ! soil erosion
   use elm_varctl          , only : use_erosion, ero_ccycle
   ! bgc interface & pflotran:
@@ -39,7 +39,8 @@ module EcosystemBalanceCheckMod
   use ColumnDataType      , only : col_ns, col_nf, col_ps, col_pf 
   use VegetationType      , only : veg_pp
   use VegetationDataType  , only : veg_cf, veg_nf, veg_pf
-  
+
+  use timeinfoMod
 
   !
   implicit none
@@ -276,6 +277,7 @@ contains
       end do ! end of columns loop
       
       if (err_found) then
+#ifndef _OPENACC
          c = err_index
          write(iulog,*)'column cbalance error = ', col_errcb(c), c
          write(iulog,*)'Latdeg,Londeg         = ',grc_pp%latdeg(col_pp%gridcell(c)),grc_pp%londeg(col_pp%gridcell(c))
@@ -299,6 +301,7 @@ contains
          end if
 
          call endrun(msg=errMsg(__FILE__, __LINE__))
+#endif
       end if
       
 
@@ -365,8 +368,8 @@ contains
 
 
       ! set time steps
-      dt = real( get_step_size(), r8 )
-      call get_curr_date(kyr, kmo, kda, mcsec)
+      dt = dtime_mod
+      kyr = year_curr; kmo = mon_curr; kda = day_curr; mcsec = secs_curr;
 
       err_found = .false.
       ! column loop
@@ -479,6 +482,7 @@ contains
       end do ! end of columns loop
 
       if (err_found) then
+#ifndef _OPENACC
          c = err_index
          write(iulog,*)'column nbalance error = ',col_errnb(c), c, get_nstep()
          write(iulog,*)'Latdeg,Londeg         = ',grc_pp%latdeg(col_pp%gridcell(c)),grc_pp%londeg(col_pp%gridcell(c))
@@ -511,7 +515,7 @@ contains
             write(iulog,*)'pf_delta_decompn      = ',col_decompn_delta(c)*dt
          end if
          call endrun(msg=errMsg(__FILE__, __LINE__))
-
+#endif
 
       end if
 
@@ -588,8 +592,8 @@ contains
          )
 
       ! set time steps
-      dt = real( get_step_size(), r8 )
-      call get_curr_date(kyr, kmo, kda, mcsec)
+      dt = dtime_mod
+      kyr = year_curr; kmo = mon_curr; kda = day_curr; mcsec = secs_curr;
 
       err_found = .false.
 
@@ -706,6 +710,7 @@ contains
 
 
       if (err_found) then
+#ifndef _OPENACC
          c = err_index
          write(iulog,*)'column pbalance error = ', col_errpb(c), c
          write(iulog,*)'Latdeg,Londeg=',grc_pp%latdeg(col_pp%gridcell(c)),grc_pp%londeg(col_pp%gridcell(c))
@@ -730,6 +735,7 @@ contains
             write(iulog,*)'SIP erosion = ',(labilep_yield(c)+secondp_yield(c)+occlp_yield(c)+primp_yield(c))*dt
          end if
          call endrun(msg=errMsg(__FILE__, __LINE__))
+#endif
       end if
 
     end associate
@@ -758,8 +764,8 @@ contains
       call c2g( bounds = bounds, &
            carr = totcolc(bounds%begc:bounds%endc), &
            garr = begcb_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type = 'unity', &
-           l2g_scale_type = 'unity')
+           c2l_scale_type = unity, &
+           l2g_scale_type = unity)
 
     end associate
 
@@ -784,8 +790,8 @@ contains
       call c2g( bounds = bounds, &
            carr = totcoln(bounds%begc:bounds%endc), &
            garr = begnb_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type = 'unity', &
-           l2g_scale_type = 'unity')
+           c2l_scale_type = unity, &
+           l2g_scale_type = unity)
 
     end associate
 
@@ -811,8 +817,8 @@ contains
       call c2g( bounds = bounds, &
            carr = totcolp(bounds%begc:bounds%endc), &
            garr = begpb_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type = 'unity', &
-           l2g_scale_type = 'unity')
+           c2l_scale_type = unity, &
+           l2g_scale_type = unity)
 
 
     end associate
@@ -854,15 +860,15 @@ contains
          )
 
       ! set time steps
-      dt = real( get_step_size(), r8 )
+      dt = dtime_mod
 
       err_found = .false.
 
       call c2g( bounds = bounds, &
            carr = totcolc(bounds%begc:bounds%endc), &
            garr = endcb_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type = 'unity', &
-           l2g_scale_type = 'unity')
+           c2l_scale_type = unity, &
+           l2g_scale_type = unity)
 
       do g = bounds%begg, bounds%endg
          endcb_grc(g) = endcb_grc(g)
@@ -886,6 +892,7 @@ contains
       end do
 
       if (err_found) then
+#ifndef _OPENACC
          g = err_index
          write(iulog,*)'Grid cbalance error   = ',errcb_grc(g), g
          write(iulog,*)'Latdeg,Londeg         = ',grc_pp%latdeg(g),grc_pp%londeg(g)
@@ -896,6 +903,7 @@ contains
          write(iulog,*)'endcb                 = ',endcb_grc(g)
          write(iulog,*)'delta store           = ',endcb_grc(g)-begcb_grc(g)
          call endrun(msg=errMsg(__FILE__, __LINE__))
+#endif
       end if
 
     end associate
@@ -934,15 +942,15 @@ contains
          )
 
       ! set time steps
-      dt = real( get_step_size(), r8 )
+      dt = dtime_mod
 
       err_found = .false.
 
       call c2g( bounds = bounds, &
            carr = totcoln(bounds%begc:bounds%endc), &
            garr = endnb_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type = 'unity', &
-           l2g_scale_type = 'unity')
+           c2l_scale_type = unity, &
+           l2g_scale_type = unity)
 
       do g = bounds%begg, bounds%endg
          endnb_grc(g) = endnb_grc(g)
@@ -966,6 +974,7 @@ contains
       end do
 
       if (err_found) then
+#ifndef _OPENACC
          g = err_index
          write(iulog,*)'Grid nbalance error   = ',errnb_grc(g), g
          write(iulog,*)'Latdeg,Londeg         = ',grc_pp%latdeg(g),grc_pp%londeg(g)
@@ -981,6 +990,7 @@ contains
          write(iulog,*)'dwt_seedn_leaf          ',dwt_seedn_to_leaf_grc(g)
          write(iulog,*)'dwt_seedn_deadstem      ',dwt_seedn_to_deadstem_grc(g)
          call endrun(msg=errMsg(__FILE__, __LINE__))
+#endif
       end if
 
     end associate
@@ -1020,15 +1030,15 @@ contains
          )
 
       ! set time steps
-      dt = real( get_step_size(), r8 )
+      dt = dtime_mod
 
       err_found = .false.
 
       call c2g( bounds = bounds, &
            carr = totcolp(bounds%begc:bounds%endc), &
            garr = endpb_grc(bounds%begg:bounds%endg), &
-           c2l_scale_type = 'unity', &
-           l2g_scale_type = 'unity')
+           c2l_scale_type = unity, &
+           l2g_scale_type = unity)
 
       do g = bounds%begg, bounds%endg
          endpb_grc(g) = endpb_grc(g)
@@ -1052,6 +1062,7 @@ contains
       end do
 
       if (err_found) then
+#ifndef _OPENACC
          g = err_index
          write(iulog,*)'Grid pbalance error   = ',errpb_grc(g), g
          write(iulog,*)'Latdeg,Londeg         = ',grc_pp%latdeg(g),grc_pp%londeg(g)
@@ -1062,6 +1073,7 @@ contains
          write(iulog,*)'endcb                 = ',endpb_grc(g)
          write(iulog,*)'delta store           = ',endpb_grc(g)-begpb_grc(g)
          call endrun(msg=errMsg(__FILE__, __LINE__))
+#endif
       end if
 
     end associate

@@ -26,23 +26,27 @@ module CanopyFluxesMod
   use SurfaceResistanceMod  , only : do_soilevap_beta
   use VegetationPropertiesType        , only : veg_vp
   use atm2lndType           , only : atm2lnd_type
-  use CanopyStateType       , only : canopystate_type
+  use CanopyStateType       , only : canopystate_type, perchroot, perchroot_alt
   use CNStateType           , only : cnstate_type
   use EnergyFluxType        , only : energyflux_type
   use FrictionvelocityType  , only : frictionvel_type
   use SoilStateType         , only : soilstate_type
   use SolarAbsorbedType     , only : solarabs_type
   use SurfaceAlbedoType     , only : surfalb_type
-  use TemperatureType       , only : temperature_type
   use CH4Mod                , only : ch4_type
   use PhotosynthesisType    , only : photosyns_type
-  use ELMFatesInterfaceMod  , only : hlm_fates_interface_type
   use GridcellType          , only : grc_pp 
   use TopounitDataType      , only : top_as, top_af  
   use ColumnType            , only : col_pp
   use ColumnDataType        , only : col_es, col_ef, col_ws               
   use VegetationType        , only : veg_pp                
   use VegetationDataType    , only : veg_es, veg_ef, veg_ws, veg_wf  
+
+  !!! using elm_instMod messes with the compilation order
+  use elm_instMod           , only : alm_fates, soil_water_retention_curve
+  use TemperatureType , only : temperature_vars
+  use perfMod_GPU
+  use timeinfoMod
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -50,15 +54,6 @@ module CanopyFluxesMod
   !
   ! !PUBLIC MEMBER FUNCTIONS:
   public :: CanopyFluxes
-  !
-  ! !PUBLIC DATA MEMBERS:
-  ! true => btran is based only on unfrozen soil levels
-  logical,  public :: perchroot     = .false.  
-
-  ! true  => btran is based on active layer (defined over two years); 
-  ! false => btran is based on currently unfrozen levels
-  logical,  public :: perchroot_alt = .false.  
-  !------------------------------------------------------------------------------
 
 contains
 
@@ -66,10 +61,7 @@ contains
   subroutine CanopyFluxes(bounds,  num_nolakeurbanp, filter_nolakeurbanp, &
        atm2lnd_vars, canopystate_vars, cnstate_vars, energyflux_vars, &
        frictionvel_vars, soilstate_vars, solarabs_vars, surfalb_vars, &
-       ch4_vars, photosyns_vars, &
-       soil_water_retention_curve, &
-       alm_fates) 
-    !
+       ch4_vars, photosyns_vars)
     ! !DESCRIPTION:
     ! 1. Calculates the leaf temperature:
     ! 2. Calculates the leaf fluxes, transpiration, photosynthesis and
@@ -99,35 +91,35 @@ contains
     !
     ! !USES:
     use shr_const_mod      , only : SHR_CONST_TKFRZ, SHR_CONST_RGAS
-    use clm_time_manager   , only : get_step_size, get_prev_date, get_nstep
     use elm_varcon         , only : sb, cpair, hvap, vkc, grav, denice
     use elm_varcon         , only : denh2o, tfrz, csoilc, tlsai_crit, alpha_aero
     use elm_varcon         , only : isecspday, degpsec
     use pftvarcon          , only : irrigated
     use elm_varcon         , only : c14ratio
-    use perf_mod           , only : t_startf, t_stopf
+
+    !NEW
     use domainMod          , only : ldomain
     use QSatMod            , only : QSat
     use FrictionVelocityMod, only : FrictionVelocity, MoninObukIni
-    use SoilWaterRetentionCurveMod, only : soil_water_retention_curve_type
     use SurfaceResistanceMod, only : getlblcef
+    use PhotosynthesisType, only : photosyns_vars_TimeStepInit
     !
     ! !ARGUMENTS:
     type(bounds_type)         , intent(in)    :: bounds 
     integer                   , intent(in)    :: num_nolakeurbanp       ! number of column non-lake, non-urban points in pft filter
     integer                   , intent(in)    :: filter_nolakeurbanp(:) ! patch filter for non-lake, non-urban points
-    type(atm2lnd_type)        , intent(in)    :: atm2lnd_vars
+    type(atm2lnd_type)        , intent(inout) :: atm2lnd_vars
     type(canopystate_type)    , intent(inout) :: canopystate_vars
-    type(cnstate_type)        , intent(in)    :: cnstate_vars
+    type(cnstate_type)        , intent(inout) :: cnstate_vars
     type(energyflux_type)     , intent(inout) :: energyflux_vars
     type(frictionvel_type)    , intent(inout) :: frictionvel_vars
-    type(solarabs_type)       , intent(in)    :: solarabs_vars
-    type(surfalb_type)        , intent(in)    :: surfalb_vars
+    type(solarabs_type)       , intent(inout) :: solarabs_vars
+    type(surfalb_type)        , intent(inout) :: surfalb_vars
     type(soilstate_type)      , intent(inout) :: soilstate_vars
     type(ch4_type)            , intent(inout) :: ch4_vars
     type(photosyns_type)      , intent(inout) :: photosyns_vars
-    class(soil_water_retention_curve_type), intent(in) :: soil_water_retention_curve
-    type(hlm_fates_interface_type) , intent(inout) :: alm_fates
+    real(r8) :: dtime
+    integer  ::  time
     !
     ! !LOCAL VARIABLES:
     real(r8), pointer   :: bsun(:)          ! sunlit canopy transpiration wetness factor (0 to 1)
@@ -167,7 +159,6 @@ contains
     !added by K.Sakaguchi for stability formulation
     real(r8), parameter :: ria  = 0.5_r8             ! free parameter for stable formulation (currently = 0.5, "gamma" in Sakaguchi&Zeng,2008)
 
-    real(r8) :: dtime                                ! land model time step (sec)
     real(r8) :: zldis(bounds%begp:bounds%endp)       ! reference height "minus" zero displacement height [m]
     real(r8) :: zeta                                 ! dimensionless height used in Monin-Obukhov theory
     real(r8) :: wc                                   ! convective velocity [m/s]
@@ -292,10 +283,6 @@ contains
     real(r8) :: delq_snow
     real(r8) :: delq_soil
     real(r8) :: delq_h2osfc
-    integer  :: yr                                       ! year at start of time step
-    integer  :: mon                                      ! month at start of time step
-    integer  :: day                                      ! day at start of time step
-    integer  :: time                                     ! time at start of time step (seconds after 0Z)
     integer  :: local_time                               ! local time at start of time step (seconds after solar midnight)
     integer  :: seconds_since_irrig_start_time
     integer  :: irrig_nsteps_per_day                     ! number of time steps per day in which we irrigate
@@ -313,6 +300,8 @@ contains
     real(r8) :: temprootr                 
     real(r8) :: dt_veg_temp(bounds%begp:bounds%endp)
     integer  :: iv
+
+    character(len=256) :: event !! timing event
     !------------------------------------------------------------------------------
 
     associate(                                                               & 
@@ -442,10 +431,11 @@ contains
         bsha                    => energyflux_vars%bsha_patch ! Output:[real(r8) (:)   ]  sunlit canopy transpiration wetness factor (0 to 1)
       end if
       ! Determine step size
+      dtime = dtime_mod
+      !yr = year_curr; mon = mon_curr; day = day_curr;
+      time = secs_curr;
 
-      dtime = get_step_size()
       irrig_nsteps_per_day = ((irrig_length + (dtime - 1))/dtime)  ! round up
-      ! irrig_nsteps_per_day = 12 !6 hrs
       ! First - set the following values over points where frac vegetation covered by snow is zero
       ! (e.g. btran, t_veg, rootr, rresis)
 
@@ -471,8 +461,7 @@ contains
       ! Time step initialization of photosynthesis variables
       ! -----------------------------------------------------------------
 
-      call photosyns_vars%TimeStepInit(bounds)
-
+      call photosyns_vars_TimeStepInit(photosyns_vars,bounds)
 
       ! -----------------------------------------------------------------
       ! Filter patches where frac_veg_nosno IS NON-ZERO
@@ -487,10 +476,11 @@ contains
          end if
       end do
 
-
+#ifndef _OPENACC
       if (use_fates) then
          call alm_fates%prep_canopyfluxes( bounds )
       end if
+#endif
 
 
       ! Initialize
@@ -565,9 +555,10 @@ contains
       ! --------------------------------------------------------------------------
       
       if(use_fates)then
+#ifndef _OPENACC
          call alm_fates%wrap_btran(bounds, fn, filterc_tmp(1:fn), soilstate_vars, &
                energyflux_vars, soil_water_retention_curve)
-         
+#endif
       else
          !calculate root moisture stress
          call calc_root_moist_stress(bounds,     &
@@ -576,9 +567,8 @@ contains
               filterp = filterp,                 &
               canopystate_vars=canopystate_vars, &
               energyflux_vars=energyflux_vars,   &
-              soilstate_vars=soilstate_vars,     &
-              soil_water_retention_curve=soil_water_retention_curve)
-         
+              soilstate_vars=soilstate_vars)
+
       end if !use_fates
 
       ! Determine if irrigation is needed (over irrigated soil columns)
@@ -587,8 +577,6 @@ contains
       ! Also set n_irrig_steps_left for these grid cells
       ! n_irrig_steps_left(p) > 0 is ok even if irrig_rate(p) ends up = 0
       ! in this case, we'll irrigate by 0 for the given number of time steps
-
-      call get_prev_date(yr, mon, day, time)  ! get time as of beginning of time step
 
       do f = 1, fn
          p = filterp(f)
@@ -601,7 +589,6 @@ contains
             
             ! see if it's the right time of day to start irrigating:
             local_time = modulo(time + nint(grc_pp%londeg(g)/degpsec), isecspday)
-            ! local_time = time ! if not using local time
             seconds_since_irrig_start_time = modulo(local_time - irrig_start_time, isecspday)
             if (seconds_since_irrig_start_time < dtime) then
                ! it's time to start irrigating
@@ -720,8 +707,10 @@ contains
 
       if (found) then
          if ( .not. use_fates ) then
+#ifndef _OPENACC
             write(iulog,*)'Error: Forcing height is below canopy height for pft index '
             call endrun(decomp_index=index, elmlevel=namep, msg=errmsg(__FILE__, __LINE__))
+#endif
          end if
       end if
 
@@ -742,8 +731,8 @@ contains
       fporig(1:fn) = filterp(1:fn)
 
       ! Begin stability iteration
-
-      call t_startf('can_iter')
+      event = 'can_iter'
+      call t_startGPU(event)
       ITERATION : do while (itlef <= itmax .and. fn > 0)
 
          ! Determine friction velocity, and potential temperature and humidity
@@ -849,11 +838,13 @@ contains
 
          if ( use_fates ) then      
 
+#ifndef _OPENACC
             call alm_fates%wrap_photosynthesis(bounds, fn, filterp(1:fn), &
                   svpts(begp:endp), eah(begp:endp), o2(begp:endp), &
                   co2(begp:endp), rb(begp:endp), dayl_factor(begp:endp), &
                   atm2lnd_vars, canopystate_vars, photosyns_vars)
 
+#endif
          else ! not use_fates
 
             if ( use_hydrstress ) then
@@ -866,14 +857,14 @@ contains
             else
                call Photosynthesis (bounds, fn, filterp, &
                  svpts(begp:endp), eah(begp:endp), o2(begp:endp), co2(begp:endp), rb(begp:endp), btran(begp:endp), &
-                 dayl_factor(begp:endp), atm2lnd_vars, surfalb_vars, solarabs_vars, &
-                 canopystate_vars, photosyns_vars, phase='sun')
+                 dayl_factor(begp:endp), atm2lnd_vars,  surfalb_vars, solarabs_vars, &
+                 canopystate_vars, photosyns_vars, 1)
             end if
 
             if ( use_c13 ) then
                call Fractionation (bounds, fn, filterp, &
-                    atm2lnd_vars, canopystate_vars, cnstate_vars, solarabs_vars, surfalb_vars, photosyns_vars, &
-                    phase='sun')
+                    cnstate_vars, solarabs_vars, surfalb_vars, photosyns_vars, &
+                    1)
             endif
 
             do f = 1, fn
@@ -885,15 +876,15 @@ contains
             end do
             if ( .not. use_hydrstress ) then
               call Photosynthesis (bounds, fn, filterp, &
-                 svpts(begp:endp), eah(begp:endp), o2(begp:endp), co2(begp:endp), rb(begp:endp), btran(begp:endp), &
-                 dayl_factor(begp:endp), atm2lnd_vars, surfalb_vars, solarabs_vars, &
-                 canopystate_vars, photosyns_vars, phase='sha')
+                svpts(begp:endp), eah(begp:endp), o2(begp:endp), co2(begp:endp), rb(begp:endp), btran(begp:endp), &
+                dayl_factor(begp:endp), atm2lnd_vars,surfalb_vars, solarabs_vars, &
+                canopystate_vars, photosyns_vars, 0)
             end if
 
             if ( use_c13 ) then
                call Fractionation (bounds, fn, filterp,  &
-                    atm2lnd_vars, canopystate_vars, cnstate_vars, solarabs_vars, surfalb_vars, photosyns_vars, &
-                    phase='sha')
+                    cnstate_vars, solarabs_vars, surfalb_vars, photosyns_vars, &
+                    0)
             end if
 
          end if ! end of if use_fates
@@ -1137,7 +1128,7 @@ contains
          end if
 
       end do ITERATION     ! End stability iteration
-      call t_stopf('can_iter')
+      call t_stopGPU(event)
 
       fn = fnorig
       filterp(1:fn) = fporig(1:fn)
@@ -1225,10 +1216,12 @@ contains
       end do
 
       if ( use_fates ) then
+
+#ifndef _OPENACC
          call alm_fates%wrap_accumulatefluxes(bounds,fn,filterp(1:fn))
          call alm_fates%wrap_hydraulics_drive(bounds,fn,filterp(1:fn),soilstate_vars, &
               solarabs_vars,energyflux_vars)
-
+#endif
       else
 
          ! Determine total photosynthesis

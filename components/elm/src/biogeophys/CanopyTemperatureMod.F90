@@ -10,7 +10,6 @@ module CanopyTemperatureMod
 
   !
   ! !USES:
-  use shr_sys_mod          , only : shr_sys_flush
   use shr_kind_mod         , only : r8 => shr_kind_r8
   use shr_log_mod          , only : errMsg => shr_log_errMsg
   use shr_const_mod        , only : SHR_CONST_PI
@@ -18,7 +17,7 @@ module CanopyTemperatureMod
   use abortutils           , only : endrun
   use elm_varctl           , only : iulog, use_fates
   use PhotosynthesisMod    , only : Photosynthesis, PhotosynthesisTotal, Fractionation 
-  use ELMFatesInterfaceMod , only : hlm_fates_interface_type
+  use elm_instMod          , only : alm_fates
   use SurfaceResistanceMod , only : calc_soilevap_stress
   use VegetationPropertiesType, only : veg_vp
   use atm2lndType          , only : atm2lnd_type
@@ -45,8 +44,7 @@ contains
   !------------------------------------------------------------------------------
   subroutine CanopyTemperature(bounds, &
        num_nolakec, filter_nolakec, num_nolakep, filter_nolakep, &
-       atm2lnd_vars, canopystate_vars, soilstate_vars, frictionvel_vars, &
-       alm_fates)
+       atm2lnd_vars, canopystate_vars, soilstate_vars, frictionvel_vars)
     !
     ! !DESCRIPTION:
     ! This is the main subroutine to execute the calculation of leaf temperature
@@ -87,7 +85,6 @@ contains
     type(canopystate_type) , intent(inout) :: canopystate_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
     type(frictionvel_type) , intent(inout) :: frictionvel_vars
-    type(hlm_fates_interface_type) , intent(inout) :: alm_fates
     !
     ! !LOCAL VARIABLES:
     integer  :: g,t,l,c,p    ! indices
@@ -393,9 +390,11 @@ contains
       ! of its dynamics call.  If and when crops are
       ! enabled simultaneously with FATES, we will 
       ! have to apply a filter here.
+#ifndef _OPENACC
       if(use_fates) then
          call alm_fates%TransferZ0mDisp(bounds,frictionvel_vars,canopystate_vars)
       end if
+#endif
 
       do fp = 1,num_nolakep
          p = filter_nolakep(fp)

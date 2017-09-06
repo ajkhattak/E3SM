@@ -15,7 +15,7 @@ module  PhotosynthesisMod
   use elm_varpar          , only : nlevcan
   use elm_varctl          , only : use_hydrstress
   use elm_varpar          , only : nvegwcs, mxpft
-  use elm_varcon          , only : namep
+  use elm_varcon          , only : namep, spval
   use decompMod           , only : bounds_type
   use QuadraticMod        , only : quadratic
   use VegetationPropertiesType      , only : veg_vp
@@ -25,11 +25,11 @@ module  PhotosynthesisMod
   use SolarAbsorbedType   , only : solarabs_type
   use SurfaceAlbedoType   , only : surfalb_type
   use PhotosynthesisType  , only : photosyns_type
-  use VegetationType           , only : veg_pp
-  use AllocationMod     , only : nu_com_leaf_physiology
-  use elm_varctl          , only : cnallocate_carbon_only
-  use elm_varctl          , only : cnallocate_carbonnitrogen_only
-  use elm_varctl          , only : cnallocate_carbonphosphorus_only
+  use VegetationType      , only : veg_pp
+  use AllocationMod       , only : nu_com_leaf_physiology
+  use elm_varctl          , only : carbon_only
+  use elm_varctl          , only : carbonnitrogen_only
+  use elm_varctl          , only : carbonphosphorus_only
   use elm_varctl          , only : iulog
   use pftvarcon           , only : noveg
   use SharedParamsMod     , only : ParamsShareInst
@@ -86,12 +86,12 @@ module  PhotosynthesisMod
   ! !PUBLIC VARIABLES:
 
   type :: photo_params_type
-     real(r8), allocatable, public  :: krmax              (:)
-     real(r8), allocatable, private :: kmax               (:,:)
-     real(r8), allocatable, private :: psi50              (:,:)
-     real(r8), allocatable, private :: ck                 (:,:)
-     real(r8), allocatable, public  :: psi_soil_ref       (:)
-     real(r8), allocatable, private :: lmr_intercept_atkin(:)
+     real(r8),pointer , public  :: krmax              (:)   => null()
+     real(r8),pointer , public :: kmax               (:,:) => null()
+     real(r8),pointer , public :: psi50              (:,:) => null()
+     real(r8),pointer , public :: ck                 (:,:) => null()
+     real(r8),pointer , public  :: psi_soil_ref       (:)   => null()
+     real(r8),pointer , public :: lmr_intercept_atkin(:)   => null()
   contains
      procedure, private :: allocParams
      procedure, public :: readParams
@@ -117,11 +117,11 @@ contains
 
     ! allocate parameters
 
-    allocate( this%krmax       (0:mxpft) )          ; this%krmax(:)        = nan
-    allocate( this%kmax        (0:mxpft,nvegwcs) )  ; this%kmax(:,:)       = nan
-    allocate( this%psi50       (0:mxpft,nvegwcs) )  ; this%psi50(:,:)      = nan
-    allocate( this%ck          (0:mxpft,nvegwcs) )  ; this%ck(:,:)         = nan
-    allocate( this%psi_soil_ref(0:mxpft) )          ; this%psi_soil_ref(:) = nan
+    allocate( this%krmax       (0:mxpft) )          ; this%krmax(:)        = spval
+    allocate( this%kmax        (0:mxpft,nvegwcs) )  ; this%kmax(:,:)       = spval
+    allocate( this%psi50       (0:mxpft,nvegwcs) )  ; this%psi50(:,:)      = spval
+    allocate( this%ck          (0:mxpft,nvegwcs) )  ; this%ck(:,:)         = spval
+    allocate( this%psi_soil_ref(0:mxpft) )          ; this%psi_soil_ref(:) = spval
 
     if ( use_hydrstress .and. nvegwcs /= 4 )then
        call endrun(msg='Error:: the Plant Hydraulics Stress methodology is for the spacA function is hardcoded for nvegwcs==4' &
@@ -200,7 +200,7 @@ contains
     !
     ! !USES:
     use elm_varcon     , only : rgas, tfrz
-    use elm_varctl     , only : cnallocate_carbon_only 
+    use elm_varctl     , only : carbon_only
     use pftvarcon      , only : nbrdlf_dcd_tmp_shrub, nsoybean, nsoybeanirrig, npcropmin
     use pftvarcon      , only : vcmax_np1, vcmax_np2, vcmax_np3, vcmax_np4, jmax_np1, jmax_np2, jmax_np3
     !
@@ -215,13 +215,13 @@ contains
     real(r8)               , intent(in)    :: rb( bounds%begp: )             ! boundary layer resistance (s/m) [pft]
     real(r8)               , intent(in)    :: btran( bounds%begp: )          ! transpiration wetness factor (0 to 1) [pft]
     real(r8)               , intent(in)    :: dayl_factor( bounds%begp: )    ! scalar (0-1) for daylength
-    type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
-    type(surfalb_type)     , intent(in)    :: surfalb_vars
-    type(solarabs_type)    , intent(in)    :: solarabs_vars
-    type(canopystate_type) , intent(in)    :: canopystate_vars
-    type(photosyns_type)   , intent(inout) :: photosyns_vars
-    character(len=*)       , intent(in)    :: phase                          ! 'sun' or 'sha'
-    
+    type(atm2lnd_type)     , intent(inout)    :: atm2lnd_vars
+    type(surfalb_type)     , intent(inout)    :: surfalb_vars
+    type(solarabs_type)    , intent(inout)    :: solarabs_vars
+    type(canopystate_type) , intent(inout)    :: canopystate_vars
+    type(photosyns_type)   , intent(inout)    :: photosyns_vars
+    integer,value       , intent(in)    :: phase                          ! 'sun'(1) or 'sha'(0)
+
     !
     ! !LOCAL VARIABLES:
     !
@@ -338,6 +338,7 @@ contains
     real(r8) :: lpc(bounds%begp:bounds%endp)   ! leaf P concentration (gP leaf/m^2)
     real(r8) :: sum_nscaler              
     real(r8) :: total_lai
+    integer  :: rad_layers_patch
     !------------------------------------------------------------------------------
 
     ! Temperature and soil water response functions
@@ -402,7 +403,7 @@ contains
          s_vcmax       => veg_vp%s_vc                            &
          )
       
-      if (phase == 'sun') then
+      if (phase == 1) then
          par_z     =>    solarabs_vars%parsun_z_patch        ! Input:  [real(r8) (:,:) ]  par absorbed per unit lai for canopy layer (w/m**2)                 
          lai_z     =>    canopystate_vars%laisun_z_patch     ! Input:  [real(r8) (:,:) ]  leaf area index for canopy layer, sunlit or shaded                  
          vcmaxcint =>    surfalb_vars%vcmaxcintsun_patch     ! Input:  [real(r8) (:)   ]  leaf to canopy scaling coefficient                                     
@@ -417,7 +418,7 @@ contains
          psn_wc    =>    photosyns_vars%psnsun_wc_patch      ! Output: [real(r8) (:)   ]  Rubisco-limited foliage photosynthesis (umol co2 /m**2/ s) [always +] 
          psn_wj    =>    photosyns_vars%psnsun_wj_patch      ! Output: [real(r8) (:)   ]  RuBP-limited foliage photosynthesis (umol co2 /m**2/ s) [always +]    
          psn_wp    =>    photosyns_vars%psnsun_wp_patch      ! Output: [real(r8) (:)   ]  product-limited foliage photosynthesis (umol co2 /m**2/ s) [always +] 
-      else if (phase == 'sha') then
+      else if (phase == 0) then
          par_z     =>    solarabs_vars%parsha_z_patch        ! Input:  [real(r8) (:,:) ]  par absorbed per unit lai for canopy layer (w/m**2)                 
          lai_z     =>    canopystate_vars%laisha_z_patch     ! Input:  [real(r8) (:,:) ]  leaf area index for canopy layer, sunlit or shaded                  
          vcmaxcint =>    surfalb_vars%vcmaxcintsha_patch     ! Input:  [real(r8) (:)   ]  leaf to canopy scaling coefficient                                    
@@ -546,7 +547,7 @@ contains
             if (.not. use_cn) then
                vcmax25top = vcmax25top * fnitr(veg_pp%itype(p))
             else
-               if ( CNAllocate_Carbon_only() ) vcmax25top = vcmax25top * fnitr(veg_pp%itype(p))
+               if ( Carbon_only ) vcmax25top = vcmax25top * fnitr(veg_pp%itype(p))
             end if
 
             ! Parameters derived from vcmax25top. Bonan et al (2011) JGR, 116, doi:10.1029/2010JG001593
@@ -556,15 +557,15 @@ contains
          else
          
             ! leaf level nutrient control on photosynthesis rate added by Q. Zhu Aug 2015
-            
-            if ( CNAllocate_Carbon_only() .or. cnallocate_carbonphosphorus_only()) then
+
+            if ( Carbon_only  .or.  carbonphosphorus_only ) then
 
                lnc(p) = 1._r8 / (slatop(veg_pp%itype(p)) * leafcn(veg_pp%itype(p)))
                vcmax25top = lnc(p) * flnr(veg_pp%itype(p)) * fnr * act25 * dayl_factor(p)
                vcmax25top = vcmax25top * fnitr(veg_pp%itype(p))
                jmax25top = (2.59_r8 - 0.035_r8*min(max((t10(p)-tfrz),11._r8),35._r8)) * vcmax25top
 
-            else if ( cnallocate_carbonnitrogen_only() ) then ! only N control, from Kattge 2009 Global Change Biology 15 (4), 976-991
+            else if (  carbonnitrogen_only  ) then ! only N control, from Kattge 2009 Global Change Biology 15 (4), 976-991
 
                ! Leaf nitrogen concentration at the top of the canopy (g N leaf / m**2 leaf)
                sum_nscaler = 0.0_r8                                                       
@@ -706,8 +707,8 @@ contains
          ! calculated every timestep. Others are calculated only if daytime
 
          laican = 0._r8
-         do iv = 1, nrad(p)
-
+         rad_layers_patch = nrad(p)
+         do iv = 1, rad_layers_patch
             ! Cumulative lai at middle of layer
 
             if (iv == 1) then
@@ -1054,7 +1055,7 @@ contains
   !------------------------------------------------------------------------------
   subroutine Fractionation(bounds, &
        fn, filterp, &
-       atm2lnd_vars, canopystate_vars, cnstate_vars, solarabs_vars, surfalb_vars, photosyns_vars, &
+       cnstate_vars, solarabs_vars, surfalb_vars, photosyns_vars, &
        phase)
     !
     ! !DESCRIPTION:
@@ -1065,13 +1066,11 @@ contains
     type(bounds_type)      , intent(in)    :: bounds               
     integer                , intent(in)    :: fn                   ! size of pft filter
     integer                , intent(in)    :: filterp(fn)          ! patch filter
-    type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
-    type(canopystate_type) , intent(in)    :: canopystate_vars
     type(cnstate_type)     , intent(in)    :: cnstate_vars
     type(solarabs_type)    , intent(in)    :: solarabs_vars
     type(surfalb_type)     , intent(in)    :: surfalb_vars
     type(photosyns_type)   , intent(in)    :: photosyns_vars
-    character(len=*)       , intent(in)    :: phase                ! 'sun' or 'sha'
+    integer      , intent(in   )    :: phase                ! 'sun'(1) or 'sha'(0)
     !
     ! !LOCAL VARIABLES:
     real(r8) , pointer :: par_z (:,:)   ! needed for backwards compatiblity
@@ -1096,10 +1095,10 @@ contains
          gs_mol      => photosyns_vars%gs_mol_patch             & ! Input:  [real(r8) (:,:) ]  leaf stomatal conductance (umol H2O/m**2/s)                         
          )
 
-      if (phase == 'sun') then
+      if (phase == 1) then
          par_z    =>    solarabs_vars%parsun_z_patch     ! Input :  [real(r8) (:,:)]  par absorbed per unit lai for canopy layer (w/m**2)                 
          alphapsn =>    photosyns_vars%alphapsnsun_patch ! Output:  [real(r8) (:)]                                                                        
-      else if (phase == 'sha') then
+      else if (phase == 0) then
          par_z    =>    solarabs_vars%parsha_z_patch     ! Input :  [real(r8) (:,:)]  par absorbed per unit lai for canopy layer (w/m**2)                 
          alphapsn =>    photosyns_vars%alphapsnsha_patch ! Output:  [real(r8) (:)]                                                                        
       end if
@@ -1582,8 +1581,7 @@ contains
     !
     ! !USES:
     use elm_varcon        , only : rgas, tfrz, rpi
-    use elm_varctl        , only : cnallocate_carbon_only
-    !use elm_varctl        , only : lnc_opt, reduce_dayl_factor, vcmax_opt    
+    use elm_varctl        , only : carbon_only
     use elm_varpar        , only : nlevsoi
     use pftvarcon         , only : nbrdlf_dcd_tmp_shrub, npcropmin
     use pftvarcon         , only : vcmax_np1, vcmax_np2, vcmax_np3, vcmax_np4, jmax_np1, jmax_np2, jmax_np3
@@ -2088,7 +2086,7 @@ contains
             if (.not. use_cn) then
                vcmax25top = vcmax25top * fnitr(veg_pp%itype(p))
             else
-               if ( CNAllocate_Carbon_only() ) vcmax25top = vcmax25top *fnitr(veg_pp%itype(p))
+               if ( Carbon_only ) vcmax25top = vcmax25top *fnitr(veg_pp%itype(p))
             end if
 
             ! Parameters derived from vcmax25top. Bonan et al (2011) JGR, 116,
@@ -2102,14 +2100,14 @@ contains
             ! leaf level nutrient control on photosynthesis rate added by Q. Zhu
             ! Aug 2015
 
-            if ( CNAllocate_Carbon_only() .or.cnallocate_carbonphosphorus_only()) then
+            if ( Carbon_only  .or. carbonphosphorus_only) then
 
                lnc(p) = 1._r8 / (slatop(veg_pp%itype(p)) * leafcn(veg_pp%itype(p)))
                vcmax25top = lnc(p) * flnr(veg_pp%itype(p)) * fnr * act25 *dayl_factor(p)
                vcmax25top = vcmax25top * fnitr(veg_pp%itype(p))
                jmax25top = (2.59_r8 -0.035_r8*min(max((t10(p)-tfrz),11._r8),35._r8)) * vcmax25top
 
-            else if ( cnallocate_carbonnitrogen_only() ) then ! only N control,from Kattge 2009 Global Change Biology 15 (4), 976-991
+            else if ( carbonnitrogen_only ) then ! only N control,from Kattge 2009 Global Change Biology 15 (4), 976-991
 
                ! Leaf nitrogen concentration at the top of the canopy (g N leaf
                ! / m**2 leaf)
@@ -3258,6 +3256,7 @@ contains
     ! USES
     use elm_varpar        , only : nlevsoi
     use elm_varcon        , only : rgas
+    use SimpleMathMod     , only : matvec_acc
     !!
     ! !ARGUMENTS:
     integer                , intent(in)  :: p               ! pft index
@@ -3308,8 +3307,6 @@ contains
          fdry          => veg_ws%fdry            , & ! Input:  [real(r8) (:)   ]  fraction of foliage that is green and dry [-]
          forc_pbot     => top_as%pbot                           , & ! Input:  [real(r8) (:)   ]  atmospheric pressure (Pa)                                             
          forc_rho      => top_as%rhobot                         , & ! Input:  [real(r8) (:)   ]  density (kg/m**3)
-!         forc_rho      => atm2lnd_inst%forc_rho_downscaled_col  , & ! Input:  [real(r8) (:)   ]  density (kg/m**3)
-!         forc_pbot     => atm2lnd_inst%forc_pbot_downscaled_col , & ! Input:  [real(r8) (:)   ]  atmospheric pressure (Pa)
          tgcm          => veg_es%thm            , & ! Input:  [real(r8) (:)   ]  air temperature at agcm reference height (kelvin)
          bsw           => soilstate_inst%bsw_col                , & ! Input:  [real(r8) (:,:) ]  Clapp and Hornberger "b"
          qflx_tran_veg => veg_wf%qflx_tran_veg    , & ! Input:  [real(r8) (:)   ]  vegetation transpiration (mm H2O/s) (+ = to atm)
@@ -3363,13 +3360,15 @@ contains
        end if
 
        if (laisun(p)>tol_lai.and.laisha(p)>tol_lai)then
-          dx = matmul(A,f)
+          !dx = matmul(A,f)
+          call matvec_acc(1,nvegwcs,dx,A,f)
        else
           !reduces to 3x3 system
           !in this case, dx is not always [sun,sha,xyl,root]
           !sun and sha flip depending on which is lai==0
           dx(sun)=0._r8
-          dx(sha:root)=matmul(A(sha:root,sha:root),f(sha:root))
+          !dx(sha:root)=matmul(A(sha:root,sha:root),f(sha:root))
+          call matvec_acc(sha,root,dx,A,f )
        endif
        
        

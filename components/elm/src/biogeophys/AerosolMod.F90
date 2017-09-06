@@ -7,11 +7,11 @@ module AerosolMod
   use elm_varpar       , only : nlevsno 
   use clm_time_manager , only : get_step_size
   use atm2lndType      , only : atm2lnd_type
-  use WaterfluxType    , only : waterflux_type
-  use WaterstateType   , only : waterstate_type
   use AerosolType      , only : aerosol_type
   use ColumnType       , only : col_pp
   use ColumnDataType   , only : col_ws, col_wf  
+
+  use timeinfoMod
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -92,7 +92,7 @@ contains
          mss_cnc_dst4  => aerosol_vars%mss_cnc_dst4_col       & ! Output: [real(r8) (:,:) ]  mass concentration of dust species 4 (col,lyr) [kg/kg]
          )
 
-      dtime = get_step_size()
+      dtime = dtime_mod
 
       do fc = 1, num_on
          c = filter_on(fc)
@@ -357,7 +357,7 @@ contains
       ! is in the top layer after deposition, and is not immediately
       ! washed out before radiative calculations are done
 
-      dtime = get_step_size()
+      dtime = dtime_mod
 
       do fc = 1, num_snowc
          c = filter_snowc(fc)
