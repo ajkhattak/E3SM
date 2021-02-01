@@ -533,7 +533,7 @@
       <!-- pflotran codes are pre-built as libpflotran.a in $ELM_PFLOTRAN_SOURCE_DIR -->
       <env name="PETSC_PATH">$ENV{PETSC_PATH}</env>
       <env name="PFLOTRAN_INC"> -I$ENV{ELM_PFLOTRAN_SOURCE_DIR} -I$ENV{PETSC_PATH}/include</env>
-      <env name="PFLOTRAN_LIB"> -L$ENV{CLM_PFLOTRAN_SOURCE_DIR} -lpflotran -L$ENV{PETSC_DIR}/lib -lpetsc -lHYPRE -lcmumps -ldmumps -lsmumps -lzmumps -lmumps_common -lpord -lscalapack -lsuperlu -lparmetis -lmetis -Wl,-rpath,$ENV{PETSC_PATH}/lib </env>
+      <env name="PFLOTRAN_LIB"> -L$ENV{ELM_PFLOTRAN_SOURCE_DIR} -lpflotran -L$ENV{PETSC_PATH}/lib -lpetsc -lHYPRE -lcmumps -ldmumps -lsmumps -lzmumps -lmumps_common -lpord -lscalapack -lsuperlu -lparmetis -lmetis -Wl,-rpath,$ENV{PETSC_PATH}/lib </env>
     </environment_variables>
   </machine>
 
