@@ -12,7 +12,6 @@ module SurfaceResistanceMod
   use shr_const_mod , only : SHR_CONST_TKFRZ
   use elm_varctl    , only : iulog
   use SoilStateType , only : soilstate_type
-  use WaterStateType, only : waterstate_type
   use ColumnDataType, only : col_ws  
   
   implicit none
@@ -47,7 +46,7 @@ contains
    
    !------------------------------------------------------------------------------   
    subroutine calc_soilevap_stress(bounds, num_nolakec, filter_nolakec, &
-        soilstate_vars, waterstate_vars)
+        soilstate_vars)
      !
      ! DESCRIPTIONS
      ! compute the stress factor for soil evaporation calculation
@@ -65,7 +64,6 @@ contains
      integer               , intent(in)    :: num_nolakec
      integer               , intent(in)    :: filter_nolakec(:)
      type(soilstate_type)  , intent(inout) :: soilstate_vars
-     type(waterstate_type) , intent(in)    :: waterstate_vars
 
      character(len=32) :: subname = 'calc_soilevap_stress'  ! subroutine name
      associate(                &
@@ -77,7 +75,7 @@ contains
 
        case (leepielke_1992)
           call calc_beta_leepielke1992(bounds, num_nolakec, filter_nolakec, &
-               soilstate_vars, waterstate_vars, soilbeta(bounds%begc:bounds%endc))
+               soilstate_vars, soilbeta(bounds%begc:bounds%endc))
 
        case default
           call endrun(subname // ':: a soilevap stress function must be specified!')     
@@ -89,7 +87,7 @@ contains
    
    !------------------------------------------------------------------------------   
    subroutine calc_beta_leepielke1992(bounds, num_nolakec, filter_nolakec, &
-        soilstate_vars, waterstate_vars, soilbeta)
+        soilstate_vars, soilbeta)
      !
      ! DESCRIPTION
      ! compute the lee-pielke beta factor to scal actual soil evaporation from potential evaporation
@@ -113,7 +111,6 @@ contains
      integer               , intent(in)    :: num_nolakec
      integer               , intent(in)    :: filter_nolakec(:)
      type(soilstate_type)  , intent(in)    :: soilstate_vars
-     type(waterstate_type) , intent(in)    :: waterstate_vars
      real(r8)              , intent(inout) :: soilbeta(bounds%begc:bounds%endc)
 
      !local variables

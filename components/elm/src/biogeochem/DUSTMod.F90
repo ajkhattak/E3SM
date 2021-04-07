@@ -186,7 +186,7 @@ contains
   !------------------------------------------------------------------------
   subroutine DustEmission (bounds, &
        num_nolakep, filter_nolakep, &
-       atm2lnd_vars, soilstate_vars, canopystate_vars, waterstate_vars, &
+       atm2lnd_vars, soilstate_vars, canopystate_vars, &
        frictionvel_vars, dust_vars)
     !
     ! !DESCRIPTION: 
@@ -207,7 +207,6 @@ contains
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
     type(soilstate_type)   , intent(in)    :: soilstate_vars
     type(canopystate_type) , intent(in)    :: canopystate_vars
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
     type(frictionvel_type) , intent(in)    :: frictionvel_vars
     type(dust_type)        , intent(inout) :: dust_vars
 

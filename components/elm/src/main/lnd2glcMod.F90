@@ -145,7 +145,7 @@ contains
 
   !------------------------------------------------------------------------------
   subroutine update_lnd2glc(this, bounds, num_do_smb_c, filter_do_smb_c, &
-       temperature_vars, waterflux_vars, init)
+       init)
     !
     ! !DESCRIPTION:
     ! Assign values to lnd2glc+
@@ -155,8 +155,6 @@ contains
     type(bounds_type)      , intent(in)    :: bounds  
     integer                , intent(in)    :: num_do_smb_c       ! number of columns in filter_do_smb_c
     integer                , intent(in)    :: filter_do_smb_c(:) ! column filter: columns where smb calculations are performed
-    type(temperature_type) , intent(in)    :: temperature_vars
-    type(waterflux_type)   , intent(in)    :: waterflux_vars
     logical                , intent(in)    :: init               ! if true=>only set a subset of fields
     !
     ! !LOCAL VARIABLES:

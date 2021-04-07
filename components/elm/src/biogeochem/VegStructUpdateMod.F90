@@ -9,10 +9,8 @@ module VegStructUpdateMod
   use shr_const_mod        , only : SHR_CONST_PI
   use elm_varctl           , only : iulog
   use VegetationPropertiesType     , only : veg_vp
-  use WaterStateType       , only : waterstate_type
   use FrictionVelocityType , only : frictionvel_type
   use CNStateType          , only : cnstate_type
-  use CNCarbonStateType    , only : carbonstate_type
   use CanopyStateType      , only : canopystate_type
   use CropType             , only : crop_type
   use ColumnDataType       , only : col_ws
@@ -31,8 +29,8 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine VegStructUpdate(num_soilp, filter_soilp, &
-       waterstate_vars, frictionvel_vars, cnstate_vars, &
-       carbonstate_vars, canopystate_vars, crop_vars)
+       frictionvel_vars, cnstate_vars, &
+       canopystate_vars, crop_vars)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, use C state variables and epc to diagnose
@@ -47,10 +45,8 @@ contains
     ! !ARGUMENTS:
     integer                , intent(in)    :: num_soilp       ! number of column soil points in pft filter
     integer                , intent(in)    :: filter_soilp(:) ! patch filter for soil points
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
     type(frictionvel_type) , intent(in)    :: frictionvel_vars
     type(cnstate_type)     , intent(inout) :: cnstate_vars
-    type(carbonstate_type) , intent(in)    :: carbonstate_vars
     type(canopystate_type) , intent(inout) :: canopystate_vars
     type(crop_type)        , intent(inout) :: crop_vars
     !

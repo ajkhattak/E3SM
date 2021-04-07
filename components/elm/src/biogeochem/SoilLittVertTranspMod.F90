@@ -11,13 +11,7 @@ module SoilLittVertTranspMod
   use abortutils             , only : endrun
   use CNDecompCascadeConType , only : decomp_cascade_con
   use CanopyStateType        , only : canopystate_type
-  use CNCarbonFluxType       , only : carbonflux_type
-  use CNCarbonStateType      , only : carbonstate_type
   use CNStateType            , only : cnstate_type
-  use CNNitrogenFluxType     , only : nitrogenflux_type
-  use CNNitrogenStateType    , only : nitrogenstate_type
-  use PhosphorusFluxType     , only : phosphorusflux_type
-  use PhosphorusStateType    , only : phosphorusstate_type
   use elm_varctl             , only : nu_com
   use ColumnDataType         , only : col_cs, c13_col_cs, c14_col_cs
   use ColumnDataType         , only : col_cf, c13_col_cf, c14_col_cf
@@ -89,11 +83,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine SoilLittVertTransp(bounds, num_soilc, filter_soilc,   &
-       canopystate_vars, cnstate_vars,                               &
-       carbonstate_vars, c13_carbonstate_vars, c14_carbonstate_vars, &
-       carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars,    &
-       nitrogenstate_vars,nitrogenflux_vars,&
-       phosphorusstate_vars,phosphorusflux_vars)
+       canopystate_vars, cnstate_vars)
     !
     ! !DESCRIPTION:
     ! Calculate vertical mixing of soil and litter pools.  Also reconcile sources and sinks of these pools 
@@ -113,17 +103,6 @@ contains
     integer                  , intent(in)    :: filter_soilc(:)  ! filter for soil columns
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(inout) :: carbonstate_vars
-    type(carbonstate_type)   , intent(inout) :: c13_carbonstate_vars
-    type(carbonstate_type)   , intent(inout) :: c14_carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c13_carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c14_carbonflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     real(r8) :: diffus (bounds%begc:bounds%endc,1:nlevdecomp+1)    ! diffusivity (m2/s)  (includes spinup correction, if any)

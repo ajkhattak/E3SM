@@ -12,7 +12,6 @@ module SurfaceRadiationMod
   use decompMod         , only : bounds_type
   use elm_varcon        , only : namec
   use atm2lndType       , only : atm2lnd_type
-  use WaterstateType    , only : waterstate_type
   use CanopyStateType   , only : canopystate_type
   use SurfaceAlbedoType , only : surfalb_type
   use SolarAbsorbedType , only : solarabs_type
@@ -303,7 +302,7 @@ contains
   !------------------------------------------------------------------------------
   subroutine SurfaceRadiation(bounds, num_nourbanp, filter_nourbanp, &
        num_urbanp, filter_urbanp, num_urbanc, filter_urbanc, &
-       atm2lnd_vars, waterstate_vars, canopystate_vars, surfalb_vars, &
+       atm2lnd_vars, canopystate_vars, surfalb_vars, &
        solarabs_vars, surfrad_vars)
      !
      ! !DESCRIPTION: 
@@ -340,7 +339,6 @@ contains
      integer                , intent(in)    :: num_urbanc         ! number of urban columns in clump
      integer                , intent(in)    :: filter_urbanc(:)   ! urban column filter
      type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
-     type(waterstate_type)  , intent(in)    :: waterstate_vars
      type(surfalb_type)     , intent(in)    :: surfalb_vars
      type(canopystate_type) , intent(inout) :: canopystate_vars
      type(solarabs_type)    , intent(inout) :: solarabs_vars

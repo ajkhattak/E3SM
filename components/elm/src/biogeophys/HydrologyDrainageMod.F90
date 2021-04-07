@@ -13,9 +13,6 @@ module HydrologyDrainageMod
   use glc2lndMod        , only : glc2lnd_type
   use SoilHydrologyType , only : soilhydrology_type  
   use SoilStateType     , only : soilstate_type
-  use TemperatureType   , only : temperature_type
-  use WaterfluxType     , only : waterflux_type
-  use WaterstateType    , only : waterstate_type
   use SoilHydrologyMod  , only : WaterTable
   use TopounitDataType  , only : top_af ! atmospheric flux variables
   use LandunitType      , only : lun_pp                
@@ -39,8 +36,8 @@ contains
        num_hydrologyc, filter_hydrologyc, &
        num_urbanc, filter_urbanc,         &
        num_do_smb_c, filter_do_smb_c,     &
-       atm2lnd_vars, glc2lnd_vars, temperature_vars,    &
-       soilhydrology_vars, soilstate_vars, waterstate_vars, waterflux_vars, ep_betr)
+       atm2lnd_vars, glc2lnd_vars,        &
+       soilhydrology_vars, soilstate_vars, ep_betr)
     !
     ! !DESCRIPTION:
     ! Calculates soil/snow hydrology with drainage (subsurface runoff)
@@ -57,6 +54,8 @@ contains
     use SoilHydrologyMod , only : ELMVICMap, Drainage
     use elm_varctl       , only : use_vsfm
     use BeTRSimulationALM, only : betr_simulation_alm_type
+    use WaterfluxType    , only : waterflux_type
+    use WaterstateType   , only : waterstate_type
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds               
@@ -70,11 +69,10 @@ contains
     integer                  , intent(in)    :: filter_do_smb_c(:)   ! column filter for bare land SMB columns      
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
     type(glc2lnd_type)       , intent(in)    :: glc2lnd_vars
-    type(temperature_type)   , intent(in)    :: temperature_vars
     type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
     type(soilstate_type)     , intent(inout) :: soilstate_vars
-    type(waterstate_type)    , intent(inout) :: waterstate_vars
-    type(waterflux_type)     , intent(inout) :: waterflux_vars
+    type(waterstate_type)                    :: waterstate_vars      ! ONLY used when betr is on
+    type(waterflux_type)                     :: waterflux_vars       ! ONLY used when betr is on
     class(betr_simulation_alm_type), intent(inout) :: ep_betr
     !
     ! !LOCAL VARIABLES:
@@ -131,7 +129,7 @@ contains
 
       if (use_vichydro) then
          call ELMVICMap(bounds, num_hydrologyc, filter_hydrologyc, &
-              soilhydrology_vars, waterstate_vars)
+              soilhydrology_vars)
       endif
 
       if (use_betr) then
@@ -142,8 +140,7 @@ contains
       if (.not. use_vsfm) then
          call Drainage(bounds, num_hydrologyc, filter_hydrologyc, &
               num_urbanc, filter_urbanc,&
-              temperature_vars, soilhydrology_vars, soilstate_vars, &
-              waterstate_vars, waterflux_vars)
+              soilhydrology_vars, soilstate_vars)
       endif
 
       if (use_betr) then

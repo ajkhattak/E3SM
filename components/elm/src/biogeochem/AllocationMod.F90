@@ -15,13 +15,6 @@ module AllocationMod
   use decompMod           , only : bounds_type
   use subgridAveMod       , only : p2c
   use CanopyStateType     , only : canopystate_type
-  use CNCarbonFluxType    , only : carbonflux_type
-  use CNCarbonStateType   , only : carbonstate_type
-  use CNNitrogenFluxType  , only : nitrogenflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
-  !!! add phosphorus
-  use PhosphorusFluxType  , only : phosphorusflux_type
-  use PhosphorusStateType , only : phosphorusstate_type
   use CNStateType         , only : cnstate_type
   use PhotosynthesisType  , only : photosyns_type
   use CropType            , only : crop_type
@@ -38,7 +31,6 @@ module AllocationMod
   use elm_varctl          , only: use_elm_interface,use_elm_bgc, use_pflotran, pf_cmode
   use elm_varctl          , only : nu_com
   use SoilStatetype       , only : soilstate_type
-  use WaterStateType      , only : waterstate_type
   use elm_varctl          , only : NFIX_PTASE_plant
   use ELMFatesInterfaceMod  , only : hlm_fates_interface_type
 
@@ -297,10 +289,7 @@ contains
 
 !-------------------------------------------------------------------------------------------------
   subroutine Allocation1_PlantNPDemand (bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       photosyns_vars, crop_vars, canopystate_vars, cnstate_vars,             &
-       carbonstate_vars, carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars,  &
-       nitrogenstate_vars, nitrogenflux_vars,&
-       phosphorusstate_vars,phosphorusflux_vars)
+       photosyns_vars, crop_vars, canopystate_vars, cnstate_vars)
     ! PHASE-1 of Allocation: loop over patches to assess the total plant N demand and P demand
     ! !USES:
     use shr_sys_mod      , only: shr_sys_flush
@@ -324,15 +313,6 @@ contains
     type(crop_type)          , intent(in)    :: crop_vars
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c13_carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c14_carbonflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-!     !!  add phosphorus  -X.YANG
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     real(r8) :: compet_decomp_no3      ! (unitless) relative competitiveness of immobilizers for NO3 for BGC module
@@ -621,9 +601,6 @@ contains
          p_allometry                  => cnstate_vars%p_allometry_patch                        , & ! Output: [real(r8) (:)   ]  P allocation index (DIM)                
          tempmax_retransp             => cnstate_vars%tempmax_retransp_patch                   , & ! Output: [real(r8) (:)   ]  temporary annual max of retranslocated P pool (gP/m2)
          annmax_retransp              => cnstate_vars%annmax_retransp_patch                    , & ! Output: [real(r8) (:)   ]  annual max of retranslocated P pool     
-
-         c13cf                        => c13_carbonflux_vars                                   , &
-         c14cf                        => c14_carbonflux_vars                                   , &
          
          froot_prof                   => cnstate_vars%froot_prof_patch                         , & ! fine root vertical profile Zeng, X. 2001. Global vegetation root distribution for land modeling. J. Hydrometeor. 2:525-530
          fpg_nh4_vr                   => cnstate_vars%fpg_nh4_vr_col                           , &
@@ -1039,8 +1016,8 @@ contains
       !!! Starting resolving N limitation
       !! new subroutines to calculate nuptake_prof & puptake_prof
       if (nu_com .eq. 'RD') then ! 'RD' : relative demand approach
-         call calc_nuptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, nitrogenstate_vars, nuptake_prof)
-         call calc_puptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, phosphorusstate_vars, puptake_prof)
+         call calc_nuptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, nuptake_prof)
+         call calc_puptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, puptake_prof)
       end if
 
       !! flux_type%var = local var, used in Allocation2
@@ -1070,10 +1047,7 @@ contains
  subroutine Allocation2_ResolveNPLimit (bounds, num_soilc, filter_soilc  , &
                             num_soilp, filter_soilp                         , &
                             cnstate_vars                                    , &
-                            carbonstate_vars, carbonflux_vars               , &
-                            nitrogenstate_vars, nitrogenflux_vars           , &
-                            phosphorusstate_vars,phosphorusflux_vars        , &
-                            soilstate_vars,waterstate_vars, &
+                            soilstate_vars                                  , &
                             elm_fates)
    
     ! PHASE-2 of Allocation:  resolving N/P limitation
@@ -1097,16 +1071,8 @@ contains
     integer                  , intent(in)    :: num_soilp        ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:)  ! filter for soil patches
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-!     !!  add phosphorus  -X.YANG
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
 
     type(soilstate_type)     , intent(in)    :: soilstate_vars
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
     type(hlm_fates_interface_type), intent(inout) :: elm_fates   ! Slated for use future commit
     
     !
@@ -1330,8 +1296,8 @@ contains
 
          ! Starting resolving N/P limitation
          ! calculate nuptake & puptake profile
-         call calc_nuptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, nitrogenstate_vars, nuptake_prof)
-         call calc_puptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, phosphorusstate_vars, puptake_prof)
+         call calc_nuptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, nuptake_prof)
+         call calc_puptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, puptake_prof)
 
       end if
 
@@ -2836,10 +2802,8 @@ contains
   subroutine Allocation3_PlantCNPAlloc (bounds            , &
         num_soilc, filter_soilc, num_soilp, filter_soilp    , &
         canopystate_vars                                    , &
-        cnstate_vars, carbonstate_vars, carbonflux_vars     , &
-        c13_carbonflux_vars, c14_carbonflux_vars            , &
-        nitrogenstate_vars, nitrogenflux_vars               , &
-        phosphorusstate_vars, phosphorusflux_vars, crop_vars)
+        cnstate_vars                                        , &
+        crop_vars)
     ! PHASE-3 of Allocation: start new pft loop to distribute the available N/P between the
     ! competing patches on the basis of relative demand, and allocate C/N/P to new growth and storage
 
@@ -2865,15 +2829,6 @@ contains
 
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c13_carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c14_carbonflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-!    !!  add phosphorus  -X.YANG
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     type(crop_type)          , intent(inout) :: crop_vars
     !
     ! !LOCAL VARIABLES:
@@ -3074,18 +3029,15 @@ contains
          livestem_xsmr                => veg_cf%livestem_xsmr                   , & 
          livecroot_xsmr               => veg_cf%livecroot_xsmr                  , &
          grain_xsmr                   => veg_cf%grain_xsmr                      , &
-         allocation_leaf              => veg_cf%allocation_leaf                       , &
-         allocation_stem              => veg_cf%allocation_stem                       , &
-         allocation_froot             => veg_cf%allocation_froot                      , &
+         allocation_leaf              => veg_cf%allocation_leaf                 , &
+         allocation_stem              => veg_cf%allocation_stem                 , &
+         allocation_froot             => veg_cf%allocation_froot                , &
          xsmrpool_turnover            => veg_cf%xsmrpool_turnover               , &
          rf_decomp_cascade            => cnstate_vars%rf_decomp_cascade_col                    , &
          fpi_vr                       => cnstate_vars%fpi_vr_col                               , &
          fpi_p_vr                     => cnstate_vars%fpi_p_vr_col                             , &
-         supplement_to_plantn         => veg_nf%supplement_to_plantn                , &
-         supplement_to_plantp         => veg_pf%supplement_to_plantp              , &
-
-         c13cf => c13_carbonflux_vars, &
-         c14cf => c14_carbonflux_vars  &
+         supplement_to_plantn         => veg_nf%supplement_to_plantn            , &
+         supplement_to_plantp         => veg_pf%supplement_to_plantp              &
          )
 
 !
@@ -3961,7 +3913,7 @@ contains
                   sminp_to_plant(bounds%begc:bounds%endc))
 
           call calc_puptake_prof(bounds, num_soilc, filter_soilc, &
-                  cnstate_vars, phosphorusstate_vars, puptake_prof)
+                  cnstate_vars, puptake_prof)
 
           do j = 1, nlevdecomp
              do fc=1,num_soilc
@@ -4048,7 +4000,7 @@ contains
  end subroutine Allocation3_PlantCNPAlloc
 
 !-------------------------------------------------------------------------------------------------
-  subroutine calc_nuptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, nitrogenstate_vars, nuptake_prof)
+  subroutine calc_nuptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, nuptake_prof)
     ! bgc interface & pflotran:
     ! nuptake_prof is used in Allocation1, 2, 3
     ! !USES:
@@ -4058,7 +4010,6 @@ contains
     integer                  , intent(in)    :: num_soilc        ! number of soil columns in filter
     integer                  , intent(in)    :: filter_soilc(:)  ! filter for soil columns
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars
     real(r8)                 , intent(inout) :: nuptake_prof(bounds%begc:bounds%endc, 1:nlevdecomp)
 
     integer :: c,j,fc                                            !indices
@@ -4122,7 +4073,7 @@ contains
  end subroutine calc_nuptake_prof
 
 !-------------------------------------------------------------------------------------------------
-  subroutine calc_puptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, phosphorusstate_vars, puptake_prof)
+  subroutine calc_puptake_prof(bounds, num_soilc, filter_soilc, cnstate_vars, puptake_prof)
     ! bgc interface & pflotran:
     ! puptake_prof is used in Allocation1, 2, & 3
     ! !USES:
@@ -4132,7 +4083,6 @@ contains
     integer                  , intent(in)    :: num_soilc        ! number of soil columns in filter
     integer                  , intent(in)    :: filter_soilc(:)  ! filter for soil columns
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(phosphorusstate_type),intent(in)    :: phosphorusstate_vars
     real(r8)                 , intent(inout) :: puptake_prof(bounds%begc:bounds%endc, 1:nlevdecomp)
 
     integer :: c,j,fc                                            !indices

@@ -14,11 +14,6 @@ module CNNitrifDenitrifMod
   use abortutils          , only : endrun
   use decompMod           , only : bounds_type
   use SoilStatetype       , only : soilstate_type
-  use WaterStateType      , only : waterstate_type
-  use TemperatureType     , only : temperature_type
-  use CNCarbonfluxType    , only : carbonflux_type
-  use CNNitrogenFluxType  , only : nitrogenflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
   use ch4Mod              , only : ch4_type
   use ColumnType          , only : col_pp 
   use ColumnDataType      , only : col_es, col_ws, col_cf, col_ns, col_nf  
@@ -104,8 +99,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine nitrif_denitrif(bounds, num_soilc, filter_soilc, &
-       soilstate_vars, waterstate_vars, temperature_vars, ch4_vars, &
-       carbonflux_vars, nitrogenstate_vars, nitrogenflux_vars)
+       soilstate_vars, ch4_vars)
     !
     ! !DESCRIPTION:
     !  calculate nitrification and denitrification rates
@@ -119,12 +113,7 @@ contains
     integer                  , intent(in)    :: num_soilc         ! number of soil columns in filter
     integer                  , intent(in)    :: filter_soilc(:)   ! filter for soil columns
     type(soilstate_type)     , intent(in)    :: soilstate_vars
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
-    type(temperature_type)   , intent(in)    :: temperature_vars
     type(ch4_type)           , intent(in)    :: ch4_vars
-    type(carbonflux_type)    , intent(in)    :: carbonflux_vars
-    type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c, fc, reflev, j

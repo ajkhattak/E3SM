@@ -14,9 +14,6 @@ module RootDynamicsMod
   use pftvarcon           , only : noveg, npcropmin, roota_par, rootb_par, root_dmx, evergreen
   use CanopyStateType     , only: canopystate_type
   use CNStateType         , only : cnstate_type
-  use CNCarbonStateType   , only : carbonstate_type
-  use CNCarbonFluxType    , only : carbonflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
   use EnergyFluxType      , only: energyflux_type
   use SoilStateType       , only : soilstate_type
   use CropType            , only : crop_type
@@ -39,7 +36,7 @@ contains
   !-----------------------------------------------------------------------
   !
   subroutine RootDynamics(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       canopystate_vars, carbonstate_vars, nitrogenstate_vars, carbonflux_vars,  &
+       canopystate_vars, &
        cnstate_vars, crop_vars,  energyflux_vars, soilstate_vars)
     !
     ! !DESCRIPTION:
@@ -59,9 +56,6 @@ contains
     integer                  , intent(in)    :: filter_soilp(:)    ! filter for soil pfts
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)    , intent(in)    :: carbonflux_vars
-    type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars !
     type(crop_type)          , intent(in)    :: crop_vars
     type(energyflux_type)    , intent(in)    :: energyflux_vars
     type(soilstate_type)     , intent(inout) :: soilstate_vars

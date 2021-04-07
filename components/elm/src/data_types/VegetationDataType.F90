@@ -383,6 +383,8 @@ module VegetationDataType
     real(r8), pointer :: qflx_over_supply_patch   (:)   => null()   ! over supplied irrigation
     integer , pointer :: n_irrig_steps_left (:)   => null() ! number of time steps for which we still need to irrigate today (if 0, ignore)
 
+    real(r8), pointer :: qflx_sapflow_patch       (:)   => null()   !plant hydraulics, (mm H2O/s)
+
   contains
     procedure, public :: Init    => veg_wf_init
     procedure, public :: Restart => veg_wf_restart
@@ -5366,6 +5368,8 @@ module VegetationDataType
     allocate(this%qflx_supply_patch        (begp:endp))              ; this%qflx_supply_patch        (:)   = nan
     allocate(this%qflx_over_supply_patch   (begp:endp))              ; this%qflx_over_supply_patch   (:)   = nan 
     allocate(this%n_irrig_steps_left       (begp:endp))              ; this%n_irrig_steps_left       (:)   = 0
+
+    allocate(this%qflx_sapflow_patch            (begp:endp))         ; this%qflx_sapflow_patch       (:)   = nan
     
     !-----------------------------------------------------------------------
     ! initialize history fields for select members of veg_wf
@@ -5485,6 +5489,11 @@ module VegetationDataType
             avgflag='A', long_name='surface dew added to snow pacK', &
             ptr_patch=this%qflx_dew_snow, default='inactive', c2l_scale_type='urbanf')
     end if
+
+    this%qflx_sapflow_patch(begp:endp) = spval
+    call hist_addfld1d (fname='QFLX_SAPFLOW', units='mm H2O/s', &
+          avgflag='A', long_name='plant sap flow', &
+          ptr_patch=this%qflx_sapflow_patch, default='inactive', c2l_scale_type='urbanf')
 
     !-----------------------------------------------------------------------
     ! set cold-start initial values for select members of veg_wf

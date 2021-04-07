@@ -10,9 +10,6 @@ module PrecisionControlMod
   use abortutils          , only : endrun
   use elm_varctl          , only : nu_com
   use elm_varpar          , only : ndecomp_pools
-  use CNCarbonStateType   , only : carbonstate_type
-  use CNNitrogenStateType , only : nitrogenstate_type
-  use PhosphorusStateType , only : phosphorusstate_type
   use ColumnType          , only : col_pp
   use ColumnDataType      , only : col_cs, c13_col_cs, c14_col_cs
   use ColumnDataType      , only : col_ns, col_ps
@@ -32,9 +29,7 @@ module PrecisionControlMod
 contains
 
   !-----------------------------------------------------------------------
-  subroutine PrecisionControl(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       carbonstate_vars, c13_carbonstate_vars, c14_carbonstate_vars, nitrogenstate_vars,&
-       phosphorusstate_vars)
+  subroutine PrecisionControl(num_soilc, filter_soilc, num_soilp, filter_soilp)
     !
     ! !DESCRIPTION: 
     ! On the radiation time step, force leaf and deadstem c and n to 0 if
@@ -52,11 +47,6 @@ contains
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
     integer                  , intent(in)    :: num_soilp       ! number of soil patchs in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(carbonstate_type)   , intent(inout) :: carbonstate_vars
-    type(carbonstate_type)   , intent(inout) :: c13_carbonstate_vars
-    type(carbonstate_type)   , intent(inout) :: c14_carbonstate_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,p,j,k,l  ! indices
@@ -76,15 +66,10 @@ contains
     !-----------------------------------------------------------------------
 
     associate(&
-         cs      => carbonstate_vars     , &
          csv2    => col_cs               , &
          vcsv2   => veg_cs               , &
-         ns      => nitrogenstate_vars   , &
-         ps      => phosphorusstate_vars , &
-         c13cs   => c13_carbonstate_vars , &
          c13csv2 => c13_col_cs           , &
          c13vcsv2=> c13_veg_cs           , &
-         c14cs   => c14_carbonstate_vars , &
          c14csv2 => c14_col_cs           , &
          c14vcsv2=> c14_veg_cs           , &
          floating_cn_ratio_decomp_pools   =>    decomp_cascade_con%floating_cn_ratio_decomp_pools , &

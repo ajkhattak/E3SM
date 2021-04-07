@@ -22,9 +22,6 @@ module SnowHydrologyMod
   use elm_varcon      , only : namec
   use atm2lndType     , only : atm2lnd_type
   use AerosolType     , only : aerosol_type
-  use TemperatureType , only : temperature_type
-  use WaterfluxType   , only : waterflux_type
-  use WaterstateType  , only : waterstate_type
   use LandunitType    , only : lun_pp                
   use ColumnType      , only : col_pp 
   use ColumnDataType  , only : col_es, col_ef, col_ws, col_wf  
@@ -83,7 +80,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine SnowWater(bounds, &
        num_snowc, filter_snowc, num_nosnowc, filter_nosnowc, &
-       atm2lnd_vars, waterflux_vars, waterstate_vars, aerosol_vars)
+       atm2lnd_vars, aerosol_vars)
     !
     ! !DESCRIPTION:
     ! Evaluate the change of snow mass and the snow water onto soil.
@@ -111,8 +108,6 @@ contains
     integer               , intent(in)    :: num_nosnowc       ! number of non-snow points in column filter
     integer               , intent(in)    :: filter_nosnowc(:) ! column filter for non-snow points
     type(atm2lnd_type)    , intent(in)    :: atm2lnd_vars
-    type(waterflux_type)  , intent(inout) :: waterflux_vars
-    type(waterstate_type) , intent(inout) :: waterstate_vars
     type(aerosol_type)    , intent(inout) :: aerosol_vars
     !
     ! !LOCAL VARIABLES:
@@ -511,8 +506,7 @@ contains
    end subroutine SnowWater
 
    !-----------------------------------------------------------------------
-   subroutine SnowCompaction(bounds, num_snowc, filter_snowc, &
-        temperature_vars, waterstate_vars)
+   subroutine SnowCompaction(bounds, num_snowc, filter_snowc)
      !
      ! !DESCRIPTION:
      ! Determine the change in snow layer thickness due to compaction and
@@ -533,8 +527,6 @@ contains
      type(bounds_type)      , intent(in) :: bounds          
      integer                , intent(in) :: num_snowc       ! number of column snow points in column filter
      integer                , intent(in) :: filter_snowc(:) ! column filter for snow points
-     type(temperature_type) , intent(in) :: temperature_vars
-     type(waterstate_type)  , intent(in) :: waterstate_vars
      !
      ! !LOCAL VARIABLES:
      integer :: j, l, c, fc                      ! indices
@@ -674,7 +666,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine CombineSnowLayers(bounds, num_snowc, filter_snowc, &
-        aerosol_vars, temperature_vars, waterflux_vars, waterstate_vars)
+        aerosol_vars)
      !
      ! !DESCRIPTION:
      ! Combine snow layers that are less than a minimum thickness or mass
@@ -693,9 +685,6 @@ contains
      integer                , intent(inout) :: num_snowc       ! number of column snow points in column filter
      integer                , intent(inout) :: filter_snowc(:) ! column filter for snow points
      type(aerosol_type)     , intent(inout) :: aerosol_vars
-     type(temperature_type) , intent(inout) :: temperature_vars
-     type(waterflux_type)   , intent(inout) :: waterflux_vars
-     type(waterstate_type)  , intent(inout) :: waterstate_vars
      !
      ! !LOCAL VARIABLES:
      integer :: c, fc                            ! column indices
@@ -1039,7 +1028,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine DivideSnowLayers(bounds, num_snowc, filter_snowc, &
-        aerosol_vars, temperature_vars, waterstate_vars, is_lake)
+        aerosol_vars, is_lake)
      !
      ! !DESCRIPTION:
      ! Subdivides snow layers if they exceed their prescribed maximum thickness.
@@ -1053,8 +1042,6 @@ contains
      integer                , intent(in)    :: num_snowc       ! number of column snow points in column filter
      integer                , intent(in)    :: filter_snowc(:) ! column filter for snow points
      type(aerosol_type)     , intent(inout) :: aerosol_vars
-     type(temperature_type) , intent(inout) :: temperature_vars
-     type(waterstate_type)  , intent(inout) :: waterstate_vars
      logical                , intent(in)    :: is_lake  !TODO - this should be examined and removed in the future
      !
      ! !LOCAL VARIABLES:

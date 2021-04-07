@@ -14,8 +14,6 @@ module CNNStateUpdate1BeTRMod
   use VegetationPropertiesType      , only : veg_vp
   use CNDecompCascadeConType , only : decomp_cascade_con
   use CNStateType            , only : cnstate_type
-  use CNNitrogenFluxType     , only : nitrogenflux_type
-  use CNNitrogenStateType    , only : nitrogenstate_type
   use VegetationType         , only : veg_pp
   use VegetationDataType     , only : veg_ns, veg_nf
   use tracer_varcon          , only : is_active_betr_bgc
@@ -34,7 +32,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine NStateUpdate1(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       cnstate_vars, nitrogenflux_vars, nitrogenstate_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update all the prognostic nitrogen state
@@ -46,8 +44,6 @@ contains
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,p,j,l,k ! indices
@@ -65,10 +61,7 @@ contains
          cascade_receiver_pool => decomp_cascade_con%cascade_receiver_pool , & ! Input:  [integer  (:)     ]  which pool is C added to for a given decomposition step
 
          ndep_prof             => cnstate_vars%ndep_prof_col               , & ! Input:  [real(r8) (:,:)   ]  profile over which N deposition is distributed through column (1/m)
-         nfixation_prof        => cnstate_vars%nfixation_prof_col          , & ! Input:  [real(r8) (:,:)   ]  profile over which N fixation is distributed through column (1/m)
-
-         nf                    => nitrogenflux_vars                        , &
-         ns                    => nitrogenstate_vars &
+         nfixation_prof        => cnstate_vars%nfixation_prof_col            & ! Input:  [real(r8) (:,:)   ]  profile over which N fixation is distributed through column (1/m)
          )
 
       ! set time steps

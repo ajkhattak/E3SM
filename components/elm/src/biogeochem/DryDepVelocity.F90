@@ -123,7 +123,7 @@ CONTAINS
 
   !----------------------------------------------------------------------- 
   subroutine depvel_compute( bounds, &
-       atm2lnd_vars, canopystate_vars, waterstate_vars, frictionvel_vars, &
+       atm2lnd_vars, canopystate_vars, frictionvel_vars, &
        photosyns_vars, drydepvel_vars)
     !
     ! !DESCRIPTION:
@@ -148,7 +148,6 @@ CONTAINS
     type(bounds_type)      , intent(in)    :: bounds  
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
     type(canopystate_type) , intent(in)    :: canopystate_vars
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
     type(frictionvel_type) , intent(in)    :: frictionvel_vars
     type(photosyns_type)   , intent(in)    :: photosyns_vars
     type(drydepvel_type)   , intent(inout) :: drydepvel_vars

@@ -18,9 +18,6 @@ module SedYieldMod
   use EnergyFluxType    , only : energyflux_type
   use SoilHydrologyType , only : soilhydrology_type
   use SoilStateType     , only : soilstate_type
-  use WaterfluxType     , only : waterflux_type
-  use WaterStateType    , only : waterstate_type
-  use TemperatureType   , only : temperature_type
   use ColumnType        , only : col_pp
   use LandunitType      , only : lun_pp
   use VegetationType    , only : veg_pp
@@ -43,8 +40,8 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine SoilErosion (bounds, num_soilc, filter_soilc, &
-    atm2lnd_vars, canopystate_vars, soilstate_vars, waterstate_vars, &
-    waterflux_vars, sedflux_vars)
+    atm2lnd_vars, canopystate_vars, soilstate_vars, &
+    sedflux_vars)
     !
     ! !DESCRIPTION:
     ! Calculate rainfall and runoff driven erosion 
@@ -64,8 +61,6 @@ contains
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
     type(CanopyState_type)   , intent(in)    :: canopystate_vars
     type(soilstate_type)     , intent(in)    :: soilstate_vars
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
-    type(waterflux_type)     , intent(in)    :: waterflux_vars
     type(sedflux_type)       , intent(inout) :: sedflux_vars
     !
     ! !LOCAL VARIABLES:

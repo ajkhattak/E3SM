@@ -6,7 +6,6 @@ module AnnualUpdateMod
   ! !USES:
   use shr_kind_mod     , only : r8 => shr_kind_r8
   use decompMod        , only : bounds_type
-  use CNCarbonFluxType , only : carbonflux_type
   use CNStateType      , only : cnstate_type
   use ColumnDataType   , only : col_cf
   use VegetationDataType, only : veg_cf
@@ -25,7 +24,7 @@ contains
   subroutine AnnualUpdate(bounds, &
        num_soilc, filter_soilc, &
        num_soilp, filter_soilp, &
-       cnstate_vars, carbonflux_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update annual summation variables
@@ -42,7 +41,6 @@ contains
     integer               , intent(in)    :: num_soilp         ! number of soil patches in filter
     integer               , intent(in)    :: filter_soilp(:)   ! filter for soil patches
     type(cnstate_type)    , intent(inout) :: cnstate_vars
-    type(carbonflux_type) , intent(inout) :: carbonflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,p          ! indices

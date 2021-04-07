@@ -23,17 +23,11 @@ module CH4Mod
   use SharedParamsMod  , only : ParamsShareInst
   use atm2lndType        , only : atm2lnd_type
   use CanopyStateType    , only : canopystate_type
-  use CNCarbonFluxType   , only : carbonflux_type
-  use CNCarbonStateType  , only : carbonstate_type
-  use CNNitrogenFluxType , only : nitrogenflux_type
   use EnergyFluxType     , only : energyflux_type
   use LakeStateType      , only : lakestate_type
   use lnd2atmType        , only : lnd2atm_type
   use SoilHydrologyType  , only : soilhydrology_type  
   use SoilStateType      , only : soilstate_type
-  use TemperatureType    , only : temperature_type
-  use WaterfluxType      , only : waterflux_type
-  use WaterstateType     , only : waterstate_type
   use GridcellType       , only : grc_pp
   use TopounitDataType   , only : top_as  ! for topounit-level atmospheric state forcing  
   use LandunitType       , only : lun_pp                
@@ -1273,8 +1267,8 @@ contains
        num_lakec, filter_lakec, &
        num_soilp, filter_soilp, &
        atm2lnd_vars, lakestate_vars, canopystate_vars, soilstate_vars, soilhydrology_vars, &
-       temperature_vars, energyflux_vars, waterstate_vars, waterflux_vars, &
-       carbonstate_vars, carbonflux_vars, nitrogenflux_vars, ch4_vars, lnd2atm_vars)
+       energyflux_vars, &
+       ch4_vars, lnd2atm_vars)
     !
     ! !DESCRIPTION:
     ! Driver for the methane emissions model
@@ -1299,13 +1293,7 @@ contains
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(soilstate_type)     , intent(inout) :: soilstate_vars
     type(soilhydrology_type) , intent(in)    :: soilhydrology_vars
-    type(temperature_type)   , intent(in)    :: temperature_vars
     type(energyflux_type)    , intent(inout) :: energyflux_vars
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
-    type(waterflux_type)     , intent(in)    :: waterflux_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type)  , intent(in)    :: nitrogenflux_vars
     type(ch4_type)           , intent(inout) :: ch4_vars
     type(lnd2atm_type)       , intent(inout) :: lnd2atm_vars
     !
@@ -1537,7 +1525,7 @@ contains
       call ch4_annualupdate(bounds, &
            num_soilc, filter_soilc, &
            num_soilp, filter_soilp, &
-           carbonflux_vars, ch4_vars)
+           ch4_vars)
 
       ! Determine rootfr_col and also check for inactive columns
 
@@ -1604,7 +1592,7 @@ contains
          if (sat == 0) then ! unsaturated
 
             call get_jwt (bounds, num_soilc, filter_soilc, jwt(begc:endc), &
-                 soilstate_vars, waterstate_vars, temperature_vars)
+                 soilstate_vars)
 
             do fc = 1, num_soilc
                c = filter_soilc(fc)
@@ -1642,28 +1630,28 @@ contains
               num_soilc, filter_soilc, &
               num_soilp, filter_soilp, &
               jwt(begc:endc), sat, lake, &
-              soilstate_vars, temperature_vars, waterstate_vars, &
-              carbonflux_vars, nitrogenflux_vars, ch4_vars)
+              soilstate_vars, &
+              ch4_vars)
 
          ! calculate CH4 oxidation in each soil layer
          call ch4_oxid (bounds, &
               num_soilc, filter_soilc, &
               jwt(begc:endc), sat, lake, &
-              waterstate_vars, soilstate_vars, temperature_vars, ch4_vars)
+              soilstate_vars, ch4_vars)
 
          ! calculate CH4 aerenchyma losses in each soil layer
          call ch4_aere (bounds, &
               num_soilc, filter_soilc, &
               num_soilp, filter_soilp, &
               jwt(begc:endc), sat, lake, &
-              canopystate_vars, soilstate_vars, temperature_vars, energyflux_vars, &
-              waterstate_vars, waterflux_vars, carbonstate_vars, carbonflux_vars, ch4_vars)
+              canopystate_vars, soilstate_vars, energyflux_vars, &
+              ch4_vars)
 
          ! calculate CH4 ebullition losses in each soil layer
          call ch4_ebul (bounds, &
               num_soilc, filter_soilc, &
               jwt(begc:endc), sat, lake, &
-              atm2lnd_vars, temperature_vars, lakestate_vars, soilstate_vars, waterstate_vars, &
+              atm2lnd_vars, lakestate_vars, soilstate_vars, &
               ch4_vars)
 
          ! Solve CH4 reaction/diffusion equation 
@@ -1671,7 +1659,7 @@ contains
          call ch4_tran (bounds, &
               num_soilc, filter_soilc, &
               jwt(begc:endc), dtime_ch4, sat, lake, &
-              soilstate_vars, temperature_vars, waterstate_vars, energyflux_vars, ch4_vars)
+              soilstate_vars, energyflux_vars, ch4_vars)
 
       enddo ! sat/unsat
 
@@ -1691,28 +1679,28 @@ contains
          call ch4_prod (bounds, &
               num_lakec, filter_lakec, &
               0, dummyfilter, jwt(begc:endc), sat, lake, &
-              soilstate_vars, temperature_vars, waterstate_vars, &
-              carbonflux_vars, nitrogenflux_vars, ch4_vars)
+              soilstate_vars, &
+              ch4_vars)
 
          ! calculate CH4 oxidation in each lake layer
          call ch4_oxid (bounds, &
               num_lakec, filter_lakec, &
               jwt(begc:endc), sat, lake, &
-              waterstate_vars, soilstate_vars, temperature_vars, ch4_vars)
+              soilstate_vars, ch4_vars)
 
          ! calculate CH4 aerenchyma losses in each lake layer
          ! The p filter will not be used here; the relevant column vars will just be set to 0.
          call ch4_aere (bounds, &
               num_lakec, filter_lakec, &
               0, dummyfilter, jwt(begc:endc), sat, lake, &
-              canopystate_vars, soilstate_vars, temperature_vars, energyflux_vars, &
-              waterstate_vars, waterflux_vars, carbonstate_vars, carbonflux_vars, ch4_vars)
+              canopystate_vars, soilstate_vars, energyflux_vars, &
+              ch4_vars)
 
          ! calculate CH4 ebullition losses in each lake layer
          call ch4_ebul (bounds, &
               num_lakec, filter_lakec, &
               jwt(begc:endc), sat, lake, &
-              atm2lnd_vars, temperature_vars, lakestate_vars, soilstate_vars, waterstate_vars, &
+              atm2lnd_vars, lakestate_vars, soilstate_vars, &
               ch4_vars)
 
          ! Solve CH4 reaction/diffusion equation 
@@ -1720,7 +1708,7 @@ contains
          call ch4_tran (bounds, &
               num_lakec, filter_lakec, &
               jwt(begc:endc), dtime_ch4, sat, lake, &
-              soilstate_vars, temperature_vars, waterstate_vars, energyflux_vars, ch4_vars)
+              soilstate_vars, energyflux_vars, ch4_vars)
 
       end if
 
@@ -1888,8 +1876,8 @@ contains
   !-----------------------------------------------------------------------
   subroutine ch4_prod (bounds, num_methc, filter_methc, num_methp, &
        filter_methp, jwt, sat, lake, &
-       soilstate_vars, temperature_vars, waterstate_vars, &
-       carbonflux_vars, nitrogenflux_vars, ch4_vars)
+       soilstate_vars, &
+       ch4_vars)
     !
     ! !DESCRIPTION:
     ! Production is done below the water table, based on CN heterotrophic respiration.
@@ -1914,10 +1902,6 @@ contains
     integer                 , intent(in)    :: sat                 ! 0 = unsaturated; 1 = saturated
     logical                 , intent(in)    :: lake                ! function called with lake filter
     type(soilstate_type)    , intent(inout) :: soilstate_vars
-    type(temperature_type)  , intent(in)    :: temperature_vars
-    type(waterstate_type)   , intent(in)    :: waterstate_vars
-    type(carbonflux_type)   , intent(in)    :: carbonflux_vars
-    type(nitrogenflux_type) , intent(in)    :: nitrogenflux_vars
     type(ch4_type)          , intent(inout) :: ch4_vars
     !
     ! !LOCAL VARIABLES:
@@ -2227,7 +2211,7 @@ contains
   subroutine ch4_oxid (bounds, &
        num_methc, filter_methc, &
        jwt, sat, lake, &
-       waterstate_vars, soilstate_vars, temperature_vars, ch4_vars)
+       soilstate_vars, ch4_vars)
     !
     ! !DESCRIPTION:
     ! Oxidation is based on double Michaelis-Mentin kinetics, and is adjusted for low soil moisture.
@@ -2243,9 +2227,7 @@ contains
     integer                , intent(in) :: jwt( bounds%begc: ) ! index of the soil layer right above the water table (-) [col]
     integer                , intent(in) :: sat                 ! 0 = unsaturated; 1 = saturated
     logical                , intent(in) :: lake                ! function called with lake filter
-    type(waterstate_type)  , intent(in) :: waterstate_vars
     type(soilstate_type)   , intent(in) :: soilstate_vars
-    type(temperature_type) , intent(in) :: temperature_vars
     type(ch4_type)         , intent(in) :: ch4_vars
     !
     ! !LOCAL VARIABLES:
@@ -2381,8 +2363,8 @@ contains
        num_methc, filter_methc, &
        num_methp, filter_methp, &
        jwt, sat, lake, &
-       canopystate_vars, soilstate_vars, temperature_vars, energyflux_vars, &
-       waterstate_vars, waterflux_vars, carbonstate_vars, carbonflux_vars, ch4_vars)
+       canopystate_vars, soilstate_vars, energyflux_vars, &
+       ch4_vars)
     !
     ! !DESCRIPTION:
     ! Arctic c3 grass (which is often present in fens) and all vegetation in inundated areas is assumed to have
@@ -2408,12 +2390,7 @@ contains
     logical                , intent(in)    :: lake             ! function called with lake filter
     type(canopystate_type) , intent(in)    :: canopystate_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
     type(energyflux_type)  , intent(in)    :: energyflux_vars
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
-    type(waterflux_type)   , intent(in)    :: waterflux_vars
-    type(carbonstate_type) , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)  , intent(in)    :: carbonflux_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
     !
     ! !LOCAL VARIABLES:
@@ -2641,7 +2618,7 @@ contains
   subroutine ch4_ebul (bounds, &
        num_methc, filter_methc, &
        jwt, sat, lake, &
-       atm2lnd_vars, temperature_vars, lakestate_vars, soilstate_vars, waterstate_vars, &
+       atm2lnd_vars, lakestate_vars, soilstate_vars, &
        ch4_vars)
     !
     ! !DESCRIPTION:
@@ -2662,10 +2639,8 @@ contains
     integer                , intent(in)    :: sat                 ! 0 = unsaturated; 1 = saturated
     logical                , intent(in)    :: lake             ! function called with lake filter
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
     type(lakestate_type)   , intent(in)    :: lakestate_vars 
     type(soilstate_type)   , intent(in)    :: soilstate_vars
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
     !
     ! !LOCAL VARIABLES:
@@ -2779,7 +2754,7 @@ contains
   subroutine ch4_tran (bounds, &
        num_methc, filter_methc, &
        jwt, dtime_ch4, sat, lake, &
-       soilstate_vars, temperature_vars, waterstate_vars, energyflux_vars, ch4_vars)
+       soilstate_vars, energyflux_vars, ch4_vars)
     !
     ! !DESCRIPTION:
     ! Solves the reaction & diffusion equation for the timestep.  First "competition" between processes for
@@ -2804,8 +2779,6 @@ contains
     logical                , intent(in)    :: lake      ! function called with lake filter
     real(r8)               , intent(in)    :: dtime_ch4           ! time step for ch4 calculations
     type(soilstate_type)   , intent(in)    :: soilstate_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
     type(energyflux_type)  , intent(in)    :: energyflux_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
     !
@@ -3579,7 +3552,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine get_jwt (bounds, num_methc, filter_methc, jwt, &
-       soilstate_vars, waterstate_vars, temperature_vars)
+       soilstate_vars)
     !
     ! !DESCRIPTION:
     ! Finds the first unsaturated layer going up. Also allows a perched water table over ice.
@@ -3590,8 +3563,6 @@ contains
     integer                , intent(in)  :: filter_methc(:)     ! column filter for soil points
     integer                , intent(out) :: jwt( bounds%begc: ) ! index of the soil layer right above the water table (-) [col]
     type(soilstate_type)   , intent(in)  :: soilstate_vars
-    type(waterstate_type)  , intent(in)  :: waterstate_vars
-    type(temperature_type) , intent(in)  :: temperature_vars
     !
     ! !LOCAL VARIABLES:
     real(r8) :: f_sat    ! volumetric soil water defining top of water table or where production is allowed
@@ -3646,7 +3617,7 @@ contains
   subroutine ch4_annualupdate(bounds, &
        num_methc, filter_methc, &
        num_methp, filter_methp, &
-       carbonflux_vars, ch4_vars)
+       ch4_vars)
     !
     ! !DESCRIPTION: Annual mean fields.
     !
@@ -3660,7 +3631,7 @@ contains
     integer                , intent(in)    :: filter_methc(:)   ! filter for soil columns
     integer                , intent(in)    :: num_methp         ! number of soil points in pft filter
     integer                , intent(in)    :: filter_methp(:)   ! patch filter for soil points
-    type(carbonflux_type)  , intent(inout) :: carbonflux_vars
+    !type(carbonflux_type)  , intent(inout) :: carbonflux_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
     !
     ! !LOCAL VARIABLES:

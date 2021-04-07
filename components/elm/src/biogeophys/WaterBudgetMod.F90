@@ -8,8 +8,6 @@ module WaterBudgetMod
   use elm_varctl        , only : iulog
   use atm2lndType       , only : atm2lnd_type
   use lnd2atmType       , only : lnd2atm_type
-  use WaterstateType    , only : waterstate_type
-  use WaterfluxType     , only : waterflux_type
   use spmdMod           , only : masterproc
   use SoilHydrologyType , only : soilhydrology_type
   use GridcellDataType  , only : grc_ws
@@ -263,7 +261,7 @@ contains
   end subroutine WaterBudget_Accum
 
   !-----------------------------------------------------------------------
-  subroutine WaterBudget_Run(bounds, atm2lnd_vars, lnd2atm_vars, waterstate_vars, &
+  subroutine WaterBudget_Run(bounds, atm2lnd_vars, lnd2atm_vars, &
        soilhydrology_vars)
     !
     ! !DESCRIPTION:
@@ -276,7 +274,6 @@ contains
     type(bounds_type)        , intent(in) :: bounds
     type(atm2lnd_type)       , intent(in) :: atm2lnd_vars
     type(lnd2atm_type)       , intent(in) :: lnd2atm_vars
-    type(waterstate_type)    , intent(in) :: waterstate_vars
     type(soilhydrology_type) , intent(in) :: soilhydrology_vars
 
     integer  :: g, nf, ip
@@ -662,7 +659,7 @@ contains
   end subroutine WaterBudget_Restart_Read
 
    !-----------------------------------------------------------------------
-  subroutine WaterBudget_SetBeginningMonthlyStates(bounds, waterstate_vars)
+  subroutine WaterBudget_SetBeginningMonthlyStates(bounds)
     !
     ! !DESCRIPTION:
     ! Set grid-level water states at the beginning of a month
@@ -677,7 +674,6 @@ contains
     !
     ! !ARGUMENTS:
     type(bounds_type)         , intent(in)    :: bounds
-    type(waterstate_type)     , intent(inout) :: waterstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: year_prev, month_prev, day_prev, sec_prev
@@ -718,7 +714,7 @@ contains
   end subroutine WaterBudget_SetBeginningMonthlyStates
 
    !-----------------------------------------------------------------------
-  subroutine WaterBudget_SetEndingMonthlyStates(bounds, waterstate_vars)
+  subroutine WaterBudget_SetEndingMonthlyStates(bounds)
     !
     ! !DESCRIPTION:
     ! Set grid-level water states at the end of a month
@@ -730,7 +726,6 @@ contains
     !
     ! !ARGUMENTS:
     type(bounds_type)         , intent(in)    :: bounds
-    type(waterstate_type)     , intent(inout) :: waterstate_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: year, mon, day, sec

@@ -14,12 +14,7 @@ module NitrogenDynamicsMod
   use elm_varctl          , only : use_nitrif_denitrif, use_vertsoilc
   use subgridAveMod       , only : p2c
   use atm2lndType         , only : atm2lnd_type
-  use CNCarbonFluxType    , only : carbonflux_type
-  use CNNitrogenFluxType  , only : nitrogenflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
   use CNStateType         , only : cnstate_type
-  use WaterStateType      , only : waterstate_type
-  use WaterFluxType       , only : waterflux_type
   use CropType            , only : crop_type
   use ColumnType          , only : col_pp
   use ColumnDataType      , only : col_es, col_ws, col_wf, col_cf, col_ns, col_nf 
@@ -28,8 +23,6 @@ module NitrogenDynamicsMod
   use VegetationDataType  , only : veg_cs, veg_ns, veg_nf  
   use VegetationPropertiesType  , only : veg_vp
   use CNCarbonStateType   , only : carbonstate_type
-  use TemperatureType     , only : temperature_type
-  use PhosphorusStateType , only : phosphorusstate_type
   use elm_varctl          , only : NFIX_PTASE_plant
   use elm_varctl          , only : use_fates
  
@@ -119,7 +112,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine NitrogenDeposition( bounds, &
-       atm2lnd_vars, nitrogenflux_vars )
+       atm2lnd_vars)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update the nitrogen deposition rate
@@ -131,7 +124,6 @@ contains
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds  
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
-    type(nitrogenflux_type) , intent(inout) :: nitrogenflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: g,c                    ! indices
@@ -153,8 +145,7 @@ contains
   end subroutine NitrogenDeposition
 
   !-----------------------------------------------------------------------
-  subroutine NitrogenFixation(num_soilc, filter_soilc, waterflux_vars, &
-       carbonflux_vars, nitrogenflux_vars)
+  subroutine NitrogenFixation(num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update the nitrogen fixation rate
@@ -169,9 +160,6 @@ contains
     ! !ARGUMENTS:
     integer                 , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                 , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(waterflux_type)     , intent(in)    :: waterflux_vars    
-    type(carbonflux_type)   , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type) , intent(inout) :: nitrogenflux_vars 
     !
     ! !LOCAL VARIABLES:
     integer  :: c,fc                  ! indices
@@ -232,8 +220,7 @@ contains
   end subroutine NitrogenFixation
  
   !-----------------------------------------------------------------------
-  subroutine NitrogenLeaching(bounds, num_soilc, filter_soilc, &
-       waterstate_vars, waterflux_vars, nitrogenstate_vars, nitrogenflux_vars)
+  subroutine NitrogenLeaching(bounds, num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update the nitrogen leaching rate
@@ -247,10 +234,6 @@ contains
     type(bounds_type)        , intent(in)    :: bounds  
     integer                  , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
-    type(waterflux_type)     , intent(in)    :: waterflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars 
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,fc                                 ! indices
@@ -444,8 +427,7 @@ contains
   end subroutine NitrogenLeaching
 
   !-----------------------------------------------------------------------
-  subroutine NitrogenFert(bounds, num_soilc, filter_soilc, &
-       nitrogenflux_vars)
+  subroutine NitrogenFert(bounds, num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update the nitrogen fertilizer for crops
@@ -457,7 +439,6 @@ contains
     type(bounds_type)       , intent(in)    :: bounds  
     integer                 , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                 , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(nitrogenflux_type) , intent(inout) :: nitrogenflux_vars 
     !
     ! !LOCAL VARIABLES:
     integer :: c,fc                 ! indices
@@ -478,7 +459,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine CNSoyfix (bounds, &
        num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       waterstate_vars, crop_vars, cnstate_vars, nitrogenstate_vars, nitrogenflux_vars)
+       crop_vars, cnstate_vars)
     !
     ! !DESCRIPTION:
     ! This routine handles the fixation of nitrogen for soybeans based on
@@ -495,11 +476,8 @@ contains
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
     type(crop_type)          , intent(in)    :: crop_vars
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars 
     !
     ! !LOCAL VARIABLES:
     integer :: fp,p,c
@@ -615,8 +593,7 @@ contains
   end subroutine CNSoyfix
 
   !-----------------------------------------------------------------------
-  subroutine NitrogenFixation_balance(num_soilc, filter_soilc,cnstate_vars, carbonflux_vars, &
-             nitrogenstate_vars, nitrogenflux_vars, temperature_vars, waterstate_vars, carbonstate_vars, phosphorusstate_vars)
+  subroutine NitrogenFixation_balance(num_soilc, filter_soilc,cnstate_vars)
     !
     ! !DESCRIPTION:
     ! created, Aug 2015 by Q. Zhu
@@ -635,13 +612,6 @@ contains
     integer                 , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                 , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(cnstate_type)      , intent(inout) :: cnstate_vars
-    type(carbonflux_type)   , intent(inout) :: carbonflux_vars
-    type(nitrogenstate_type), intent(in)    :: nitrogenstate_vars
-    type(nitrogenflux_type) , intent(inout) :: nitrogenflux_vars
-    type(temperature_type)  , intent(inout) :: temperature_vars
-    type(waterstate_type)   , intent(in)    :: waterstate_vars
-    type(carbonstate_type)  , intent(inout) :: carbonstate_vars
-    type(phosphorusstate_type)  , intent(inout) :: phosphorusstate_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c,fc,p                     ! indices

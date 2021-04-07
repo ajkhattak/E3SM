@@ -10,8 +10,6 @@ module CarbonStateUpdate2Mod
   use abortutils       , only : endrun
   use clm_time_manager , only : get_step_size
   use elm_varpar       , only : nlevdecomp, i_met_lit, i_cel_lit, i_lig_lit, i_cwd
-  use CNCarbonStateType, only : carbonstate_type
-  use CNCarbonFluxType , only : carbonflux_type
   use pftvarcon        , only : npcropmin
   use elm_varctl       , only : use_pflotran, pf_cmode
   use VegetationType           , only : veg_pp   
@@ -33,7 +31,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CarbonStateUpdate2(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       carbonflux_vars, carbonstate_vars, col_csv2, veg_csv2, col_cfv2, veg_cfv2)
+       col_csv2, veg_csv2, col_cfv2, veg_cfv2)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update all the prognostic carbon state
@@ -45,8 +43,6 @@ contains
     integer                , intent(in)    :: filter_soilc(:) ! filter for soil columns
     integer                , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(carbonflux_type)  , intent(inout) :: carbonflux_vars
-    type(carbonstate_type) , intent(inout) :: carbonstate_vars
     type(column_carbon_state),intent(inout):: col_csv2
     type(vegetation_carbon_state),intent(inout) :: veg_csv2
     type(column_carbon_flux)     ,intent(inout) :: col_cfv2
@@ -59,9 +55,7 @@ contains
     !-----------------------------------------------------------------------
     
     associate(                   & 
-         cf => carbonflux_vars , &
-         cs => carbonstate_vars, &
-         csv2 => col_csv2      , &
+         csv2              => col_csv2                                , &
          vcsv2             => veg_csv2                                , &
          ccfv2             => col_cfv2                                , &
          vcfv2             => veg_cfv2                                 &
@@ -130,7 +124,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CarbonStateUpdate2h(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       carbonflux_vars, carbonstate_vars, col_csv2, veg_csv2, col_cfv2, veg_cfv2)
+       col_csv2, veg_csv2, col_cfv2, veg_cfv2)
     !
     ! !DESCRIPTION:
     ! Update all the prognostic carbon state
@@ -142,8 +136,6 @@ contains
     integer                , intent(in)    :: filter_soilc(:) ! filter for soil columns
     integer                , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(carbonflux_type)  , intent(inout) :: carbonflux_vars
-    type(carbonstate_type) , intent(inout) :: carbonstate_vars
     type(column_carbon_state),intent(inout):: col_csv2
     type(vegetation_carbon_state),intent(inout) :: veg_csv2
     type(column_carbon_flux)     ,intent(inout) :: col_cfv2
@@ -157,9 +149,7 @@ contains
 
     associate(                   & 
          ivt => veg_pp%itype      , & ! Input:  [integer (:)]  pft vegetation type
-         cf => carbonflux_vars , &
-         cs => carbonstate_vars, &
-         csv2 => col_csv2      , &
+         csv2              => col_csv2                                , &
          vcsv2             => veg_csv2                                , &
          ccfv2             => col_cfv2                                , &
          vcfv2             => veg_cfv2                                 &

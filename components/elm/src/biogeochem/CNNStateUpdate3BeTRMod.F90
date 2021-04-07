@@ -11,8 +11,6 @@ module CNNStateUpdate3BeTRMod
   use clm_time_manager    , only : get_step_size
   use elm_varctl          , only : iulog, use_nitrif_denitrif
   use elm_varpar          , only : i_cwd, i_met_lit, i_cel_lit, i_lig_lit
-  use CNNitrogenStateType , only : nitrogenstate_type
-  use CNNitrogenFLuxType  , only : nitrogenflux_type
   use VegetationDataType  , only : veg_ns, veg_nf
   !! bgc interface & pflotran:
   use elm_varctl          , only : use_pflotran, pf_cmode
@@ -28,8 +26,7 @@ module CNNStateUpdate3BeTRMod
 contains
 
   !-----------------------------------------------------------------------
-  subroutine NStateUpdate3(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       nitrogenflux_vars, nitrogenstate_vars)
+  subroutine NStateUpdate3(num_soilc, filter_soilc, num_soilp, filter_soilp)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update all the prognostic nitrogen state
@@ -43,19 +40,12 @@ contains
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,p,j,l,k        ! indices
     integer :: fp,fc      ! lake filter indices
     real(r8):: dt         ! radiation time step (seconds)
     !-----------------------------------------------------------------------
-
-    associate(                      &
-         nf => nitrogenflux_vars  , &
-         ns => nitrogenstate_vars   &
-         )
 
       ! set time steps
       dt = real( get_step_size(), r8 )
@@ -115,8 +105,6 @@ contains
          veg_ns%retransn(p)           =  veg_ns%retransn(p) - veg_nf%m_retransn_to_fire(p)        * dt
          veg_ns%retransn(p)           =  veg_ns%retransn(p) - veg_nf%m_retransn_to_litter_fire(p) * dt
       end do
-
-    end associate
 
   end subroutine NStateUpdate3
 

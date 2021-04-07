@@ -17,8 +17,6 @@ module UrbanRadiationMod
   use abortutils        , only : endrun  
   use UrbanParamsType   , only : urbanparams_type
   use atm2lndType       , only : atm2lnd_type
-  use WaterStateType    , only : waterstate_type
-  use TemperatureType   , only : temperature_type
   use SolarAbsorbedType , only : solarabs_type 
   use SurfaceAlbedoType , only : surfalb_type
   use UrbanParamsType   , only : urbanparams_type
@@ -50,7 +48,7 @@ contains
        num_urbanl, filter_urbanl                                      , &
        num_urbanc, filter_urbanc                                      , &
        num_urbanp, filter_urbanp                                      , &
-       atm2lnd_vars, waterstate_vars, temperature_vars, urbanparams_vars, &
+       atm2lnd_vars, urbanparams_vars                                 , &
        solarabs_vars, surfalb_vars, energyflux_vars)
     !
     ! !DESCRIPTION: 
@@ -74,8 +72,6 @@ contains
     integer                , intent(in)    :: num_urbanp         ! number of urban patches in clump
     integer                , intent(in)    :: filter_urbanp(:)   ! urban pft filter
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
     type(urbanparams_type) , intent(in)    :: urbanparams_vars
     type(solarabs_type)    , intent(inout) :: solarabs_vars
     type(surfalb_type)     , intent(in)    :: surfalb_vars

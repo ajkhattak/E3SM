@@ -17,11 +17,8 @@ module UrbanFluxesMod
   use UrbanParamsType      , only : urban_wasteheat_on, urban_hac_on, urban_hac 
   use atm2lndType          , only : atm2lnd_type
   use SoilStateType        , only : soilstate_type
-  use TemperatureType      , only : temperature_type
-  use WaterstateType       , only : waterstate_type
   use FrictionVelocityType , only : frictionvel_type
   use EnergyFluxType       , only : energyflux_type
-  use WaterfluxType        , only : waterflux_type
   use SurfaceResistanceMod , only : do_soilevap_beta
   use GridcellType         , only : grc_pp
   use TopounitDataType     , only : top_as  
@@ -46,8 +43,8 @@ contains
   !-----------------------------------------------------------------------
   subroutine UrbanFluxes (bounds, num_nourbanl, filter_nourbanl,                        &
        num_urbanl, filter_urbanl, num_urbanc, filter_urbanc, num_urbanp, filter_urbanp, &
-       atm2lnd_vars, urbanparams_vars, soilstate_vars, temperature_vars,                &
-       waterstate_vars, frictionvel_vars, energyflux_vars, waterflux_vars) 
+       atm2lnd_vars, urbanparams_vars, soilstate_vars,                                  &
+       frictionvel_vars, energyflux_vars)
     !
     ! !DESCRIPTION: 
     ! Turbulent and momentum fluxes from urban canyon (consisting of roof, sunwall, 
@@ -78,10 +75,7 @@ contains
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
     type(urbanparams_type) , intent(in)    :: urbanparams_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
-    type(temperature_type) , intent(inout) :: temperature_vars
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
     type(frictionvel_type) , intent(inout) :: frictionvel_vars
-    type(waterflux_type)   , intent(inout) :: waterflux_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:

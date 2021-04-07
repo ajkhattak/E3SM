@@ -11,8 +11,6 @@ module CarbonStateUpdate3Mod
   use clm_time_manager , only : get_step_size
   use elm_varpar       , only : nlevdecomp, ndecomp_pools, i_cwd, i_met_lit, i_cel_lit, i_lig_lit
   use elm_varctl       , only : use_erosion, ero_ccycle
-  use CNCarbonStateType, only : carbonstate_type
-  use CNCarbonFluxType , only : carbonflux_type
   use CNDecompCascadeConType , only : decomp_cascade_con
   use ColumnDataType         , only : column_carbon_state, column_carbon_flux
   use VegetationDataType     , only : vegetation_carbon_state, vegetation_carbon_flux
@@ -31,7 +29,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CarbonStateUpdate3( num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       carbonflux_vars, carbonstate_vars, col_csv2, veg_csv2, col_cfv2, veg_cfv2)
+       col_csv2, veg_csv2, col_cfv2, veg_cfv2)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update all the prognostic carbon state
@@ -44,8 +42,6 @@ contains
     integer                , intent(in)    :: filter_soilc(:) ! filter for soil columns
     integer                , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(carbonflux_type)  , intent(inout) :: carbonflux_vars
-    type(carbonstate_type) , intent(inout) :: carbonstate_vars
     type(column_carbon_state),intent(inout):: col_csv2
     type(vegetation_carbon_state),intent(inout) :: veg_csv2
     type(column_carbon_flux)     ,intent(inout) :: col_cfv2
@@ -58,9 +54,7 @@ contains
     !-----------------------------------------------------------------------
 
     associate(                   & 
-         cf => carbonflux_vars , &
-         cs => carbonstate_vars , &
-         csv2 => col_csv2       , &
+         csv2              => col_csv2                                , &
          vcsv2             => veg_csv2                                , &
          ccfv2             => col_cfv2                                , &
          vcfv2             => veg_cfv2                                 &

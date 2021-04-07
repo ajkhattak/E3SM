@@ -41,8 +41,8 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine LakeTemperature(bounds, num_lakec, filter_lakec, num_lakep, filter_lakep, &
-       solarabs_vars, soilstate_vars, waterstate_vars, waterflux_vars, ch4_vars, &
-       energyflux_vars, temperature_vars, lakestate_vars)
+       solarabs_vars, soilstate_vars, ch4_vars, &
+       energyflux_vars, lakestate_vars)
     !
     ! !DESCRIPTION:
     ! Calculates temperatures in the 25-45 layer column of (possible) snow,
@@ -126,11 +126,8 @@ contains
     integer                , intent(in)    :: filter_lakep(:) ! patch filter for non-lake points
     type(solarabs_type)    , intent(in)    :: solarabs_vars
     type(soilstate_type)   , intent(in)    :: soilstate_vars
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
-    type(waterflux_type)   , intent(inout) :: waterflux_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
-    type(temperature_type) , intent(inout) :: temperature_vars
     type(lakestate_type)   , intent(inout) :: lakestate_vars
     !
     ! !LOCAL VARIABLES:
@@ -494,7 +491,7 @@ contains
          tk(bounds%begc:bounds%endc, :), &
          cv(bounds%begc:bounds%endc, :), &
          tktopsoillay(bounds%begc:bounds%endc), &
-         soilstate_vars, waterstate_vars, temperature_vars)
+         soilstate_vars)
     
     ! Sum cv*t_lake for energy check
     ! Include latent heat term, and use tfrz as reference temperature
@@ -710,7 +707,6 @@ contains
          cv(bounds%begc:bounds%endc, :), &
          cv_lake(bounds%begc:bounds%endc, :), &
          lhabs(bounds%begc:bounds%endc), &
-         waterstate_vars, waterflux_vars, temperature_vars, &
          energyflux_vars, lakestate_vars)
 
     !!!!!!!!!!!!!!!!!!!!!!!
@@ -988,7 +984,7 @@ contains
          tk(bounds%begc:bounds%endc, :), &
          cv(bounds%begc:bounds%endc, :), &
          tktopsoillay(bounds%begc:bounds%endc), &
-         soilstate_vars, waterstate_vars, temperature_vars)
+         soilstate_vars)
 
 
     ! Do as above to sum energy content
@@ -1059,7 +1055,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine SoilThermProp_Lake (bounds,  num_lakec, filter_lakec, tk, cv, tktopsoillay, &
-        soilstate_vars, waterstate_vars, temperature_vars)
+        soilstate_vars)
      !
      ! !DESCRIPTION:
      ! Calculation of thermal conductivities and heat capacities of
@@ -1090,8 +1086,6 @@ contains
      real(r8)               , intent(out) :: tk( bounds%begc: , -nlevsno+1: ) ! thermal conductivity [W/(m K)] [col, lev]
      real(r8)               , intent(out) :: tktopsoillay( bounds%begc: )     ! thermal conductivity [W/(m K)] [col]
      type(soilstate_type)   , intent(in)  :: soilstate_vars
-     type(waterstate_type)  , intent(in)  :: waterstate_vars
-     type(temperature_type) , intent(in)  :: temperature_vars
     
      !
      ! !LOCAL VARIABLES:
@@ -1239,7 +1233,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine PhaseChange_Lake (bounds, num_lakec, filter_lakec, cv, cv_lake, lhabs, &
-        waterstate_vars, waterflux_vars, temperature_vars, energyflux_vars, lakestate_vars)
+        energyflux_vars, lakestate_vars)
      !
      ! !DESCRIPTION:
      ! Calculation of the phase change within snow, soil, & lake layers:
@@ -1269,9 +1263,6 @@ contains
      real(r8)               , intent(inout) :: cv( bounds%begc: , -nlevsno+1: ) ! heat capacity [J/(m2 K)] [col, lev]
      real(r8)               , intent(inout) :: cv_lake( bounds%begc: , 1: )     ! heat capacity [J/(m2 K)] [col, levlak]
      real(r8)               , intent(out)   :: lhabs( bounds%begc: )            ! total per-column latent heat abs. (J/m^2) [col]
-     type(waterstate_type)  , intent(inout) :: waterstate_vars
-     type(waterflux_type)   , intent(inout) :: waterflux_vars
-     type(temperature_type) , intent(inout) :: temperature_vars
      type(energyflux_type)  , intent(inout) :: energyflux_vars
      type(lakestate_type)   , intent(inout) :: lakestate_vars
      !

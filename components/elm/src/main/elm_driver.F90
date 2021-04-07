@@ -319,7 +319,7 @@ contains
             filter(nc)%num_nolakec, filter(nc)%nolakec,       &
             filter(nc)%num_lakec, filter(nc)%lakec,           &
             filter(nc)%num_hydrologyc, filter(nc)%hydrologyc, &
-            soilhydrology_vars, waterstate_vars)
+            soilhydrology_vars)
        call t_stopf('beggridwbal')
 
        if (use_betr) then
@@ -391,8 +391,8 @@ contains
                filter(nc)%num_soilc, filter(nc)%soilc)
 
           call BeginGridCBalanceBeforeDynSubgridDriver(bounds_clump, col_cs, grc_cs)
-          call BeginGridNBalanceBeforeDynSubgridDriver(bounds_clump, nitrogenstate_vars)
-          call BeginGridPBalanceBeforeDynSubgridDriver(bounds_clump, phosphorusstate_vars)
+          call BeginGridNBalanceBeforeDynSubgridDriver(bounds_clump)
+          call BeginGridPBalanceBeforeDynSubgridDriver(bounds_clump)
           
        end if
        
@@ -411,14 +411,13 @@ contains
     call t_startf('dyn_subgrid')
     call dynSubgrid_driver(bounds_proc,                                      &
        urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars, &
-       waterstate_vars, waterflux_vars, temperature_vars, energyflux_vars,   &
+       energyflux_vars,   &
        canopystate_vars, photosyns_vars, cnstate_vars,                       &
        veg_cs, c13_veg_cs, c14_veg_cs,         &
        col_cs, c13_col_cs, c14_col_cs, col_cf,  &
        grc_cs, grc_cf ,&
-       carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars,            &
-       nitrogenstate_vars, nitrogenflux_vars, glc2lnd_vars,                  &
-       phosphorusstate_vars,phosphorusflux_vars, crop_vars)
+       glc2lnd_vars,                  &
+       crop_vars)
     call t_stopf('dyn_subgrid')
 
     if (use_cn  .or. use_fates) then
@@ -468,15 +467,13 @@ contains
              
              call EndGridCBalanceAfterDynSubgridDriver(bounds_clump, &
                   filter(nc)%num_soilc, filter(nc)%soilc, &
-                  col_cs, grc_cs, carbonflux_vars)
+                  col_cs, grc_cs)
              
              call EndGridNBalanceAfterDynSubgridDriver(bounds_clump, &
-                  filter(nc)%num_soilc, filter(nc)%soilc, &
-                  nitrogenstate_vars, nitrogenflux_vars)
+                  filter(nc)%num_soilc, filter(nc)%soilc)
              
              call EndGridPBalanceAfterDynSubgridDriver(bounds_clump, &
-                  filter(nc)%num_soilc, filter(nc)%soilc, &
-                  phosphorusstate_vars, phosphorusflux_vars)
+                  filter(nc)%num_soilc, filter(nc)%soilc)
              
           end do
           !$OMP END PARALLEL DO
@@ -510,7 +507,7 @@ contains
             filter(nc)%num_nolakec, filter(nc)%nolakec,       &
             filter(nc)%num_lakec, filter(nc)%lakec,           &
             filter(nc)%num_hydrologyc, filter(nc)%hydrologyc, &
-            soilhydrology_vars, waterstate_vars)
+            soilhydrology_vars)
        call t_stopf('begwbal')
 
        
@@ -549,18 +546,16 @@ contains
                filter(nc)%num_soilc, filter(nc)%soilc, &
                col_cs)
           call BeginColNBalance(bounds_clump, &
-               filter(nc)%num_soilc, filter(nc)%soilc, &
-               nitrogenstate_vars)
+               filter(nc)%num_soilc, filter(nc)%soilc)
           call BeginColPBalance(bounds_clump, &
-               filter(nc)%num_soilc, filter(nc)%soilc, &
-               phosphorusstate_vars)
+               filter(nc)%num_soilc, filter(nc)%soilc)
           
           call t_stopf('begcnpbalwf')
        end if
        
 
        if (do_budgets) then
-          call WaterBudget_SetBeginningMonthlyStates(bounds_clump, waterstate_vars)
+          call WaterBudget_SetBeginningMonthlyStates(bounds_clump)
        endif
 
     end do
@@ -627,7 +622,7 @@ contains
             filter(nc)%num_nolakec, filter(nc)%nolakec, &
             filter(nc)%num_nolakep, filter(nc)%nolakep, &
             filter(nc)%num_soilp  , filter(nc)%soilp,   &
-            canopystate_vars, waterstate_vars, waterflux_vars, energyflux_vars)
+            canopystate_vars)
 
        call downscale_forcings(bounds_clump, &
             filter(nc)%num_do_smb_c, filter(nc)%do_smb_c, &
@@ -647,8 +642,8 @@ contains
        call CanopyHydrology(bounds_clump, &
             filter(nc)%num_nolakec, filter(nc)%nolakec, &
             filter(nc)%num_nolakep, filter(nc)%nolakep, &
-            atm2lnd_vars, canopystate_vars, temperature_vars, &
-            aerosol_vars, waterstate_vars, waterflux_vars)
+            atm2lnd_vars, canopystate_vars,             &
+            aerosol_vars)
        call t_stopf('canhydro')
 
        ! ============================================================================
@@ -677,7 +672,7 @@ contains
             filter(nc)%num_nourbanp, filter(nc)%nourbanp,                  &
             filter(nc)%num_urbanp, filter(nc)%urbanp    ,                  &
             filter(nc)%num_urbanc, filter(nc)%urbanc,                      &
-            atm2lnd_vars, waterstate_vars, canopystate_vars, surfalb_vars, &
+            atm2lnd_vars, canopystate_vars, surfalb_vars,                  &
             solarabs_vars, surfrad_vars)
 
        ! Surface Radiation for only urban columns
@@ -687,7 +682,7 @@ contains
             filter(nc)%num_urbanl, filter(nc)%urbanl,                          &
             filter(nc)%num_urbanc, filter(nc)%urbanc,                          &
             filter(nc)%num_urbanp, filter(nc)%urbanp,                          &
-            atm2lnd_vars, waterstate_vars, temperature_vars, urbanparams_vars, &
+            atm2lnd_vars, urbanparams_vars,                                    &
             solarabs_vars, surfalb_vars, energyflux_vars)
 
        call t_stopf('surfrad')
@@ -702,7 +697,7 @@ contains
             filter(nc)%num_nolakec, filter(nc)%nolakec,                       &
             filter(nc)%num_nolakep, filter(nc)%nolakep,                       &
             atm2lnd_vars, canopystate_vars, soilstate_vars, frictionvel_vars, &
-            waterstate_vars, waterflux_vars, energyflux_vars, temperature_vars, &
+            energyflux_vars,                                                  &
             alm_fates)
        call t_stopf('bgp1')
 
@@ -719,8 +714,7 @@ contains
        call BareGroundFluxes(bounds_clump,                                 &
             filter(nc)%num_nolakeurbanp, filter(nc)%nolakeurbanp,          &
             atm2lnd_vars, canopystate_vars, soilstate_vars,                &
-            frictionvel_vars, ch4_vars, energyflux_vars, temperature_vars, &
-            waterflux_vars, waterstate_vars)
+            frictionvel_vars, ch4_vars, energyflux_vars)
        call t_stopf('bgflux')
 
        ! non-bareground fluxes for all patches except lakes and urban landunits
@@ -732,8 +726,8 @@ contains
             filter(nc)%num_nolakeurbanp, filter(nc)%nolakeurbanp,                        &
             atm2lnd_vars, canopystate_vars, cnstate_vars, energyflux_vars,               &
             frictionvel_vars, soilstate_vars, solarabs_vars, surfalb_vars,               &
-            temperature_vars, waterflux_vars, waterstate_vars, ch4_vars, photosyns_vars, &
-            soil_water_retention_curve, nitrogenstate_vars,phosphorusstate_vars,         &
+            ch4_vars, photosyns_vars,                                                    &
+            soil_water_retention_curve,                                                  &
             alm_fates) 
        call t_stopf('canflux')
 
@@ -745,8 +739,8 @@ contains
             filter(nc)%num_urbanl, filter(nc)%urbanl,                         &
             filter(nc)%num_urbanc, filter(nc)%urbanc,                         &
             filter(nc)%num_urbanp, filter(nc)%urbanp,                         &
-            atm2lnd_vars, urbanparams_vars, soilstate_vars, temperature_vars, &
-            waterstate_vars, frictionvel_vars, energyflux_vars, waterflux_vars) 
+            atm2lnd_vars, urbanparams_vars, soilstate_vars,                   &
+            frictionvel_vars, energyflux_vars)
        call t_stopf('uflux')
 
        ! Fluxes for all lake landunits
@@ -755,8 +749,8 @@ contains
        call LakeFluxes(bounds_clump,                                         &
             filter(nc)%num_lakec, filter(nc)%lakec,                          &
             filter(nc)%num_lakep, filter(nc)%lakep,                          &
-            atm2lnd_vars, solarabs_vars, frictionvel_vars, temperature_vars, &
-            energyflux_vars, waterstate_vars, waterflux_vars, lakestate_vars) 
+            atm2lnd_vars, solarabs_vars, frictionvel_vars,                   &
+            energyflux_vars, lakestate_vars)
 
        ! ============================================================================
        ! DUST and VOC emissions
@@ -767,7 +761,7 @@ contains
        ! Dust mobilization (C. Zender's modified codes)
        call DustEmission(bounds_clump,                                       &
             filter(nc)%num_nolakep, filter(nc)%nolakep,                      &
-            atm2lnd_vars, soilstate_vars, canopystate_vars, waterstate_vars, &
+            atm2lnd_vars, soilstate_vars, canopystate_vars,                  &
             frictionvel_vars, dust_vars)
 
        ! Dust dry deposition (C. Zender's modified codes)
@@ -778,7 +772,7 @@ contains
        if (use_voc) then
           call VOCEmission(bounds_clump,                                         &
                filter(nc)%num_soilp, filter(nc)%soilp,                           &
-               atm2lnd_vars, canopystate_vars, photosyns_vars, temperature_vars, &
+               atm2lnd_vars, canopystate_vars, photosyns_vars,                   &
                vocemis_vars)
        end if
 
@@ -796,8 +790,8 @@ contains
        call LakeTemperature(bounds_clump,                                             &
             filter(nc)%num_lakec, filter(nc)%lakec,                                   &
             filter(nc)%num_lakep, filter(nc)%lakep,                                   & 
-            solarabs_vars, soilstate_vars, waterstate_vars, waterflux_vars, ch4_vars, &
-            energyflux_vars, temperature_vars, lakestate_vars)
+            solarabs_vars, soilstate_vars, ch4_vars,                                  &
+            energyflux_vars, lakestate_vars)
        call t_stopf('bgplake')
 
        ! Set soil/snow temperatures including ground temperature
@@ -824,8 +818,8 @@ contains
             filter(nc)%num_urbanl,  filter(nc)%urbanl,                                        &
             filter(nc)%num_nolakec, filter(nc)%nolakec,                                       &
             filter(nc)%num_nolakep, filter(nc)%nolakep,                                       &
-            atm2lnd_vars, solarabs_vars, temperature_vars, canopystate_vars, waterstate_vars, &
-            energyflux_vars, waterflux_vars)            
+            atm2lnd_vars, solarabs_vars, canopystate_vars,                                    &
+            energyflux_vars)
        call t_stopf('bgp2')
 
        ! ============================================================================
@@ -833,8 +827,7 @@ contains
        ! ============================================================================
 
        call t_startf('patch2col')
-       call elm_drv_patch2col(bounds_clump, filter(nc)%num_nolakec, filter(nc)%nolakec, &
-            waterstate_vars, energyflux_vars, waterflux_vars)
+       call elm_drv_patch2col(bounds_clump, filter(nc)%num_nolakec, filter(nc)%nolakec)
        call t_stopf('patch2col')
 
        ! ============================================================================
@@ -853,8 +846,8 @@ contains
             filter(nc)%num_urbanc, filter(nc)%urbanc,                        &
             filter(nc)%num_snowc, filter(nc)%snowc,                          &
             filter(nc)%num_nosnowc, filter(nc)%nosnowc,canopystate_vars,     &
-            atm2lnd_vars, soilstate_vars, energyflux_vars, temperature_vars, &
-            waterflux_vars, waterstate_vars, soilhydrology_vars, aerosol_vars, &
+            atm2lnd_vars, soilstate_vars, energyflux_vars,                   &
+            soilhydrology_vars, aerosol_vars,                                &
             soil_water_retention_curve, ep_betr,                             &
             alm_fates)
 
@@ -867,8 +860,6 @@ contains
        call AerosolMasses( bounds_clump,                                   &
             num_on=filter(nc)%num_snowc, filter_on=filter(nc)%snowc,       &
             num_off=filter(nc)%num_nosnowc, filter_off=filter(nc)%nosnowc, &
-            waterflux_vars=waterflux_vars,                                 &
-            waterstate_vars=waterstate_vars,                               &
             aerosol_vars=aerosol_vars)                      
 
        call t_stopf('hydro without drainage')
@@ -886,7 +877,7 @@ contains
             filter(nc)%num_lakep, filter(nc)%lakep,                                          &
             filter(nc)%num_lakesnowc, filter(nc)%lakesnowc,                                  &
             filter(nc)%num_lakenosnowc, filter(nc)%lakenosnowc,                              &
-            atm2lnd_vars, temperature_vars, soilstate_vars, waterstate_vars, waterflux_vars, &
+            atm2lnd_vars, soilstate_vars,                                                    &
             energyflux_vars, aerosol_vars, lakestate_vars)
        
        !  Calculate column-integrated aerosol masses, and
@@ -898,16 +889,13 @@ contains
        call AerosolMasses(bounds_clump,                                            &
             num_on=filter(nc)%num_lakesnowc, filter_on=filter(nc)%lakesnowc,       &
             num_off=filter(nc)%num_lakenosnowc, filter_off=filter(nc)%lakenosnowc, &
-            waterflux_vars=waterflux_vars,                                         &
-            waterstate_vars=waterstate_vars,                                       &
             aerosol_vars=aerosol_vars)                      
 
        ! Must be done here because must use a snow filter for lake columns
 
        call SnowAge_grain(bounds_clump,                         &
             filter(nc)%num_lakesnowc, filter(nc)%lakesnowc,     &
-            filter(nc)%num_lakenosnowc, filter(nc)%lakenosnowc, &
-            waterflux_vars, waterstate_vars, temperature_vars)
+            filter(nc)%num_lakenosnowc, filter(nc)%lakenosnowc)
 
        call t_stopf('hylake')
 
@@ -934,8 +922,7 @@ contains
        call t_startf('snow_init')
        call SnowAge_grain(bounds_clump,                 &
             filter(nc)%num_snowc, filter(nc)%snowc,     &
-            filter(nc)%num_nosnowc, filter(nc)%nosnowc, &
-            waterflux_vars, waterstate_vars, temperature_vars)
+            filter(nc)%num_nosnowc, filter(nc)%nosnowc)
        call t_stopf('snow_init')
 
        ! ============================================================================
@@ -945,8 +932,8 @@ contains
        if (use_erosion) then
           call t_startf('erosion')
           call SoilErosion(bounds_clump, filter(nc)%num_soilc, filter(nc)%soilc, &
-               atm2lnd_vars, canopystate_vars, soilstate_vars, waterstate_vars, &
-               waterflux_vars, sedflux_vars)
+               atm2lnd_vars, canopystate_vars, soilstate_vars,                   &
+               sedflux_vars)
           call t_stopf('erosion')
        end if
 
@@ -968,20 +955,16 @@ contains
                  filter(nc)%num_soilc, filter(nc)%soilc,                        &
                  filter(nc)%num_soilp, filter(nc)%soilp,                        &
                  filter(nc)%num_pcropp, filter(nc)%pcropp, doalb,               &
-                 cnstate_vars, carbonflux_vars, carbonstate_vars,               &
-                 c13_carbonflux_vars, c13_carbonstate_vars,                     &
-                 c14_carbonflux_vars, c14_carbonstate_vars,                     &
-                 nitrogenflux_vars, nitrogenstate_vars,                         &
-                 atm2lnd_vars, waterstate_vars, waterflux_vars,                 &
-                 canopystate_vars, soilstate_vars, temperature_vars, crop_vars, &
-                 photosyns_vars, soilhydrology_vars, energyflux_vars,&
-                 PlantMicKinetics_vars,                                         &
-                 phosphorusflux_vars, phosphorusstate_vars)
+                 cnstate_vars,                                                  &
+                 atm2lnd_vars,                                                  &
+                 canopystate_vars, soilstate_vars, crop_vars,                   &
+                 photosyns_vars, soilhydrology_vars, energyflux_vars,           &
+                 PlantMicKinetics_vars)
 
            call AnnualUpdate(bounds_clump,            &
                   filter(nc)%num_soilc, filter(nc)%soilc, &
                   filter(nc)%num_soilp, filter(nc)%soilp, &
-                  cnstate_vars, carbonflux_vars)    
+                  cnstate_vars)
          endif     
        endif       
        
@@ -1002,14 +985,10 @@ contains
              call EcosystemDynNoLeaching1(bounds_clump,                               &
                        filter(nc)%num_soilc, filter(nc)%soilc,                          &
                        filter(nc)%num_soilp, filter(nc)%soilp,                          &
-                       cnstate_vars, carbonflux_vars, carbonstate_vars,                 &
-                       c13_carbonflux_vars,                                             &
-                       c14_carbonflux_vars,                                             &
-                       nitrogenflux_vars, nitrogenstate_vars,                           &
-                       atm2lnd_vars, waterstate_vars, waterflux_vars,                   &
-                       canopystate_vars, soilstate_vars, temperature_vars, crop_vars,   &
-                       ch4_vars, photosyns_vars,                                        &
-                       phosphorusflux_vars,phosphorusstate_vars)
+                       cnstate_vars,                                                    &
+                       atm2lnd_vars,                                                    &
+                       canopystate_vars, soilstate_vars, crop_vars,                     &
+                       ch4_vars, photosyns_vars)
 
              !--------------------------------------------------------------------------------
              if (use_elm_interface) then
@@ -1018,11 +997,8 @@ contains
                            filter(nc)%num_soilc, filter(nc)%soilc,                      &
                            filter(nc)%num_soilp, filter(nc)%soilp,                      &
                            atm2lnd_vars, soilstate_vars,                                &
-                           waterstate_vars, waterflux_vars,                             &
-                           temperature_vars, energyflux_vars,                           &
-                           cnstate_vars, carbonflux_vars, carbonstate_vars,             &
-                           nitrogenflux_vars, nitrogenstate_vars,                       &
-                           phosphorusflux_vars, phosphorusstate_vars,                   &
+                           energyflux_vars,                                             &
+                           cnstate_vars,                                                &
                            ch4_vars)
 
 
@@ -1041,9 +1017,7 @@ contains
                     call update_bgc_data_pf2elm(elm_interface_data%bgc,         &
                            bounds_clump,filter(nc)%num_soilc, filter(nc)%soilc, &
                            filter(nc)%num_soilp, filter(nc)%soilp,              &
-                           cnstate_vars, carbonflux_vars, carbonstate_vars,     &
-                           nitrogenflux_vars, nitrogenstate_vars,               &
-                           phosphorusflux_vars, phosphorusstate_vars,           &
+                           cnstate_vars,                                        &
                            ch4_vars)
 
                     call t_stopf('pflotran')
@@ -1060,19 +1034,13 @@ contains
                            filter(nc)%num_soilc, filter(nc)%soilc,              &
                            filter(nc)%num_soilp, filter(nc)%soilp,              &
                            canopystate_vars, soilstate_vars,                    &
-                           temperature_vars, waterstate_vars,                   &
-                           cnstate_vars, ch4_vars,                              &
-                           carbonstate_vars, carbonflux_vars,                   &
-                           nitrogenstate_vars, nitrogenflux_vars,               &
-                           phosphorusstate_vars,phosphorusflux_vars)
+                           cnstate_vars, ch4_vars)
 
                     ! STEP-3: update CLM from elm_interface_data
                     call update_bgc_data_elm2elm(elm_interface_data%bgc,        &
                            bounds_clump, filter(nc)%num_soilc, filter(nc)%soilc,&
                            filter(nc)%num_soilp, filter(nc)%soilp,              &
-                           cnstate_vars, carbonflux_vars, carbonstate_vars,     &
-                           nitrogenflux_vars, nitrogenstate_vars,               &
-                           phosphorusflux_vars, phosphorusstate_vars,           &
+                           cnstate_vars,                                        &
                            ch4_vars)
                     call t_stopf('elm-bgc via interface')
                  end if !if (use_pflotran .and. pf_cmode)
@@ -1084,14 +1052,11 @@ contains
                    filter(nc)%num_soilc, filter(nc)%soilc,                                  &
                    filter(nc)%num_soilp, filter(nc)%soilp,                                  &
                    filter(nc)%num_pcropp, filter(nc)%pcropp, doalb,                         &
-                   cnstate_vars, carbonflux_vars, carbonstate_vars,                         &
-                   c13_carbonflux_vars, c13_carbonstate_vars,                               &
-                   c14_carbonflux_vars, c14_carbonstate_vars,                               &
-                   nitrogenflux_vars, nitrogenstate_vars,                                   &
-                   atm2lnd_vars, waterstate_vars, waterflux_vars,                           &
-                   canopystate_vars, soilstate_vars, temperature_vars, crop_vars, ch4_vars, &
+                   cnstate_vars,                                                 &
+                   atm2lnd_vars,                                                 &
+                   canopystate_vars, soilstate_vars, crop_vars, ch4_vars,        &
                    photosyns_vars, soilhydrology_vars, energyflux_vars,          &
-                   phosphorusflux_vars, phosphorusstate_vars, sedflux_vars, alm_fates)
+                   sedflux_vars, alm_fates)
 
              !===========================================================================================
              ! clm_interface: 'EcosystemDynNoLeaching' is divided into 2 subroutines (1 & 2): END
@@ -1100,7 +1065,7 @@ contains
                 call AnnualUpdate(bounds_clump,            &
                      filter(nc)%num_soilc, filter(nc)%soilc, &
                      filter(nc)%num_soilp, filter(nc)%soilp, &
-                     cnstate_vars, carbonflux_vars)
+                     cnstate_vars)
              end if
           else ! not use_cn
 
@@ -1109,7 +1074,7 @@ contains
 
                 call SatellitePhenology(bounds_clump,               &
                      filter(nc)%num_nolakep, filter(nc)%nolakep,    &
-                     waterstate_vars, canopystate_vars)
+                     canopystate_vars)
              end if
 
           end if  ! end of if-use_cn   or if-use_fates
@@ -1121,7 +1086,7 @@ contains
        call t_startf('depvel')
        if(.not.use_fates)then
           call depvel_compute(bounds_clump, &
-               atm2lnd_vars, canopystate_vars, waterstate_vars, frictionvel_vars, &
+               atm2lnd_vars, canopystate_vars, frictionvel_vars, &
                photosyns_vars, drydepvel_vars)
        end if
        call t_stopf('depvel')
@@ -1156,8 +1121,8 @@ contains
                filter(nc)%num_lakec, filter(nc)%lakec,                                             &
                filter(nc)%num_soilp, filter(nc)%soilp,                                             &
                atm2lnd_vars, lakestate_vars, canopystate_vars, soilstate_vars, soilhydrology_vars, &
-               temperature_vars, energyflux_vars, waterstate_vars, waterflux_vars,                 &
-               carbonstate_vars, carbonflux_vars, nitrogenflux_vars, ch4_vars, lnd2atm_vars)
+               energyflux_vars,                                                                    &
+               ch4_vars, lnd2atm_vars)
           call t_stopf('ch4')
        end if
        
@@ -1165,7 +1130,7 @@ contains
        call t_startf('depvel')
        if(.not.use_fates)then
           call depvel_compute(bounds_clump, &
-               atm2lnd_vars, canopystate_vars, waterstate_vars, frictionvel_vars, &
+               atm2lnd_vars, canopystate_vars, frictionvel_vars, &
                photosyns_vars, drydepvel_vars)
        end if
        call t_stopf('depvel')     
@@ -1183,8 +1148,8 @@ contains
             filter(nc)%num_hydrononsoic, filter(nc)%hydrononsoic, &
             filter(nc)%num_urbanc, filter(nc)%urbanc,             &
             filter(nc)%num_do_smb_c, filter(nc)%do_smb_c,         &
-            atm2lnd_vars, glc2lnd_vars, temperature_vars,         &
-            soilhydrology_vars, soilstate_vars, waterstate_vars, waterflux_vars,ep_betr)
+            atm2lnd_vars, glc2lnd_vars,                           &
+            soilhydrology_vars, soilstate_vars, ep_betr)
 
        else
 
@@ -1193,8 +1158,8 @@ contains
             filter(nc)%num_hydrologyc, filter(nc)%hydrologyc, &
             filter(nc)%num_urbanc, filter(nc)%urbanc,         &                 
             filter(nc)%num_do_smb_c, filter(nc)%do_smb_c,     &                
-            atm2lnd_vars, glc2lnd_vars, temperature_vars,     &
-            soilhydrology_vars, soilstate_vars, waterstate_vars, waterflux_vars,ep_betr)
+            atm2lnd_vars, glc2lnd_vars,                       &
+            soilhydrology_vars, soilstate_vars, ep_betr)
 
        end if
 
@@ -1220,12 +1185,7 @@ contains
             !summarize total column nitrogen and carbon
             call CNFluxStateBetrSummary(bounds_clump, col_pp, veg_pp, &
                  filter(nc)%num_soilc, filter(nc)%soilc,                       &
-                 filter(nc)%num_soilp, filter(nc)%soilp,                       &
-                 carbonflux_vars, carbonstate_vars,                            &
-                 c13_carbonflux_vars, c13_carbonstate_vars,                    &
-                 c14_carbonflux_vars, c14_carbonstate_vars,                    &
-                 nitrogenflux_vars, nitrogenstate_vars,                        &
-                 phosphorusflux_vars, phosphorusstate_vars)
+                 filter(nc)%num_soilp, filter(nc)%soilp)
           endif
        endif  !end use_betr        
 
@@ -1236,13 +1196,9 @@ contains
                   filter(nc)%num_soilc, filter(nc)%soilc,               &
                   filter(nc)%num_soilp, filter(nc)%soilp,               &
                   filter(nc)%num_pcropp, filter(nc)%pcropp, doalb,      &
-                  cnstate_vars, carbonflux_vars, carbonstate_vars,      &
-                  c13_carbonflux_vars, c13_carbonstate_vars,            &
-                  c14_carbonflux_vars, c14_carbonstate_vars,            &
-                  nitrogenflux_vars, nitrogenstate_vars,                &
-                  waterstate_vars, waterflux_vars, frictionvel_vars,    &
-                  canopystate_vars,                                     &
-                  phosphorusflux_vars,phosphorusstate_vars)
+                  cnstate_vars,                                         &
+                  frictionvel_vars,                                     &
+                  canopystate_vars)
          end if
        end if
        
@@ -1256,15 +1212,15 @@ contains
            call alm_fates%wrap_update_hifrq_hist(bounds_clump)
            if ( is_beg_curr_day() ) then ! run ED at the start of each day
                call alm_fates%dynamics_driv( bounds_clump, top_as,          &
-                    top_af, atm2lnd_vars, soilstate_vars, temperature_vars, &
+                    top_af, atm2lnd_vars, soilstate_vars,                   &
                     canopystate_vars, frictionvel_vars)
            end if
        end if
        
        if (use_cn .and. doalb) then   
            call VegStructUpdate(filter(nc)%num_soilp, filter(nc)%soilp,   &
-                waterstate_vars, frictionvel_vars, cnstate_vars, &
-                carbonstate_vars, canopystate_vars, crop_vars)
+                frictionvel_vars, cnstate_vars,                           &
+                canopystate_vars, crop_vars)
        end if
        
        
@@ -1275,19 +1231,19 @@ contains
        call t_startf('balchk')
        call ColWaterBalanceCheck(bounds_clump, &
             filter(nc)%num_do_smb_c, filter(nc)%do_smb_c, &
-            atm2lnd_vars, glc2lnd_vars, solarabs_vars, waterflux_vars, &
-            waterstate_vars, energyflux_vars, canopystate_vars)
+            atm2lnd_vars, glc2lnd_vars, solarabs_vars,    &
+            energyflux_vars, canopystate_vars)
        call t_stopf('balchk')
 
        call t_startf('gridbalchk')
        call GridBalanceCheck(bounds_clump                             , &
             filter(nc)%num_do_smb_c, filter(nc)%do_smb_c              , &
-            atm2lnd_vars, glc2lnd_vars, solarabs_vars, waterflux_vars , &
-            waterstate_vars, energyflux_vars, canopystate_vars        , &
+            atm2lnd_vars, glc2lnd_vars, solarabs_vars                 , &
+            energyflux_vars, canopystate_vars                         , &
             soilhydrology_vars)
        call t_stopf('gridbalchk')
 
-       call WaterBudget_SetEndingMonthlyStates(bounds_clump, waterstate_vars)
+       call WaterBudget_SetEndingMonthlyStates(bounds_clump)
 
 
        if (use_cn .or. use_fates) then
@@ -1302,15 +1258,13 @@ contains
              
              call ColCBalanceCheck(bounds_clump, &
                   filter(nc)%num_soilc, filter(nc)%soilc, &
-                  col_cs, carbonflux_vars)
+                  col_cs)
              
              call ColNBalanceCheck(bounds_clump, &
-                  filter(nc)%num_soilc, filter(nc)%soilc, &
-                  nitrogenstate_vars, nitrogenflux_vars)
+                  filter(nc)%num_soilc, filter(nc)%soilc)
              
              call ColPBalanceCheck(bounds_clump, &
-                  filter(nc)%num_soilc, filter(nc)%soilc, &
-                  phosphorusstate_vars, phosphorusflux_vars)
+                  filter(nc)%num_soilc, filter(nc)%soilc)
              
              call t_stopf('cnbalchk')
           end if
@@ -1335,8 +1289,8 @@ contains
                filter_inactive_and_active(nc)%num_urbanp,       &
                filter_inactive_and_active(nc)%urbanp,           &
                nextsw_cday, declinp1,                           &
-               aerosol_vars, canopystate_vars, waterstate_vars, &
-               lakestate_vars, temperature_vars, surfalb_vars,  &
+               aerosol_vars, canopystate_vars,                  &
+               lakestate_vars, surfalb_vars,                    &
                alm_fates)
           call t_stopf('surfalb')
 
@@ -1350,7 +1304,7 @@ contains
                   filter_inactive_and_active(nc)%urbanc,     &
                   filter_inactive_and_active(nc)%num_urbanp, &
                   filter_inactive_and_active(nc)%urbanp,     &
-                  waterstate_vars, urbanparams_vars, solarabs_vars, surfalb_vars) 
+                  urbanparams_vars, solarabs_vars, surfalb_vars)
              call t_stopf('urbsurfalb')
           end if
 
@@ -1370,8 +1324,8 @@ contains
     call t_startf('lnd2atm')
     call lnd2atm(bounds_proc,                                            &
          atm2lnd_vars, surfalb_vars, frictionvel_vars, &
-         waterstate_vars, waterflux_vars, energyflux_vars,               &
-         solarabs_vars, carbonflux_vars, drydepvel_vars,                 &
+         energyflux_vars,               &
+         solarabs_vars, drydepvel_vars,                 &
          vocemis_vars, dust_vars, ch4_vars, soilhydrology_vars, lnd2atm_vars) 
     call t_stopf('lnd2atm')
 
@@ -1386,7 +1340,6 @@ contains
           call get_clump_bounds(nc, bounds_clump)
           call lnd2glc_vars%update_lnd2glc(bounds_clump,       &
                filter(nc)%num_do_smb_c, filter(nc)%do_smb_c,   &
-               temperature_vars, waterflux_vars,               &
                init=.false.)           
        end do
        !$OMP END PARALLEL DO
@@ -1424,7 +1377,7 @@ contains
        call canopystate_vars%UpdateAccVars(bounds_proc)
        
        if (crop_prog) then
-          call crop_vars%UpdateAccVars(bounds_proc, temperature_vars)
+          call crop_vars%UpdateAccVars(bounds_proc)
        end if
 
        call cnstate_vars%UpdateAccVars(bounds_proc)
@@ -1445,7 +1398,7 @@ contains
     ! Compute water budget
     ! ============================================================================
     if (get_nstep()>0 .and. do_budgets) then
-       call WaterBudget_Run(bounds_proc, atm2lnd_vars, lnd2atm_vars, waterstate_vars, &
+       call WaterBudget_Run(bounds_proc, atm2lnd_vars, lnd2atm_vars, &
             soilhydrology_vars)
        call WaterBudget_Accum()
        call WaterBudget_Print(budget_inst,  budget_daily,  budget_month,  &
@@ -1511,7 +1464,7 @@ contains
        num_nolakec, filter_nolakec, &
        num_nolakep, filter_nolakep, &
        num_soilp  , filter_soilp, &
-       canopystate_vars, waterstate_vars, waterflux_vars, energyflux_vars)
+       canopystate_vars)
     !
     ! !DESCRIPTION:
     ! Initialization of clm driver variables needed from previous timestep
@@ -1523,9 +1476,6 @@ contains
     use elm_varcon         , only : h2osno_max
     use landunit_varcon    , only : istice_mec
     use CanopyStateType    , only : canopystate_type
-    use WaterStateType     , only : waterstate_type
-    use WaterFluxType      , only : waterflux_type
-    use EnergyFluxType     , only : energyflux_type
     !
     ! !ARGUMENTS:
     type(bounds_type)     , intent(in)    :: bounds  
@@ -1536,9 +1486,6 @@ contains
     integer               , intent(in)    :: num_soilp         ! number of soil points in patch filter
     integer               , intent(in)    :: filter_soilp(:)   ! patch filter for soil points
     type(canopystate_type), intent(inout) :: canopystate_vars
-    type(waterstate_type) , intent(inout) :: waterstate_vars
-    type(waterflux_type)  , intent(inout) :: waterflux_vars
-    type(energyflux_type) , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: l, c, p, f, j         ! indices
@@ -1622,8 +1569,7 @@ contains
   end subroutine elm_drv_init
   
   !-----------------------------------------------------------------------
-  subroutine elm_drv_patch2col (bounds, num_nolakec, filter_nolakec, &
-       waterstate_vars, energyflux_vars, waterflux_vars)
+  subroutine elm_drv_patch2col (bounds, num_nolakec, filter_nolakec)
     !
     ! !DESCRIPTION:
     ! Averages over all patchs for variables defined over both soil and lake
@@ -1631,8 +1577,6 @@ contains
     ! defined at the patch level.
     !
     ! !USES:
-    use WaterStateType , only : waterstate_type
-    use WaterFluxType  , only : waterflux_type
     use EnergyFluxType , only : energyflux_type
     use subgridAveMod  , only : p2c
     !
@@ -1640,9 +1584,6 @@ contains
     type(bounds_type)     , intent(in)    :: bounds  
     integer               , intent(in)    :: num_nolakec       ! number of column non-lake points in column filter
     integer               , intent(in)    :: filter_nolakec(:) ! column filter for non-lake points
-    type(waterstate_type) , intent(inout) :: waterstate_vars
-    type(waterflux_type)  , intent(inout) :: waterflux_vars
-    type(energyflux_type) , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,fc              ! indices

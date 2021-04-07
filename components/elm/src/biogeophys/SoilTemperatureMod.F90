@@ -376,7 +376,7 @@ contains
            tk(begc:endc, :), &
            cv(begc:endc, :), &
            tk_h2osfc(begc:endc), &
-           urbanparams_vars, temperature_vars, waterstate_vars, soilstate_vars)
+           urbanparams_vars, soilstate_vars)
 
       ! Net ground heat flux into the surface and its temperature derivative
       ! Added a patches loop here to get the average of hs and dhsdT over 
@@ -389,8 +389,8 @@ contains
            hs_top( begc:endc ),                                               &
            dhsdT( begc:endc ),                                                &
            sabg_lyr_col( begc:endc, -nlevsno+1: ),                            &
-           atm2lnd_vars, urbanparams_vars, canopystate_vars, waterstate_vars, &
-           waterflux_vars, solarabs_vars, energyflux_vars, temperature_vars)
+           atm2lnd_vars, urbanparams_vars, canopystate_vars,                  &
+           solarabs_vars, energyflux_vars)
 
       ! Determine heat diffusion through the layer interface and factor used in computing
       ! banded diagonal matrix and set up vector r and vectors a, b, c that define banded
@@ -402,7 +402,7 @@ contains
            cv( begc:endc, -nlevsno+1: ),                                     &
            fn( begc:endc, -nlevsno+1: ),                                     &
            fact( begc:endc, -nlevsno+1: ),                                   &
-           energyflux_vars, temperature_vars)
+           energyflux_vars)
 
       ! compute thermal properties of h2osfc
 
@@ -464,8 +464,6 @@ contains
               dz_h2osfc( begc:endc ),                 &
               jtop( begc:endc ),                      &
               jbot( begc:endc ),                      &
-              temperature_vars,                       &
-              waterstate_vars,                        &
               urban_column,                           &
               tvector_nourbanc( begc:endc, -nlevsno: ))
 
@@ -520,8 +518,6 @@ contains
            dz_h2osfc( begc:endc ),                 &
            jtop( begc:endc ),                      &
            jbot( begc:endc ),                      &
-           temperature_vars,                       &
-           waterstate_vars,                        &
            urban_column,                           &
            tvector_urbanc( begc:endc, -nlevsno: ))
 
@@ -626,11 +622,11 @@ contains
 
       call PhaseChangeH2osfc (bounds, num_nolakec, filter_nolakec, &
            dhsdT(bounds%begc:bounds%endc), &
-           waterstate_vars, waterflux_vars, temperature_vars, energyflux_vars)
+           energyflux_vars)
 
       call Phasechange_beta (bounds, num_nolakec, filter_nolakec, &
            dhsdT(bounds%begc:bounds%endc), &
-           soilstate_vars, waterstate_vars, waterflux_vars, energyflux_vars, temperature_vars)
+           soilstate_vars, energyflux_vars)
 
       do fc = 1,num_nolakec
          c = filter_nolakec(fc)
@@ -709,7 +705,7 @@ contains
   subroutine SolveTemperature(bounds, num_filter, filter, dtime, &
        hs_h2osfc, hs_top_snow, hs_soil, hs_top, dhsdT, sabg_lyr_col, tk, &
        tk_h2osfc, fact, fn, c_h2osfc, dz_h2osfc, jtop, jbot, &
-       temperature_vars, waterstate_vars, urban_column, tvector)
+       urban_column, tvector)
     !
     ! !DESCRIPTION:
     !  Assembles and solves the banded penta-diagonal system of equations
@@ -743,8 +739,6 @@ contains
     real(r8)               , intent(in)  :: dz_h2osfc( bounds%begc: )                  ! Thickness of standing water [m]
     integer                , intent(in)  :: jtop(bounds%begc: )                        ! top level at each column
     integer                , intent(in)  :: jbot(bounds%begc: )                        ! bottom level at each column
-    type(temperature_type) , intent(in)  :: temperature_vars                           !
-    type(waterstate_type)  , intent(in)  :: waterstate_vars                            !
     logical                , intent(in)  :: urban_column                               ! Is true if solving temperature for urban column, otherwise false
     real(r8)               , intent(out) :: tvector( bounds%begc: , -nlevsno: )        ! Numerical solution of temperature
     !
@@ -790,8 +784,6 @@ contains
          fn( begc:endc, -nlevsno+1: ),           &
          c_h2osfc( begc:endc ),                  &
          dz_h2osfc( begc:endc ),                 &
-         temperature_vars,                       &
-         waterstate_vars,                        &
          urban_column,                           &
          rvector( begc:endc, -nlevsno: ))
 
@@ -806,7 +798,6 @@ contains
          fact( begc:endc, -nlevsno+1: ),         &
          c_h2osfc( begc:endc ),                  &
          dz_h2osfc( begc:endc ),                 &
-         waterstate_vars,                        &
          urban_column,                           &
          bmatrix( begc:endc, 1:, -nlevsno: ))
 
@@ -824,7 +815,7 @@ end subroutine SolveTemperature
   !-----------------------------------------------------------------------
   subroutine SoilThermProp (bounds,  num_nolakec, filter_nolakec, &
        tk, cv, tk_h2osfc, &
-       urbanparams_vars, temperature_vars, waterstate_vars, soilstate_vars)
+       urbanparams_vars, soilstate_vars)
 
     !
     ! !DESCRIPTION:
@@ -856,8 +847,6 @@ end subroutine SolveTemperature
     real(r8)               , intent(out)   :: tk( bounds%begc: , -nlevsno+1: ) ! thermal conductivity at the layer interface [W/(m K) ] [col, lev]
     real(r8)               , intent(out)   :: tk_h2osfc( bounds%begc: )        ! thermal conductivity of h2osfc [W/(m K)              ] [col]
     type(urbanparams_type) , intent(in)    :: urbanparams_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
     !
     ! !LOCAL VARIABLES:
@@ -1065,7 +1054,7 @@ end subroutine SolveTemperature
 
   !-----------------------------------------------------------------------
   subroutine PhaseChangeH2osfc (bounds, num_nolakec, filter_nolakec, &
-       dhsdT, waterstate_vars, waterflux_vars, temperature_vars, energyflux_vars)
+       dhsdT, energyflux_vars)
     !
     ! !DESCRIPTION:
     ! Only freezing is considered.  When water freezes, move ice to bottom snow layer.
@@ -1081,9 +1070,6 @@ end subroutine SolveTemperature
     integer                , intent(in)    :: num_nolakec                          ! number of column non-lake points in column filter
     integer                , intent(in)    :: filter_nolakec(:)                    ! column filter for non-lake points
     real(r8)               , intent(in)    :: dhsdT ( bounds%begc: )               ! temperature derivative of "hs" [col               ]
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
-    type(waterflux_type)   , intent(inout) :: waterflux_vars
-    type(temperature_type) , intent(inout) :: temperature_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
@@ -1284,7 +1270,7 @@ end subroutine SolveTemperature
 
   !-----------------------------------------------------------------------
   subroutine Phasechange_beta (bounds, num_nolakec, filter_nolakec, dhsdT, &
-       soilstate_vars, waterstate_vars, waterflux_vars, energyflux_vars, temperature_vars)
+       soilstate_vars, energyflux_vars)
     !
     ! !DESCRIPTION:
     ! Calculation of the phase change within snow and soil layers:
@@ -1312,10 +1298,7 @@ end subroutine SolveTemperature
     integer                , intent(in)    :: filter_nolakec(:)                    ! column filter for non-lake points
     real(r8)               , intent(in)    :: dhsdT ( bounds%begc: )               ! temperature derivative of "hs" [col]
     type(soilstate_type)   , intent(in)    :: soilstate_vars
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
-    type(waterflux_type)   , intent(inout) :: waterflux_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
-    type(temperature_type) , intent(inout) :: temperature_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,g,l                            !do loop index
@@ -1683,8 +1666,8 @@ end subroutine SolveTemperature
   !-----------------------------------------------------------------------
   subroutine ComputeGroundHeatFluxAndDeriv(bounds, num_nolakec, filter_nolakec, &
        hs_h2osfc, hs_top_snow, hs_soil, hs_top, dhsdT, sabg_lyr_col, &
-       atm2lnd_vars, urbanparams_vars, canopystate_vars, waterstate_vars, &
-       waterflux_vars, solarabs_vars, energyflux_vars, temperature_vars)
+       atm2lnd_vars, urbanparams_vars, canopystate_vars, &
+       solarabs_vars, energyflux_vars)
     !
     ! !DESCRIPTION:
     ! Computes ground heat flux on:
@@ -1713,11 +1696,8 @@ end subroutine SolveTemperature
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
     type(urbanparams_type) , intent(in)    :: urbanparams_vars
     type(canopystate_type) , intent(in)    :: canopystate_vars
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
-    type(waterflux_type)   , intent(in)    :: waterflux_vars
     type(solarabs_type)    , intent(inout) :: solarabs_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,p,l,t,g,pi                                         ! indices
@@ -1938,7 +1918,7 @@ end subroutine SolveTemperature
   !-----------------------------------------------------------------------
   subroutine ComputeHeatDiffFluxAndFactor(bounds, num_nolakec, filter_nolakec, dtime, &
        tk, cv, fn, fact, &
-       energyflux_vars, temperature_vars)
+       energyflux_vars)
     !
     ! !DESCRIPTION:
     ! Computes:
@@ -1961,7 +1941,6 @@ end subroutine SolveTemperature
     real(r8)               , intent(out) :: fn (bounds%begc: ,-nlevsno+1: )    ! heat diffusion through the layer interface [W/m2]
     real(r8)               , intent(out) :: fact( bounds%begc: , -nlevsno+1: ) ! used in computing tridiagonal matrix [col, lev]
     type(energyflux_type)  , intent(in)  :: energyflux_vars
-    type(temperature_type) , intent(in)  :: temperature_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,l                                           ! indices
@@ -2037,7 +2016,7 @@ end subroutine SolveTemperature
   subroutine SetRHSVec(bounds, num_filter, filter, dtime, &
        hs_h2osfc, hs_top_snow, hs_soil, hs_top, dhsdT, sabg_lyr_col, tk, &
        tk_h2osfc, fact, fn, c_h2osfc, dz_h2osfc, &
-       temperature_vars, waterstate_vars, urban_column, rvector)
+       urban_column, rvector)
 
     !
     ! !DESCRIPTION:
@@ -2076,8 +2055,6 @@ end subroutine SolveTemperature
     real(r8) , intent(in)  :: c_h2osfc( bounds%begc: )                   ! heat capacity of surface water [col]
     real(r8) , intent(in)  :: dz_h2osfc( bounds%begc: )                  ! Thickness of standing water [m]
     real(r8) , intent(out) :: rvector( bounds%begc: , -nlevsno: )        ! RHS vector used in numerical solution of temperature
-    type(temperature_type) , intent(in) :: temperature_vars
-    type(waterstate_type)  , intent(in) :: waterstate_vars
     logical                , intent(in)  :: urban_column                 ! Is true if solving temperature for urban column, otherwise false
     !
     ! !LOCAL VARIABLES:
@@ -3149,7 +3126,7 @@ end subroutine SolveTemperature
 
   !-----------------------------------------------------------------------
   subroutine SetMatrix(bounds, num_filter, filter, dtime, nband, &
-       dhsdT, tk, tk_h2osfc, fact, c_h2osfc, dz_h2osfc, waterstate_vars, urban_column, &
+       dhsdT, tk, tk_h2osfc, fact, c_h2osfc, dz_h2osfc, urban_column, &
        bmatrix)
     !
     ! !DESCRIPTION:
@@ -3186,7 +3163,6 @@ end subroutine SolveTemperature
     real(r8), intent(in)  :: c_h2osfc( bounds%begc: )                          ! heat capacity of surface water [col]
     real(r8), intent(in)  :: dz_h2osfc(bounds%begc: )                          ! Thickness of standing water [m]
     real(r8), intent(out) :: bmatrix(bounds%begc: , 1:,-nlevsno: )             ! matrix for numerical solution of temperature
-    type(waterstate_type), intent(in) :: waterstate_vars
     logical, intent(in)    :: urban_column                                     ! Is true if solving temperature for urban column, otherwise false
     !
     ! !LOCAL VARIABLES:

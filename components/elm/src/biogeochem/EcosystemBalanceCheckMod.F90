@@ -13,10 +13,6 @@ module EcosystemBalanceCheckMod
   use elm_varctl          , only : iulog, use_nitrif_denitrif, use_fates
   use clm_time_manager    , only : get_step_size,get_nstep
   use elm_varpar          , only : crop_prog
-  use CNCarbonFluxType    , only : carbonflux_type
-  use CNCarbonStateType   , only : carbonstate_type
-  use CNNitrogenFluxType  , only : nitrogenflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
   use elm_varpar          , only : nlevdecomp
   use elm_varcon          , only : dzsoi_decomp
   use elm_varctl          , only : nu_com
@@ -25,8 +21,6 @@ module EcosystemBalanceCheckMod
   use CNDecompCascadeConType , only : decomp_cascade_con
   use elm_varpar          , only: ndecomp_cascade_transitions
   use subgridAveMod       , only : p2c, c2g
-  use PhosphorusFluxType  , only : phosphorusflux_type
-  use PhosphorusStateType , only : phosphorusstate_type
   ! soil erosion
   use elm_varctl          , only : use_erosion, ero_ccycle
   ! bgc interface & pflotran:
@@ -105,8 +99,7 @@ contains
   end subroutine BeginColCBalance
  
   !-----------------------------------------------------------------------
-  subroutine BeginColNBalance(bounds, num_soilc, filter_soilc, &
-       nitrogenstate_vars)
+  subroutine BeginColNBalance(bounds, num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, calculate the beginning nitrogen balance for mass
@@ -116,7 +109,6 @@ contains
     type(bounds_type)        , intent(in)    :: bounds          
     integer                  , intent(in)    :: num_soilc       ! number of soil columns filter
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c    ! indices
@@ -139,8 +131,7 @@ contains
   end subroutine BeginColNBalance
 
   !-----------------------------------------------------------------------
-  subroutine BeginColPBalance(bounds, num_soilc, filter_soilc, &
-       phosphorusstate_vars)
+  subroutine BeginColPBalance(bounds, num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, calculate the beginning phosphorus balance for mass
@@ -150,7 +141,6 @@ contains
     type(bounds_type)        , intent(in)    :: bounds          
     integer                  , intent(in)    :: num_soilc       ! number of soil columns filter
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c     ! indices
@@ -182,7 +172,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine ColCBalanceCheck(bounds, &
        num_soilc, filter_soilc, &
-       col_cs, carbonflux_vars)
+       col_cs)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, perform carbon mass conservation check for column and pft
@@ -192,7 +182,6 @@ contains
     integer                   , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                   , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(column_carbon_state) , intent(inout) :: col_cs
-    type(carbonflux_type)     , intent(in)    :: carbonflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c,err_index    ! indices 
@@ -319,8 +308,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine ColNBalanceCheck(bounds, &
-       num_soilc, filter_soilc, &
-       nitrogenstate_vars, nitrogenflux_vars)
+       num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, perform nitrogen mass conservation check
@@ -331,8 +319,6 @@ contains
     type(bounds_type)         , intent(in)    :: bounds          
     integer                   , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                   , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,err_index,j,p  ! indices
@@ -536,8 +522,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine ColPBalanceCheck(bounds, &
-       num_soilc, filter_soilc, &
-       phosphorusstate_vars, phosphorusflux_vars)
+       num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, perform phosphorus mass conservation check
@@ -547,8 +532,6 @@ contains
     type(bounds_type)         , intent(in)    :: bounds          
     integer                   , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                   , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,err_index,j,k,p  ! indices
@@ -601,9 +584,7 @@ contains
          leafp_to_litter           => veg_pf%leafp_to_litter         , & ! Input:  [real(r8) (:)]  soil mineral P pool loss to leaching (gP/m2/s)
          frootp_to_litter          => veg_pf%frootp_to_litter        , & ! Input:  [real(r8) (:)]  soil mineral P pool loss to leaching (gP/m2/s)
          sminp_to_plant            => col_pf%sminp_to_plant            , &
-         cascade_receiver_pool     => decomp_cascade_con%cascade_receiver_pool          , &
-         pf                        =>  phosphorusflux_vars                              , &
-         ps                        =>  phosphorusstate_vars                               &
+         cascade_receiver_pool     => decomp_cascade_con%cascade_receiver_pool   &
          )
 
       ! set time steps
@@ -785,7 +766,7 @@ contains
   end subroutine BeginGridCBalanceBeforeDynSubgridDriver
  
   !-----------------------------------------------------------------------
-  subroutine BeginGridNBalanceBeforeDynSubgridDriver(bounds, nitrogenstate_vars)
+  subroutine BeginGridNBalanceBeforeDynSubgridDriver(bounds)
     !
     ! !DESCRIPTION:
     ! Calculate the beginning nitrogen balance for mass conservation checks
@@ -793,7 +774,6 @@ contains
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
     !-----------------------------------------------------------------------
 
     associate(                                         &
@@ -812,7 +792,7 @@ contains
   end subroutine BeginGridNBalanceBeforeDynSubgridDriver
 
   !-----------------------------------------------------------------------
-  subroutine BeginGridPBalanceBeforeDynSubgridDriver(bounds, phosphorusstate_vars)
+  subroutine BeginGridPBalanceBeforeDynSubgridDriver(bounds)
     !
     ! !DESCRIPTION:
     ! Calculate the beginning phosphorus balance for mass conservation checks
@@ -820,7 +800,6 @@ contains
     !
     ! !ARGUMENTS:
     type(bounds_type)          , intent(in)    :: bounds
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
     !
     !-----------------------------------------------------------------------
 
@@ -843,7 +822,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine EndGridCBalanceAfterDynSubgridDriver(bounds, &
        num_soilc, filter_soilc, &
-       col_cs, grc_cs, carbonflux_vars)
+       col_cs, grc_cs)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, perform carbon mass conservation check
@@ -855,7 +834,6 @@ contains
     integer                    , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(column_carbon_state)  , intent(inout) :: col_cs
     type(gridcell_carbon_state), intent(inout) :: grc_cs
-    type(carbonflux_type)      , intent(in)    :: carbonflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: g,err_index    ! indices
@@ -926,8 +904,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine EndGridNBalanceAfterDynSubgridDriver(bounds, &
-       num_soilc, filter_soilc, &
-       nitrogenstate_vars, nitrogenflux_vars)
+       num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, perform nitrogen mass conservation check
@@ -937,8 +914,6 @@ contains
     type(bounds_type)      , intent(in)    :: bounds          
     integer                , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(in)    :: nitrogenflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: g,err_index    ! indices
@@ -1015,8 +990,7 @@ contains
   !-----------------------------------------------------------------------
 
   subroutine EndGridPBalanceAfterDynSubgridDriver(bounds, &
-       num_soilc, filter_soilc, &
-       phosphorusstate_vars, phosphorusflux_vars)
+       num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, perform phosphorus mass conservation check
@@ -1026,8 +1000,6 @@ contains
     type(bounds_type)      , intent(in)    :: bounds          
     integer                , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(in)    :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: g,err_index    ! indices

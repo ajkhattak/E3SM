@@ -15,8 +15,6 @@ module PhosphorusStateUpdate3Mod
   use elm_varctl          , only : use_erosion, ero_ccycle, use_fates
   use CNDecompCascadeConType , only : decomp_cascade_con
   use CNStateType         , only : cnstate_type
-  use PhosphorusStateType , only : phosphorusstate_type
-  use PhosphorusFLuxType  , only : phosphorusflux_type
   use soilorder_varcon    , only : smax,ks_sorption
   use tracer_varcon       , only : is_active_betr_bgc
   ! bgc interface & pflotran:
@@ -39,7 +37,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine PhosphorusStateUpdate3(bounds,num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       cnstate_vars,phosphorusflux_vars, phosphorusstate_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update all the prognostic phosphorus state
@@ -54,8 +52,6 @@ contains
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columps
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(phosphorusflux_type)  , intent(inout)    :: phosphorusflux_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
     type(cnstate_type)         , intent(in)    :: cnstate_vars
     !
     ! !LOCAL VARIABLES:
@@ -75,8 +71,6 @@ contains
          isoilorder     => cnstate_vars%isoilorder ,&
          pdep_prof      => cnstate_vars%pdep_prof_col ,&
          cascade_receiver_pool => decomp_cascade_con%cascade_receiver_pool ,&
-         pf => phosphorusflux_vars  , &
-         ps => phosphorusstate_vars , &
          vmax_minsurf_p_vr => veg_vp%vmax_minsurf_p_vr , &
          km_minsurf_p_vr   => veg_vp%km_minsurf_p_vr     &
          )

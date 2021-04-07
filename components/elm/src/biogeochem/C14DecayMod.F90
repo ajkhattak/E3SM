@@ -10,7 +10,6 @@ module C14DecayMod
   use elm_varcon             , only : secspday
   use elm_varctl             , only : spinup_state
   use CNDecompCascadeConType , only : decomp_cascade_con
-  use CNCarbonStateType      , only : carbonstate_type
   use CNStateType            , only : cnstate_type
   use elm_varctl             , only : nu_com
   use ColumnDataType         , only : c14_col_cs
@@ -38,7 +37,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine C14Decay( num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       cnstate_vars, c14_carbonstate_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, calculate the radioactive decay of C14
@@ -49,7 +48,6 @@ contains
     integer                , intent(in)    :: filter_soilc(:) ! filter for soil columns
     integer                , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(carbonstate_type) , intent(inout) :: c14_carbonstate_vars
     type(cnstate_type)     , intent(in)    :: cnstate_vars
     !
     ! !LOCAL VARIABLES:

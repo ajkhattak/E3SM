@@ -12,9 +12,6 @@ module SoilHydrologyMod
   use EnergyFluxType    , only : energyflux_type
   use SoilHydrologyType , only : soilhydrology_type  
   use SoilStateType     , only : soilstate_type
-  use WaterfluxType     , only : waterflux_type
-  use WaterstateType    , only : waterstate_type
-  use TemperatureType   , only : temperature_type
   use LandunitType      , only : lun_pp                
   use ColumnType        , only : col_pp
   use ColumnDataType    , only : col_es, col_ws, col_wf  
@@ -38,8 +35,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine SurfaceRunoff (bounds, num_hydrologyc, filter_hydrologyc, &
-       num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars, waterflux_vars, &
-       waterstate_vars)
+       num_urbanc, filter_urbanc, soilhydrology_vars, soilstate_vars)
     !
     ! !DESCRIPTION:
     ! Calculate surface runoff
@@ -63,8 +59,6 @@ contains
     integer                  , intent(in)    :: filter_urbanc(:)     ! column filter for urban points
     type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
     type(soilstate_type)     , intent(in)    :: soilstate_vars
-    type(waterflux_type)     , intent(inout) :: waterflux_vars
-    type(waterstate_type)    , intent(inout) :: waterstate_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c,j,fc,g,l,i                               !indices
@@ -254,8 +248,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine Infiltration(bounds, num_hydrologyc, filter_hydrologyc, num_urbanc, filter_urbanc, &
-        energyflux_vars, soilhydrology_vars, soilstate_vars, temperature_vars, &
-        waterflux_vars, waterstate_vars)
+        energyflux_vars, soilhydrology_vars, soilstate_vars)
      !
      ! !DESCRIPTION:
      ! Calculate infiltration into surface soil layer (minus the evaporation)
@@ -278,9 +271,6 @@ contains
      type(energyflux_type)    , intent(in)    :: energyflux_vars 
      type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
      type(soilstate_type)     , intent(inout) :: soilstate_vars
-     type(temperature_type)   , intent(in)    :: temperature_vars
-     type(waterstate_type)    , intent(inout) :: waterstate_vars
-     type(waterflux_type)     , intent(inout) :: waterflux_vars
      !
      ! !LOCAL VARIABLES:
      integer  :: c,j,l,fc                                   ! indices
@@ -535,7 +525,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine WaterTable(bounds, num_hydrologyc, filter_hydrologyc, num_urbanc, filter_urbanc, &
-        soilhydrology_vars, soilstate_vars, temperature_vars, waterstate_vars, waterflux_vars) 
+        soilhydrology_vars, soilstate_vars)
      !
      ! !DESCRIPTION:
      ! Calculate watertable, considering aquifer recharge but no drainage.
@@ -557,9 +547,6 @@ contains
      integer                  , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
      type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
      type(soilstate_type)     , intent(in)    :: soilstate_vars
-     type(temperature_type)   , intent(in)    :: temperature_vars
-     type(waterstate_type)    , intent(inout) :: waterstate_vars
-     type(waterflux_type)     , intent(inout) :: waterflux_vars
      !
      ! !LOCAL VARIABLES:
      integer  :: c,j,fc,i,l,g                            ! indices
@@ -880,7 +867,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine Drainage(bounds, num_hydrologyc, filter_hydrologyc, num_urbanc, filter_urbanc,  &
-        temperature_vars, soilhydrology_vars, soilstate_vars, waterstate_vars, waterflux_vars)
+        soilhydrology_vars, soilstate_vars)
      !
      ! !DESCRIPTION:
      ! Calculate subsurface drainage
@@ -901,11 +888,8 @@ contains
      integer                  , intent(in)    :: num_urbanc           ! number of column urban points in column filter
      integer                  , intent(in)    :: filter_urbanc(:)     ! column filter for urban points
      integer                  , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
-     type(temperature_type)   , intent(in)    :: temperature_vars
      type(soilstate_type)     , intent(in)    :: soilstate_vars
      type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
-     type(waterstate_type)    , intent(inout) :: waterstate_vars
-     type(waterflux_type)     , intent(inout) :: waterflux_vars
      !
      ! !LOCAL VARIABLES:
      character(len=32) :: subname = 'Drainage'           ! subroutine name
@@ -1525,7 +1509,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine DrainageVSFM(bounds, num_hydrologyc, filter_hydrologyc, num_urbanc, filter_urbanc,  &
-        temperature_vars, soilhydrology_vars, soilstate_vars, waterstate_vars, waterflux_vars)
+        soilhydrology_vars, soilstate_vars)
      !
      ! !DESCRIPTION:
      ! Calculate subsurface drainage
@@ -1545,11 +1529,8 @@ contains
      integer                  , intent(in)    :: num_urbanc           ! number of column urban points in column filter
      integer                  , intent(in)    :: filter_urbanc(:)     ! column filter for urban points
      integer                  , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
-     type(temperature_type)   , intent(in)    :: temperature_vars
      type(soilstate_type)     , intent(in)    :: soilstate_vars
      type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
-     type(waterstate_type)    , intent(inout) :: waterstate_vars
-     type(waterflux_type)     , intent(inout) :: waterflux_vars
      !
      ! !LOCAL VARIABLES:
      character(len=32) :: subname = 'Drainage'           ! subroutine name
@@ -1941,7 +1922,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine ELMVICMap(bounds, numf, filter, &
-       soilhydrology_vars, waterstate_vars)
+       soilhydrology_vars)
      !
      ! !DESCRIPTION:
      ! Performs  the mapping from CLM layers to VIC layers
@@ -1965,7 +1946,6 @@ contains
      type(bounds_type)        , intent(in)    :: bounds    
      integer                  , intent(in)    :: numf      ! number of column soil points in column filter
      integer                  , intent(in)    :: filter(:) ! column filter for soil points
-     type(waterstate_type)    , intent(in)    :: waterstate_vars 
      type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
      !
      ! !LOCAL VARIABLES

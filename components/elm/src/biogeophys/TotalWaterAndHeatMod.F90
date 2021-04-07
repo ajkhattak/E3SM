@@ -13,10 +13,8 @@ module TotalWaterAndHeatMod
   use elm_varpar         , only : nlevgrnd, nlevsoi, nlevurb, nlevlak
   use subgridAveMod      , only : p2c
   use SoilHydrologyType  , only : soilhydrology_type
-  use WaterstateType     , only : waterstate_type
   use UrbanParamsType    , only : urbanparams_type
   use SoilStateType      , only : soilstate_type
-  use TemperatureType    , only : temperature_type
   use LakeStateType      , only : lakestate_type
   use column_varcon      , only : icol_roof, icol_sunwall, icol_shadewall
   use column_varcon      , only : icol_road_perv, icol_road_imperv
@@ -87,7 +85,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine ComputeWaterMassNonLake(bounds, num_nolakec, filter_nolakec, &
-       soilhydrology_inst, waterstate_inst, water_mass)
+       soilhydrology_inst,  water_mass)
     !
     ! !DESCRIPTION:
     ! Compute total water mass for all non-lake columns
@@ -97,7 +95,6 @@ contains
     integer                  , intent(in)    :: num_nolakec                ! number of column non-lake points in column filter
     integer                  , intent(in)    :: filter_nolakec(:)          ! column filter for non-lake points
     type(soilhydrology_type) , intent(in)    :: soilhydrology_inst
-    type(waterstate_type)    , intent(in)    :: waterstate_inst
     real(r8)                 , intent(inout) :: water_mass( bounds%begc: ) ! computed water mass (kg m-2)
     !
     ! !LOCAL VARIABLES:
@@ -115,7 +112,6 @@ contains
          num_nolakec = num_nolakec, &
          filter_nolakec = filter_nolakec, &
          soilhydrology_inst = soilhydrology_inst, &
-         waterstate_inst = waterstate_inst, &
          liquid_mass = liquid_mass(bounds%begc:bounds%endc), &
          ice_mass = ice_mass(bounds%begc:bounds%endc))
 
@@ -128,7 +124,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine ComputeWaterMassLake(bounds, num_lakec, filter_lakec, &
-       waterstate_inst, lakestate_vars, water_mass)
+       lakestate_vars, water_mass)
     !
     ! !DESCRIPTION:
     ! Compute total water mass for all lake columns
@@ -137,7 +133,6 @@ contains
     type(bounds_type)        , intent(in)    :: bounds     
     integer                  , intent(in)    :: num_lakec                  ! number of column lake points in column filter
     integer                  , intent(in)    :: filter_lakec(:)            ! column filter for lake points
-    type(waterstate_type)    , intent(in)    :: waterstate_inst
     type(lakestate_type)     , intent(in)    :: lakestate_vars
     real(r8)                 , intent(inout) :: water_mass( bounds%begc: ) ! computed water mass (kg m-2)
     !
@@ -155,7 +150,6 @@ contains
          bounds = bounds, &
          num_lakec = num_lakec, &
          filter_lakec = filter_lakec, &
-         waterstate_inst = waterstate_inst, &
          lakestate_vars  = lakestate_vars, &
          liquid_mass = liquid_mass(bounds%begc:bounds%endc), &
          ice_mass = ice_mass(bounds%begc:bounds%endc))
@@ -170,7 +164,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine ComputeLiqIceMassNonLake(bounds, num_nolakec, filter_nolakec, &
-       soilhydrology_inst, waterstate_inst, liquid_mass, ice_mass)
+       soilhydrology_inst, liquid_mass, ice_mass)
     !
     ! !DESCRIPTION:
     ! Compute total water mass for all non-lake columns, separated into liquid and ice
@@ -183,7 +177,6 @@ contains
     integer                  , intent(in)    :: num_nolakec                 ! number of column non-lake points in column filter
     integer                  , intent(in)    :: filter_nolakec(:)           ! column filter for non-lake points
     type(soilhydrology_type) , intent(in)    :: soilhydrology_inst
-    type(waterstate_type)    , intent(in)    :: waterstate_inst
     real(r8)                 , intent(inout) :: liquid_mass( bounds%begc: ) ! computed liquid water mass (kg m-2)
     real(r8)                 , intent(inout) :: ice_mass( bounds%begc: )    ! computed ice mass (kg m-2)
     !
@@ -206,7 +199,6 @@ contains
          h2osfc       =>    col_ws%h2osfc     , & ! Input:  [real(r8) (:)   ]  surface water (mm)
          h2osno       =>    col_ws%h2osno     , & ! Input:  [real(r8) (:)   ]  snow water (mm H2O)
          h2ocan_patch =>    veg_ws%h2ocan   , & ! Input:  [real(r8) (:)   ]  canopy water (mm H2O)
-!         snocan_patch =>    waterstate_inst%snocan_patch   , & ! Input:  [real(r8) (:)   ]  canopy snow water (mm H2O)
          h2osoi_ice   =>    col_ws%h2osoi_ice , & ! Input:  [real(r8) (:,:) ]  ice lens (kg/m2)
          h2osoi_liq   =>    col_ws%h2osoi_liq , & ! Input:  [real(r8) (:,:) ]  liquid water (kg/m2)
          total_plant_stored_h2o => col_ws%total_plant_stored_h2o, & 
@@ -310,7 +302,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine ComputeLiqIceMassLake(bounds, num_lakec, filter_lakec, &
-       waterstate_inst, lakestate_vars, liquid_mass, ice_mass)
+       lakestate_vars, liquid_mass, ice_mass)
     !
     ! !DESCRIPTION:
     ! Compute total water mass for all lake columns, separated into liquid and ice
@@ -322,7 +314,6 @@ contains
     type(bounds_type)     , intent(in)    :: bounds     
     integer               , intent(in)    :: num_lakec                   ! number of column lake points in column filter
     integer               , intent(in)    :: filter_lakec(:)             ! column filter for lake points
-    type(waterstate_type) , intent(in)    :: waterstate_inst
     type(lakestate_type)  , intent(in)    :: lakestate_vars
     real(r8)              , intent(inout) :: liquid_mass( bounds%begc: ) ! computed liquid water mass (kg m-2)
     real(r8)              , intent(inout) :: ice_mass( bounds%begc: )    ! computed ice mass (kg m-2)
@@ -391,7 +382,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine ComputeHeatNonLake(bounds, num_nolakec, filter_nolakec, &
        urbanparams_inst, soilstate_inst, &
-       temperature_inst, waterstate_inst, soilhydrology_inst, &
+       soilhydrology_inst, &
        heat, heat_liquid, cv_liquid)
     !
     ! !DESCRIPTION:
@@ -411,8 +402,6 @@ contains
     integer                  , intent(in)  :: filter_nolakec(:)
     type(urbanparams_type)   , intent(in)  :: urbanparams_inst
     type(soilstate_type)     , intent(in)  :: soilstate_inst
-    type(temperature_type)   , intent(in)  :: temperature_inst
-    type(waterstate_type)    , intent(in)  :: waterstate_inst
     type(soilhydrology_type) , intent(in)  :: soilhydrology_inst
 
     real(r8) , intent(inout) :: heat( bounds%begc: )        ! sum of heat content for all columns [J/m^2]
@@ -476,10 +465,6 @@ contains
          carr = h2ocan_col(bounds%begc:bounds%endc), &
          p2c_scale_type = 'unity')
 
-    !call p2c(bounds, &
-    !     parr = snocan_patch(bounds%begp:bounds%endp), &
-    !     carr = snocan_col(bounds%begc:bounds%endc), &
-    !     p2c_scale_type = 'unity')
     snocan_col(bounds%begc:bounds%endc) = 0._r8
 
     do fc = 1, num_nolakec
@@ -636,7 +621,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine ComputeHeatLake(bounds, num_lakec, filter_lakec, &
-       soilstate_inst, temperature_inst, waterstate_inst, &
+       soilstate_inst, &
        heat, heat_liquid, cv_liquid)
     !
     ! !DESCRIPTION:
@@ -655,8 +640,6 @@ contains
     integer                  , intent(in)  :: num_lakec
     integer                  , intent(in)  :: filter_lakec(:)
     type(soilstate_type)     , intent(in)  :: soilstate_inst
-    type(temperature_type)   , intent(in)  :: temperature_inst
-    type(waterstate_type)    , intent(in)  :: waterstate_inst
 
     real(r8) , intent(inout) :: heat( bounds%begc: )        ! sum of heat content for all columns [J/m^2]
     real(r8) , intent(inout) :: heat_liquid( bounds%begc: ) ! sum of heat content for all columns: liquid water, excluding latent heat [J/m^2]

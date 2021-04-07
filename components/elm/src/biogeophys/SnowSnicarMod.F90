@@ -17,9 +17,6 @@ module SnowSnicarMod
   use abortutils      , only : endrun
   use decompMod       , only : bounds_type
   use AerosolMod      , only : snw_rds_min
-  use WaterStateType  , only : waterstate_type
-  use WaterFluxType   , only : waterflux_type
-  use TemperatureType , only : temperature_type
   use GridcellType    , only : grc_pp       
   use LandunitType    , only : lun_pp       
   use ColumnType      , only : col_pp
@@ -198,7 +195,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine SNICAR_RT (flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,  &
                         coszen, flg_slr_in, h2osno_liq, h2osno_ice, snw_rds,   &
-                        mss_cnc_aer_in, albsfc, albout, flx_abs, waterstate_vars)
+                        mss_cnc_aer_in, albsfc, albout, flx_abs)
     !
     ! !DESCRIPTION:
     ! Determine reflectance of, and vertically-resolved solar absorption in, 
@@ -237,7 +234,6 @@ contains
     real(r8)          , intent(in)  :: albsfc         ( bounds%begc: , 1: )               ! albedo of surface underlying snow (col,bnd) [frc]
     real(r8)          , intent(out) :: albout         ( bounds%begc: , 1: )               ! snow albedo, averaged into 2 bands (=0 if no sun or no snow) (col,bnd) [frc]
     real(r8)          , intent(out) :: flx_abs        ( bounds%begc: , -nlevsno+1: , 1: ) ! absorbed flux in each layer per unit flux incident (col, lyr, bnd)
-    type(waterstate_type) , intent(in)  :: waterstate_vars
     !
     ! !LOCAL VARIABLES:
     !
@@ -1124,8 +1120,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine SnowAge_grain(bounds, &
-       num_snowc, filter_snowc, num_nosnowc, filter_nosnowc, &
-       waterflux_vars, waterstate_vars, temperature_vars)
+       num_snowc, filter_snowc, num_nosnowc, filter_nosnowc)
     !
     ! !DESCRIPTION:
     ! Updates the snow effective grain size (radius). 
@@ -1172,9 +1167,6 @@ contains
     integer                , intent(in)    :: filter_snowc(:)   ! column filter for snow points
     integer                , intent(in)    :: num_nosnowc       ! number of column non-snow points in column filter
     integer                , intent(in)    :: filter_nosnowc(:) ! column filter for non-snow points
-    type(waterflux_type)   , intent(in)    :: waterflux_vars
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
-    type(temperature_type) , intent(inout) :: temperature_vars
     !
     ! !LOCAL VARIABLES:
     integer :: snl_top                      ! top snow layer index [idx]
@@ -1626,7 +1618,7 @@ contains
    !-----------------------------------------------------------------------
    subroutine SNICAR_AD_RT (flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,  &
                          coszen, flg_slr_in, h2osno_liq, h2osno_ice, snw_rds,   &
-                         mss_cnc_aer_in, albsfc, albout, flx_abs, waterstate_vars)
+                         mss_cnc_aer_in, albsfc, albout, flx_abs)
      !
      ! !DESCRIPTION:
      ! Determine reflectance of, and vertically-resolved solar absorption in,
@@ -1669,7 +1661,6 @@ contains
      real(r8)          , intent(in)  :: albsfc         ( bounds%begc: , 1: )               ! albedo of surface underlying snow (col,bnd) [frc]
      real(r8)          , intent(out) :: albout         ( bounds%begc: , 1: )               ! snow albedo, averaged into 2 bands (=0 if no sun or no snow) (col,bnd) [frc]
      real(r8)          , intent(out) :: flx_abs        ( bounds%begc: , -nlevsno+1: , 1: ) ! absorbed flux in each layer per unit flux incident (col, lyr, bnd)
-     type(waterstate_type) , intent(in)  :: waterstate_vars
      !
      ! !LOCAL VARIABLES:
      !

@@ -34,14 +34,8 @@ module FireMod
   use VegetationPropertiesType         , only : veg_vp
   use atm2lndType            , only : atm2lnd_type
   use CNStateType            , only : cnstate_type
-  use CNCarbonFluxType       , only : carbonflux_type
-  use CNCarbonStateType      , only : carbonstate_type
-  use CNNitrogenFluxType     , only : nitrogenflux_type
-  use CNNitrogenStateType    , only : nitrogenstate_type
   use EnergyFluxType         , only : energyflux_type
   use SoilHydrologyType      , only : soilhydrology_type  
-  use TemperatureType        , only : temperature_type
-  use WaterstateType         , only : waterstate_type
   use GridcellType           , only : grc_pp
   use TopounitDataType       , only : top_as, top_af ! atmospheric state and flux variables  
   use ColumnType             , only : col_pp
@@ -51,8 +45,6 @@ module FireMod
   use VegetationDataType     , only : veg_cs, veg_cf, veg_ns, veg_nf  
   use VegetationDataType     , only : veg_ps, veg_pf  
   use mct_mod
-  use PhosphorusFluxType     , only : phosphorusflux_type
-  use PhosphorusStateType    , only : phosphorusstate_type
   use SharedParamsMod      , only : ParamsShareInst
   use elm_varctl             , only : nu_com
   !
@@ -120,8 +112,8 @@ contains
   subroutine FireArea (bounds, &
        num_soilc, filter_soilc, &
        num_soilp, filter_soilp, &
-       atm2lnd_vars, temperature_vars, energyflux_vars, soilhydrology_vars, waterstate_vars, &
-       cnstate_vars, carbonstate_vars)
+       atm2lnd_vars, energyflux_vars, soilhydrology_vars, &
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! Computes column-level burned area 
@@ -142,12 +134,9 @@ contains
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
-    type(temperature_type)   , intent(in)    :: temperature_vars
     type(energyflux_type)    , intent(in)    :: energyflux_vars
     type(soilhydrology_type) , intent(in)    :: soilhydrology_vars
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(inout) :: carbonstate_vars
     !
     ! !LOCAL VARIABLES:
     real(r8), parameter  :: lfuel=75._r8    ! lower threshold of fuel mass (gC/m2) for ignition, Li et al.(2014)
@@ -649,8 +638,7 @@ contains
 
  !-----------------------------------------------------------------------
  subroutine FireFluxes (num_soilc, filter_soilc, num_soilp, filter_soilp, &
-      cnstate_vars, carbonstate_vars, nitrogenstate_vars, &
-      carbonflux_vars,nitrogenflux_vars,phosphorusstate_vars,phosphorusflux_vars)
+      cnstate_vars)
    !
    ! !DESCRIPTION:
    ! Fire effects routine for coupled carbon-nitrogen code (CN).
@@ -678,14 +666,6 @@ contains
    integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
    integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
    type(cnstate_type)       , intent(inout) :: cnstate_vars
-   type(carbonstate_type)   , intent(inout) :: carbonstate_vars
-   type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars
-   type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-   type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-  
-   ! ! adding phosphorus state and flux variables
-   type(phosphorusstate_type) , intent(in)    :: phosphorusstate_vars
-   type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
    !
    ! !LOCAL VARIABLES:
    integer :: g,c,p,j,l,pi,kyr, kmo, kda, mcsec   ! indices

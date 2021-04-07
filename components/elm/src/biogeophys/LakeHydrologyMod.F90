@@ -50,7 +50,7 @@ contains
   subroutine LakeHydrology(bounds, &
        num_lakec, filter_lakec, num_lakep, filter_lakep, &
        num_shlakesnowc, filter_shlakesnowc, num_shlakenosnowc, filter_shlakenosnowc, &
-       atm2lnd_vars, temperature_vars, soilstate_vars, waterstate_vars, waterflux_vars, &
+       atm2lnd_vars, soilstate_vars, &
        energyflux_vars, aerosol_vars, lakestate_vars)
     !
     ! !DESCRIPTION:
@@ -90,10 +90,7 @@ contains
     integer                , intent(out)   :: num_shlakenosnowc       ! number of column non-snow points
     integer                , intent(out)   :: filter_shlakenosnowc(:) ! column filter for non-snow points
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
-    type(temperature_type) , intent(inout) :: temperature_vars
     type(soilstate_type)   , intent(in)    :: soilstate_vars
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
-    type(waterflux_type)   , intent(inout) :: waterflux_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(aerosol_type)     , intent(inout) :: aerosol_vars
     type(lakestate_type)   , intent(inout) :: lakestate_vars
@@ -307,7 +304,6 @@ contains
 
              ! intitialize SNICAR variables for fresh snow:
              call aerosol_vars%Reset(column=c)
-             ! call waterstate_vars%Reset(column=c)
              col_ws%snw_rds(c,0) = snw_rds_min
 
          end if
@@ -450,7 +446,7 @@ contains
 
       call SnowWater(bounds, &
            num_shlakesnowc, filter_shlakesnowc, num_shlakenosnowc, filter_shlakenosnowc, &
-           atm2lnd_vars, waterflux_vars, waterstate_vars, aerosol_vars)
+           atm2lnd_vars, aerosol_vars)
 
       ! Determine soil hydrology
       ! Here this consists only of making sure that soil is saturated even as it melts and
@@ -494,18 +490,17 @@ contains
 
       ! Natural compaction and metamorphosis.
 
-      call SnowCompaction(bounds, num_shlakesnowc, filter_shlakesnowc, &
-           temperature_vars, waterstate_vars)
+      call SnowCompaction(bounds, num_shlakesnowc, filter_shlakesnowc)
 
       ! Combine thin snow elements
 
       call CombineSnowLayers(bounds, num_shlakesnowc, filter_shlakesnowc, &
-           aerosol_vars, temperature_vars, waterflux_vars, waterstate_vars)
+           aerosol_vars)
 
       ! Divide thick snow elements
 
       call DivideSnowLayers(bounds, num_shlakesnowc, filter_shlakesnowc, &
-           aerosol_vars, temperature_vars, waterstate_vars, is_lake=.true.)
+           aerosol_vars, is_lake=.true.)
 
       ! Check for single completely unfrozen snow layer over lake.  Modeling this ponding is unnecessary and
       ! can cause instability after the timestep when melt is completed, as the temperature after melt can be

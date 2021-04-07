@@ -370,7 +370,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine VOCEmission (bounds, num_soilp, filter_soilp, &
-       atm2lnd_vars, canopystate_vars, photosyns_vars, temperature_vars, &
+       atm2lnd_vars, canopystate_vars, photosyns_vars,     &
        vocemis_vars)
     !
     ! ! NEW DESCRIPTION
@@ -413,7 +413,6 @@ contains
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
     type(canopystate_type) , intent(in)    :: canopystate_vars
     type(photosyns_type)   , intent(in)    :: photosyns_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
     type(vocemis_type)     , intent(inout) :: vocemis_vars
     !
     ! !REVISION HISTORY:

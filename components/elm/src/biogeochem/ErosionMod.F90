@@ -10,13 +10,7 @@ module ErosionMod
   use clm_time_manager  , only : get_step_size
   use elm_varcon        , only : dzsoi_decomp
   use elm_varpar        , only : ndecomp_pools, nlevdecomp
-  use CNCarbonFluxType  , only : carbonflux_type
-  use CNCarbonStateType , only : carbonstate_type
   use CNDecompCascadeConType , only : decomp_cascade_con
-  use CNNitrogenFluxType  , only : nitrogenflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
-  use PhosphorusFluxType  , only : phosphorusflux_type
-  use PhosphorusStateType , only : phosphorusstate_type
   use SedFluxType       , only : sedflux_type
   use SoilStateType     , only : soilstate_type
   use ColumnDataType    , only : col_cs, col_ns, col_ps
@@ -36,9 +30,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine ErosionFluxes (bounds, num_soilc, filter_soilc, &
-    soilstate_vars, sedflux_vars, carbonstate_vars, nitrogenstate_vars, & 
-    phosphorusstate_vars, carbonflux_vars, nitrogenflux_vars, &
-    phosphorusflux_vars)
+    soilstate_vars, sedflux_vars)
     !
     ! !DESCRIPTION:
     ! Calculate erosion introduced soil C, N, P fluxes 
@@ -53,12 +45,6 @@ contains
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(soilstate_type)     , intent(in)    :: soilstate_vars
     type(sedflux_type)       , intent(in)    :: sedflux_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars
-    type(phosphorusstate_type), intent(in)   :: phosphorusstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(phosphorusflux_type), intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c, fc, l, j                              ! indices

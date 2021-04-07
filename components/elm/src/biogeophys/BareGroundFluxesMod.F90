@@ -37,8 +37,7 @@ contains
   !------------------------------------------------------------------------------
   subroutine BareGroundFluxes(bounds, num_nolakeurbanp, filter_nolakeurbanp, &
        atm2lnd_vars, canopystate_vars, soilstate_vars, &
-       frictionvel_vars, ch4_vars, energyflux_vars, temperature_vars, &
-       waterflux_vars, waterstate_vars)
+       frictionvel_vars, ch4_vars, energyflux_vars)
     !
     ! !DESCRIPTION:
     ! Compute sensible and latent fluxes and their derivatives with respect
@@ -64,9 +63,6 @@ contains
     type(frictionvel_type) , intent(inout) :: frictionvel_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
-    type(temperature_type) , intent(inout) :: temperature_vars
-    type(waterflux_type)   , intent(inout) :: waterflux_vars
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
     !
     ! !LOCAL VARIABLES:
     integer, parameter  :: niters = 3            ! maximum number of iterations for surface temperature

@@ -10,12 +10,6 @@ module CropHarvestPoolsMod
   use landunit_varcon     , only : istsoil
   use clm_time_manager    , only : get_step_size
   use elm_varctl          , only : use_c13, use_c14
-  use CNCarbonStateType   , only : carbonstate_type
-  use CNCarbonFluxType    , only : carbonflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
-  use CNNitrogenFluxType  , only : nitrogenflux_type
-  use PhosphorusStateType , only : phosphorusstate_type
-  use PhosphorusFluxType  , only : phosphorusflux_type
   use ColumnDataType      , only : col_cs, c13_col_cs, c14_col_cs
   use ColumnDataType      , only : col_cf, c13_col_cf, c14_col_cf
   use ColumnDataType      , only : col_ns, col_nf
@@ -32,9 +26,7 @@ module CropHarvestPoolsMod
 contains
 
   !-----------------------------------------------------------------------
-  subroutine CropHarvestPools(num_soilc, filter_soilc, &
-       carbonstate_vars, c13_carbonstate_vars, c14_carbonstate_vars, nitrogenstate_vars, phosphorusstate_vars,&
-       carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars, nitrogenflux_vars, phosphorusflux_vars)
+  subroutine CropHarvestPools(num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! Update all loss fluxes from crop harvest pools, and update harvest pool state variables
@@ -44,16 +36,6 @@ contains
     ! !ARGUMENTS:
     integer                  , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(carbonstate_type)   , intent(in)    :: c13_carbonstate_vars
-    type(carbonstate_type)   , intent(in)    :: c14_carbonstate_vars
-    type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars
-    type(phosphorusstate_type), intent(in)   :: phosphorusstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c13_carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c14_carbonflux_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(phosphorusflux_type), intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: fc        ! lake filter indices

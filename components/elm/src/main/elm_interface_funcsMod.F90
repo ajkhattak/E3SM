@@ -40,25 +40,16 @@ module elm_interface_funcsMod
   ! (dummy) variable definitions
   use atm2lndType           , only : atm2lnd_type
   use SoilStateType         , only : soilstate_type
-  use WaterStateType        , only : waterstate_type
-  use WaterFluxType         , only : waterflux_type
   use SoilHydrologyType     , only : soilhydrology_type
-  use TemperatureType       , only : temperature_type
   use EnergyFluxType        , only : energyflux_type
 
   use CNStateType           , only : cnstate_type
-  use CNCarbonFluxType      , only : carbonflux_type
-  use CNCarbonStateType     , only : carbonstate_type
-  use CNNitrogenFluxType    , only : nitrogenflux_type
-  use CNNitrogenStateType   , only : nitrogenstate_type
 
   use CH4Mod                , only : ch4_type
 
   use PhotosynthesisType    , only : photosyns_type
   use cropType              , only : crop_type
   use CanopyStateType       , only : canopystate_type
-  use PhosphorusStateType   , only : phosphorusstate_type
-  use PhosphorusFluxType    , only : phosphorusflux_type
 
   use SoilWaterRetentionCurveMod    , only : soil_water_retention_curve_type
 
@@ -138,11 +129,8 @@ contains
            bounds, num_soilc, filter_soilc,                       &
            num_soilp, filter_soilp,                               &
            atm2lnd_vars, soilstate_vars,                          &
-           waterstate_vars, waterflux_vars,                       &
-           temperature_vars, energyflux_vars,                     &
-           cnstate_vars, carbonflux_vars, carbonstate_vars,       &
-           nitrogenflux_vars, nitrogenstate_vars,                 &
-           phosphorusflux_vars, phosphorusstate_vars,             &
+           energyflux_vars,                                       &
+           cnstate_vars,                                          &
            ch4_vars                                               &
            )
 
@@ -157,18 +145,9 @@ contains
     type(atm2lnd_type)          , intent(in)    :: atm2lnd_vars
     type(soilstate_type)        , intent(in)    :: soilstate_vars
 
-    type(waterstate_type)       , intent(in)    :: waterstate_vars
-    type(waterflux_type)        , intent(in)    :: waterflux_vars
-    type(temperature_type)      , intent(in)    :: temperature_vars
     type(energyflux_type)       , intent(in)    :: energyflux_vars
 
     type(cnstate_type)          , intent(in)    :: cnstate_vars
-    type(carbonflux_type)       , intent(in)    :: carbonflux_vars
-    type(carbonstate_type)      , intent(in)    :: carbonstate_vars
-    type(nitrogenflux_type)     , intent(in)    :: nitrogenflux_vars
-    type(nitrogenstate_type)    , intent(in)    :: nitrogenstate_vars
-    type(phosphorusflux_type)   , intent(in)    :: phosphorusflux_vars
-    type(phosphorusstate_type)  , intent(in)    :: phosphorusstate_vars
     type(ch4_type)              , intent(in)    :: ch4_vars
 
     type(elm_interface_data_type), intent(inout) :: elm_idata
@@ -192,24 +171,20 @@ contains
 
     call get_elm_soil_th_state(elm_idata_th,                &
                    bounds, num_soilc, filter_soilc,         &
-                   atm2lnd_vars, soilstate_vars,            &
-                   waterstate_vars, temperature_vars)
+                   atm2lnd_vars, soilstate_vars)
 
     call get_elm_soil_th_flux(elm_idata_th,                 &
                        bounds, num_soilc, filter_soilc,     &
-                       waterflux_vars, energyflux_vars)
+                       energyflux_vars)
 
     call get_elm_bgc_state(elm_idata_bgc,                   &
                     bounds, num_soilc, filter_soilc,        &
                     atm2lnd_vars, soilstate_vars,           &
-                    carbonstate_vars, nitrogenstate_vars,   &
-                    phosphorusstate_vars,                   &
                     ch4_vars)
 
     call get_elm_bgc_flux(elm_idata_bgc,                    &
                     bounds, num_soilc, filter_soilc,        &
-                    cnstate_vars, carbonflux_vars,          &
-                    nitrogenflux_vars, phosphorusflux_vars, &
+                    cnstate_vars,                           &
                     ch4_vars)
 
     end associate
@@ -331,8 +306,7 @@ contains
 !--------------------------------------------------------------------------------------
   subroutine get_elm_soil_th_state(elm_idata_th,            &
                        bounds, num_soilc, filter_soilc,     &
-                       atm2lnd_vars, soilstate_vars,        &
-                       waterstate_vars, temperature_vars)
+                       atm2lnd_vars, soilstate_vars)
   !
   ! !DESCRIPTION:
   !  get soil temperature/saturation from CLM to soil BGC module
@@ -350,8 +324,6 @@ contains
     integer                  , intent(in) :: filter_soilc(:)  ! column filter for soil points
     type(atm2lnd_type)       , intent(in) :: atm2lnd_vars
     type(soilstate_type)     , intent(in) :: soilstate_vars
-    type(waterstate_type)    , intent(in) :: waterstate_vars
-    type(temperature_type)   , intent(in) :: temperature_vars
 
     type(elm_interface_th_datatype)       , intent(inout) :: elm_idata_th
 
@@ -412,7 +384,7 @@ contains
 !--------------------------------------------------------------------------------------
   subroutine get_elm_soil_th_flux(elm_idata_th,             &
                        bounds, num_soilc, filter_soilc,     &
-                       waterflux_vars, energyflux_vars)
+                       energyflux_vars)
   !
   ! !DESCRIPTION:
   !  get soil temperature/saturation from CLM to soil BGC module
@@ -428,7 +400,6 @@ contains
     type(bounds_type)        , intent(in) :: bounds           ! bounds
     integer                  , intent(in) :: num_soilc        ! number of column soil points in column filter
     integer                  , intent(in) :: filter_soilc(:)  ! column filter for soil points
-    type(waterflux_type)     , intent(in) :: waterflux_vars
     type(energyflux_type)    , intent(in) :: energyflux_vars
 
     type(elm_interface_th_datatype)       , intent(inout) :: elm_idata_th
@@ -496,8 +467,6 @@ contains
   subroutine get_elm_bgc_state(elm_bgc_data,                    &
                         bounds, num_soilc, filter_soilc,        &
                         atm2lnd_vars, soilstate_vars,           &
-                        carbonstate_vars, nitrogenstate_vars,   &
-                        phosphorusstate_vars,                   &
                         ch4_vars)
 
     ! get clm bgc state variables
@@ -509,9 +478,6 @@ contains
 
     type(atm2lnd_type)          , intent(in) :: atm2lnd_vars
     type(soilstate_type)        , intent(in) :: soilstate_vars
-    type(carbonstate_type)      , intent(in) :: carbonstate_vars
-    type(nitrogenstate_type)    , intent(in) :: nitrogenstate_vars
-    type(phosphorusstate_type)  , intent(in) :: phosphorusstate_vars
     type(ch4_type)              , intent(in) :: ch4_vars          ! not yet used, but will be.
 
     type(elm_interface_bgc_datatype), intent(inout) :: elm_bgc_data
@@ -593,8 +559,7 @@ contains
 !--------------------------------------------------------------------------------------
   subroutine get_elm_bgc_flux(elm_bgc_data,                      &
                         bounds, num_soilc, filter_soilc,         &
-                        cnstate_vars, carbonflux_vars,           &
-                        nitrogenflux_vars, phosphorusflux_vars,  &
+                        cnstate_vars,                            &
                         ch4_vars)
 
   !
@@ -614,9 +579,6 @@ contains
     integer           , intent(in) :: filter_soilc(:) ! filter for soil columns
 
     type(cnstate_type)                  , intent(in)    :: cnstate_vars
-    type(carbonflux_type)               , intent(in)    :: carbonflux_vars
-    type(nitrogenflux_type)             , intent(in)    :: nitrogenflux_vars
-    type(phosphorusflux_type)           , intent(in)    :: phosphorusflux_vars
     type(ch4_type)                      , intent(in) :: ch4_vars          ! not yet used, but will be.
 
     type(elm_interface_bgc_datatype)   , intent(inout) :: elm_bgc_data
@@ -746,7 +708,7 @@ contains
 !--------------------------------------------------------------------------------------
   subroutine update_soil_moisture(elm_idata_th,     &
            bounds, num_soilc, filter_soilc,   &
-           soilstate_vars, waterstate_vars)
+           soilstate_vars)
 
   !
   ! !DESCRIPTION:
@@ -761,7 +723,6 @@ contains
     integer, intent(in) :: num_soilc        ! number of column soil points in column filter
     integer, intent(in) :: filter_soilc(:)  ! column filter for soil points
     type(soilstate_type), intent(inout)  :: soilstate_vars
-    type(waterstate_type), intent(inout) :: waterstate_vars
 
     type(elm_interface_th_datatype), intent(in) :: elm_idata_th
 
@@ -794,8 +755,7 @@ contains
 
 !--------------------------------------------------------------------------------------
   subroutine update_soil_temperature(elm_idata_th,     &
-           bounds, num_soilc, filter_soilc,            &
-           temperature_vars)
+           bounds, num_soilc, filter_soilc)
 
   !
   ! !DESCRIPTION:
@@ -809,7 +769,6 @@ contains
     type(bounds_type)                   , intent(in)    :: bounds
     integer                             , intent(in)    :: num_soilc        ! number of column soil points in column filter
     integer                             , intent(in)    :: filter_soilc(:)  ! column filter for soil points
-    type(temperature_type)              , intent(inout) :: temperature_vars
     type(elm_interface_th_datatype)     , intent(in)    :: elm_idata_th
 
   ! !LOCAL VARIABLES:
@@ -832,8 +791,7 @@ contains
 !--------------------------------------------------------------------------------------
   subroutine update_th_data_pf2elm(elm_idata_th,           &
            bounds, num_soilc, filter_soilc,                &
-           waterstate_vars, waterflux_vars,                &
-           temperature_vars, energyflux_vars,              &
+           energyflux_vars,                                &
            soilstate_vars, soilhydrology_vars)
 
     ! USES
@@ -845,9 +803,6 @@ contains
     type(bounds_type)           , intent(in)    :: bounds
     integer                     , intent(in)    :: num_soilc         ! number of soil columns in filter
     integer                     , intent(in)    :: filter_soilc(:)   ! filter for soil columns
-    type(waterstate_type)       , intent(inout) :: waterstate_vars
-    type(waterflux_type)        , intent(inout) :: waterflux_vars
-    type(temperature_type)      , intent(inout) :: temperature_vars
     type(soilstate_type)        , intent(inout) :: soilstate_vars
     type(soilhydrology_type)    , intent(inout) :: soilhydrology_vars
     type(energyflux_type)       , intent(inout) :: energyflux_vars
@@ -860,14 +815,13 @@ contains
 
     if (pf_tmode) then
         call update_soil_temperature(elm_idata_th,      &
-                   bounds, num_soilc, filter_soilc,     &
-                   temperature_vars)
+                   bounds, num_soilc, filter_soilc)
     end if
 
     if (pf_hmode) then
         call update_soil_moisture(elm_idata_th,         &
                    bounds, num_soilc, filter_soilc,     &
-                   soilstate_vars, waterstate_vars)
+                   soilstate_vars)
     end if
 
   end subroutine update_th_data_pf2elm
@@ -876,20 +830,13 @@ contains
 
 !--------------------------------------------------------------------------------------
   subroutine update_bgc_state_decomp(elm_bgc_data,  &
-           bounds, num_soilc, filter_soilc,         &
-           carbonstate_vars, nitrogenstate_vars,    &
-           phosphorusstate_vars                     &
-           )
+           bounds, num_soilc, filter_soilc)
 
     implicit none
 
     type(bounds_type)                   , intent(in)    :: bounds
     integer                             , intent(in)    :: num_soilc         ! number of soil columns in filter
     integer                             , intent(in)    :: filter_soilc(:)   ! filter for soil columns
-
-    type(carbonstate_type)              , intent(inout) :: carbonstate_vars
-    type(nitrogenstate_type)            , intent(inout) :: nitrogenstate_vars
-    type(phosphorusstate_type)          , intent(inout) :: phosphorusstate_vars
 
     type(elm_interface_bgc_datatype)    , intent(in)    :: elm_bgc_data
 
@@ -921,8 +868,7 @@ contains
 
 !--------------------------------------------------------------------------------------
     subroutine update_bgc_state_smin(elm_bgc_data,      &
-           bounds, num_soilc, filter_soilc,             &
-           nitrogenstate_vars, phosphorusstate_vars)
+           bounds, num_soilc, filter_soilc)
 
     use CNDecompCascadeConType, only : decomp_cascade_con
     use clm_time_manager, only : get_step_size
@@ -932,9 +878,6 @@ contains
     type(bounds_type)           , intent(in)    :: bounds
     integer                     , intent(in)    :: num_soilc         ! number of soil columns in filter
     integer                     , intent(in)    :: filter_soilc(:)   ! filter for soil columns
-
-    type(nitrogenstate_type)    , intent(inout) :: nitrogenstate_vars
-    type(phosphorusstate_type)  , intent(inout) :: phosphorusstate_vars
 
     type(elm_interface_bgc_datatype), intent(in) :: elm_bgc_data
 
@@ -981,9 +924,7 @@ contains
 
 !--------------------------------------------------------------------------------------
     subroutine update_bgc_flux_decomp_sourcesink(elm_bgc_data,       &
-           bounds, num_soilc, filter_soilc,                          &
-           carbonflux_vars, nitrogenflux_vars,                       &
-           phosphorusflux_vars)
+           bounds, num_soilc, filter_soilc)
 
     use CNDecompCascadeConType, only : decomp_cascade_con
 
@@ -992,10 +933,6 @@ contains
     type(bounds_type)           , intent(in)    :: bounds
     integer                     , intent(in)    :: num_soilc         ! number of soil columns in filter
     integer                     , intent(in)    :: filter_soilc(:)   ! filter for soil columns
-
-    type(carbonflux_type)       , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type)     , intent(inout) :: nitrogenflux_vars
-    type(phosphorusflux_type)   , intent(inout) :: phosphorusflux_vars
 
     type(elm_interface_bgc_datatype), intent(in):: elm_bgc_data
 
@@ -1022,9 +959,7 @@ contains
 
 !--------------------------------------------------------------------------------------
     subroutine update_bgc_flux_decomp_cascade(elm_bgc_data, &
-           bounds, num_soilc, filter_soilc,                 &
-           carbonflux_vars, nitrogenflux_vars,              &
-           phosphorusflux_vars)
+           bounds, num_soilc, filter_soilc)
 
     use CNDecompCascadeConType, only : decomp_cascade_con
 
@@ -1033,10 +968,6 @@ contains
     type(bounds_type)           , intent(in)    :: bounds
     integer                     , intent(in)    :: num_soilc         ! number of soil columns in filter
     integer                     , intent(in)    :: filter_soilc(:)   ! filter for soil columns
-
-    type(carbonflux_type)       , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type)     , intent(inout) :: nitrogenflux_vars
-    type(phosphorusflux_type)   , intent(inout) :: phosphorusflux_vars
 
     type(elm_interface_bgc_datatype), intent(in):: elm_bgc_data
 
@@ -1082,8 +1013,7 @@ contains
 !--------------------------------------------------------------------------------------
     subroutine update_bgc_flux_smin(elm_bgc_data,   &
            bounds, num_soilc, filter_soilc,         &
-           cnstate_vars,                            &
-           nitrogenflux_vars, phosphorusflux_vars)
+           cnstate_vars)
 
     implicit none
 
@@ -1093,8 +1023,6 @@ contains
 
     type(cnstate_type)                  , intent(inout) :: cnstate_vars
 
-    type(nitrogenflux_type)             , intent(inout) :: nitrogenflux_vars
-    type(phosphorusflux_type)           , intent(inout) :: phosphorusflux_vars
     type(elm_interface_bgc_datatype)    , intent(in)    :: elm_bgc_data
 
     integer :: fc, c, j
@@ -1192,8 +1120,7 @@ contains
 
 !--------------------------------------------------------------------------------------
     subroutine update_bgc_flux_nitdenit(elm_bgc_data,   &
-           bounds, num_soilc, filter_soilc,             &
-           nitrogenflux_vars, phosphorusflux_vars)
+           bounds, num_soilc, filter_soilc)
 
     implicit none
 
@@ -1201,8 +1128,6 @@ contains
     integer                             , intent(in)    :: num_soilc         ! number of soil columns in filter
     integer                             , intent(in)    :: filter_soilc(:)   ! filter for soil columns
 
-    type(nitrogenflux_type)             , intent(inout) :: nitrogenflux_vars
-    type(phosphorusflux_type)           , intent(inout) :: phosphorusflux_vars
     type(elm_interface_bgc_datatype)    , intent(in)    :: elm_bgc_data
 
     integer :: fc, c, j
@@ -1234,8 +1159,7 @@ contains
 
 !--------------------------------------------------------------------------------------
   subroutine update_bgc_flux_gas_pf(elm_bgc_data,  &
-     bounds, num_soilc, filter_soilc,              &
-     carbonflux_vars, nitrogenflux_vars)
+     bounds, num_soilc, filter_soilc)
 
      ! PFLOTRAN gas fluxes
      implicit none
@@ -1244,8 +1168,6 @@ contains
      integer                            , intent(in)    :: num_soilc       ! number of soil columns in filter
      integer                            , intent(in)    :: filter_soilc(:) ! filter for soil columns
 
-     type(carbonflux_type)              , intent(inout) :: carbonflux_vars
-     type(nitrogenflux_type)            , intent(inout) :: nitrogenflux_vars
      type(elm_interface_bgc_datatype)   , intent(in)    :: elm_bgc_data
 
      !character(len=256) :: subname = "get_pf_bgc_gaslosses"
@@ -1284,9 +1206,7 @@ contains
   subroutine update_bgc_data_pf2elm(elm_bgc_data, bounds,         &
            num_soilc, filter_soilc,                               &
            num_soilp, filter_soilp,                               &
-           cnstate_vars, carbonflux_vars, carbonstate_vars,       &
-           nitrogenflux_vars, nitrogenstate_vars,                 &
-           phosphorusflux_vars, phosphorusstate_vars,             &
+           cnstate_vars,                                          &
            ch4_vars)
     ! USES
     use elm_varctl          , only : use_pflotran, pf_cmode
@@ -1301,12 +1221,6 @@ contains
     integer                     , intent(in)    :: filter_soilp(:)   ! filter for soil patches
 
     type(cnstate_type)          , intent(inout) :: cnstate_vars
-    type(carbonflux_type)       , intent(inout) :: carbonflux_vars
-    type(carbonstate_type)      , intent(inout) :: carbonstate_vars
-    type(nitrogenflux_type)     , intent(inout) :: nitrogenflux_vars
-    type(nitrogenstate_type)    , intent(inout) :: nitrogenstate_vars
-    type(phosphorusflux_type)   , intent(inout) :: phosphorusflux_vars
-    type(phosphorusstate_type)  , intent(inout) :: phosphorusstate_vars
     type(ch4_type)              , intent(inout) :: ch4_vars
 
     type(elm_interface_bgc_datatype), intent(in):: elm_bgc_data
@@ -1320,22 +1234,17 @@ contains
         ! bgc_state_decomp is updated in CLM
         ! by passing bgc_flux_decomp_sourcesink into SoilLittVertTransp
         call update_bgc_flux_decomp_sourcesink(elm_bgc_data,    &
-                    bounds, num_soilc, filter_soilc,            &
-                    carbonflux_vars, nitrogenflux_vars,         &
-                    phosphorusflux_vars)
+                    bounds, num_soilc, filter_soilc)
 
         call update_bgc_state_smin(elm_bgc_data,                &
-                    bounds, num_soilc, filter_soilc,            &
-                    nitrogenstate_vars, phosphorusstate_vars)
+                    bounds, num_soilc, filter_soilc)
 
         call update_bgc_flux_smin(elm_bgc_data,                 &
                     bounds, num_soilc, filter_soilc,            &
-                    cnstate_vars,                               &
-                    nitrogenflux_vars, phosphorusflux_vars)
+                    cnstate_vars)
 
         call update_bgc_flux_gas_pf(elm_bgc_data,               &
-                    bounds, num_soilc, filter_soilc,            &
-                    carbonflux_vars, nitrogenflux_vars)
+                    bounds, num_soilc, filter_soilc)
 
     end if
 
@@ -1352,11 +1261,7 @@ contains
                 num_soilc, filter_soilc,                    &
                 num_soilp, filter_soilp,                    &
                 canopystate_vars, soilstate_vars,           &
-                temperature_vars, waterstate_vars,          &
-                cnstate_vars, ch4_vars,                     &
-                carbonstate_vars, carbonflux_vars,          &
-                nitrogenstate_vars, nitrogenflux_vars,      &
-                phosphorusstate_vars,phosphorusflux_vars)
+                cnstate_vars, ch4_vars)
 
     ! USES:
     use SoilLittDecompMod          , only: SoilLittDecompAlloc
@@ -1369,16 +1274,8 @@ contains
     integer                             , intent(in)    :: filter_soilp(:)    ! filter for soil patches
     type(canopystate_type)              , intent(inout) :: canopystate_vars
     type(soilstate_type)                , intent(inout) :: soilstate_vars
-    type(temperature_type)              , intent(inout) :: temperature_vars
-    type(waterstate_type)               , intent(inout) :: waterstate_vars
     type(cnstate_type)                  , intent(inout) :: cnstate_vars
     type(ch4_type)                      , intent(inout) :: ch4_vars
-    type(carbonstate_type)              , intent(inout) :: carbonstate_vars
-    type(carbonflux_type)               , intent(inout) :: carbonflux_vars
-    type(nitrogenstate_type)            , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)             , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type)          , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)           , intent(inout) :: phosphorusflux_vars
 
     type(elm_interface_data_type)       , intent(inout) :: elm_interface_data
 
@@ -1387,27 +1284,18 @@ contains
     call elm_bgc_get_data(elm_interface_data, bounds,       &
                 num_soilc, filter_soilc,                    &
                 canopystate_vars, soilstate_vars,           &
-                temperature_vars, waterstate_vars,          &
-                cnstate_vars, ch4_vars,                     &
-                carbonstate_vars, carbonflux_vars,          &
-                nitrogenstate_vars, nitrogenflux_vars,      &
-                phosphorusstate_vars,phosphorusflux_vars)
+                cnstate_vars, ch4_vars)
 
     ! STEP-2: (ii) run SoilLittDecompAlloc
     call SoilLittDecompAlloc (bounds, num_soilc, filter_soilc,    &
                num_soilp, filter_soilp,                     &
                canopystate_vars, soilstate_vars,            &
-               temperature_vars, waterstate_vars,           &
-               cnstate_vars, ch4_vars,                      &
-               carbonstate_vars, carbonflux_vars,           &
-               nitrogenstate_vars, nitrogenflux_vars,       &
-               phosphorusstate_vars,phosphorusflux_vars)
+               cnstate_vars, ch4_vars)
 
     ! STEP-2: (iii) update elm_bgc_data from SoilLittDecompAlloc
     call elm_bgc_update_data(elm_interface_data%bgc, bounds, &
                 num_soilc, filter_soilc,                     &
-                cnstate_vars, carbonflux_vars,               &
-                nitrogenflux_vars, phosphorusflux_vars)
+                cnstate_vars)
 
   end subroutine elm_bgc_run
 !--------------------------------------------------------------------------------------
@@ -1418,11 +1306,7 @@ contains
   subroutine elm_bgc_get_data(elm_interface_data,       &
             bounds, num_soilc, filter_soilc,            &
             canopystate_vars, soilstate_vars,           &
-            temperature_vars, waterstate_vars,          &
-            cnstate_vars, ch4_vars,                     &
-            carbonstate_vars, carbonflux_vars,          &
-            nitrogenstate_vars, nitrogenflux_vars,      &
-            phosphorusstate_vars,phosphorusflux_vars)
+            cnstate_vars, ch4_vars)
 
     ! USES:
 
@@ -1433,16 +1317,8 @@ contains
     integer                     , intent(in)    :: filter_soilc(:)    ! filter for soil columns
     type(canopystate_type)      , intent(inout) :: canopystate_vars
     type(soilstate_type)        , intent(inout) :: soilstate_vars
-    type(temperature_type)      , intent(inout) :: temperature_vars
-    type(waterstate_type)       , intent(inout) :: waterstate_vars
     type(cnstate_type)          , intent(inout) :: cnstate_vars
     type(ch4_type)              , intent(inout) :: ch4_vars
-    type(carbonstate_type)      , intent(inout) :: carbonstate_vars
-    type(carbonflux_type)       , intent(inout) :: carbonflux_vars
-    type(nitrogenstate_type)    , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)     , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type)  , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)   , intent(inout) :: phosphorusflux_vars
 
     type(elm_interface_data_type), intent(in)   :: elm_interface_data
 
@@ -1556,8 +1432,7 @@ contains
   ! pass data from clm_bgc to elm_bgc_data
   subroutine elm_bgc_update_data(elm_bgc_data, bounds,  &
             num_soilc, filter_soilc,                    &
-            cnstate_vars, carbonflux_vars,              &
-            nitrogenflux_vars, phosphorusflux_vars)
+            cnstate_vars)
 
     ! USES:
 
@@ -1567,9 +1442,6 @@ contains
     integer                             , intent(in)    :: filter_soilc(:)    ! filter for soil columns
 
     type(cnstate_type)                  , intent(in)    :: cnstate_vars
-    type(carbonflux_type)               , intent(in)    :: carbonflux_vars
-    type(nitrogenflux_type)             , intent(in)    :: nitrogenflux_vars
-    type(phosphorusflux_type)           , intent(in)    :: phosphorusflux_vars
 
     type(elm_interface_bgc_datatype)    , intent(inout) :: elm_bgc_data
 
@@ -1701,9 +1573,7 @@ contains
   subroutine update_bgc_data_elm2elm(elm_bgc_data,bounds,         &
            num_soilc, filter_soilc,                               &
            num_soilp, filter_soilp,                               &
-           cnstate_vars, carbonflux_vars, carbonstate_vars,       &
-           nitrogenflux_vars, nitrogenstate_vars,                 &
-           phosphorusflux_vars, phosphorusstate_vars,             &
+           cnstate_vars,                                          &
            ch4_vars)
     ! USES
 
@@ -1718,12 +1588,6 @@ contains
     integer                     , intent(in)    :: filter_soilp(:)   ! filter for soil patches
 
     type(cnstate_type)          , intent(inout) :: cnstate_vars
-    type(carbonflux_type)       , intent(inout) :: carbonflux_vars
-    type(carbonstate_type)      , intent(inout) :: carbonstate_vars
-    type(nitrogenflux_type)     , intent(inout) :: nitrogenflux_vars
-    type(nitrogenstate_type)    , intent(inout) :: nitrogenstate_vars
-    type(phosphorusflux_type)   , intent(inout) :: phosphorusflux_vars
-    type(phosphorusstate_type)  , intent(inout) :: phosphorusstate_vars
     type(ch4_type)              , intent(inout) :: ch4_vars
 
     type(elm_interface_bgc_datatype), intent(in):: elm_bgc_data
@@ -1735,18 +1599,14 @@ contains
     ! bgc_state_decomp is updated in CLM
     ! by passing bgc_flux_decomp_sourcesink into SoilLittVertTransp
     call update_bgc_flux_decomp_cascade(elm_bgc_data,   &
-                bounds, num_soilc, filter_soilc,        &
-                carbonflux_vars, nitrogenflux_vars,     &
-                phosphorusflux_vars)
+                bounds, num_soilc, filter_soilc)
 
     call update_bgc_flux_smin(elm_bgc_data,             &
                 bounds, num_soilc, filter_soilc,        &
-                cnstate_vars,                           &
-                nitrogenflux_vars, phosphorusflux_vars)
+                cnstate_vars)
 
     call update_bgc_flux_nitdenit(elm_bgc_data,         &
-                bounds, num_soilc, filter_soilc,        &
-                nitrogenflux_vars, phosphorusflux_vars)
+                bounds, num_soilc, filter_soilc)
 
   end subroutine update_bgc_data_elm2elm
 !--------------------------------------------------------------------------------------

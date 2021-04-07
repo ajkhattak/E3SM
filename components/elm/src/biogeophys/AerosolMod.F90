@@ -30,7 +30,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine AerosolMasses(bounds, num_on, filter_on, num_off, filter_off, &
-       waterflux_vars, waterstate_vars, aerosol_vars)
+       aerosol_vars)
     !
     ! !DESCRIPTION:
     ! Calculate column-integrated aerosol masses, and
@@ -45,8 +45,6 @@ contains
     integer               , intent(in)    :: filter_on(:)   ! column filter for filter-ON points
     integer               , intent(in)    :: num_off        ! number of column non filter-OFF points
     integer               , intent(in)    :: filter_off(:)  ! column filter for filter-OFF points
-    type(waterflux_type)  , intent(in)    :: waterflux_vars 
-    type(waterstate_type) , intent(inout) :: waterstate_vars
     type(aerosol_type)    , intent(inout) :: aerosol_vars
     !
     ! !LOCAL VARIABLES:

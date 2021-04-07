@@ -17,12 +17,6 @@ module dynConsBiogeochemMod
   use CanopyStateType          , only : canopystate_type
   use PhotosynthesisType       , only : photosyns_type
   use CNStateType              , only : cnstate_type
-  use CNCarbonFluxType         , only : carbonflux_type
-  use CNCarbonStateType        , only : carbonstate_type
-  use CNNitrogenFluxType       , only : nitrogenflux_type
-  use CNNitrogenStateType      , only : nitrogenstate_type
-  use PhosphorusFluxType       , only : phosphorusflux_type
-  use PhosphorusStateType      , only : phosphorusstate_type
   use GridcellDataType         , only : grc_cf, c13_grc_cf, c14_grc_cf
   use GridcellDataType         , only : grc_nf, grc_pf
   use LandunitType             , only : lun_pp                
@@ -65,10 +59,7 @@ contains
        patch_state_updater, &
        canopystate_vars, photosyns_vars, cnstate_vars, &
        veg_cs, c13_veg_cs, c14_veg_cs, &
-       carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars, &
-       nitrogenstate_vars, nitrogenflux_vars, &
        veg_ns, &
-       phosphorusstate_vars,phosphorusflux_vars, &
        veg_ps)
     !
     ! !DESCRIPTION:
@@ -98,14 +89,7 @@ contains
     type(vegetation_carbon_state)  , intent(inout) :: veg_cs
     type(vegetation_carbon_state)  , intent(inout) :: c13_veg_cs
     type(vegetation_carbon_state)  , intent(inout) :: c14_veg_cs
-    type(carbonflux_type)          , intent(inout) :: carbonflux_vars
-    type(carbonflux_type)          , intent(inout) :: c13_carbonflux_vars
-    type(carbonflux_type)          , intent(inout) :: c14_carbonflux_vars
-    type(nitrogenstate_type)       , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)        , intent(inout) :: nitrogenflux_vars
     type(vegetation_nitrogen_state), intent(inout) :: veg_ns
-    type(phosphorusstate_type)     , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)      , intent(inout) :: phosphorusflux_vars
     type(vegetation_phosphorus_state),intent(inout) :: veg_ps
     !
     ! !LOCAL VARIABLES:
@@ -186,13 +170,8 @@ contains
          cs     => veg_cs    , &
          c13_cs => c13_veg_cs, &
          c14_cs => c14_veg_cs, &
-         cf     => carbonflux_vars     , &
-         c13_cf => c13_carbonflux_vars , &
-         c14_cf => c14_carbonflux_vars , &
-         ns     => veg_ns  , &
-         nf     => nitrogenflux_vars   ,  &
-         ps     => veg_ps  , &
-         pf     => phosphorusflux_vars     &
+         ns     => veg_ns    , &
+         ps     => veg_ps      &
          )
 
 
@@ -338,8 +317,8 @@ contains
                 call CanopyStateVarsInit     (canopystate_vars, p)
                 call CNStateVarsInit         (cnstate_vars, p, c)
                 call CarbonFluxVarsInit      (veg_cf, p)
-                call NitrogenFluxVarsInit    (nf, p)
-                call PhosphorusFluxVarsInit  (pf, p)
+                call NitrogenFluxVarsInit    (p)
+                call PhosphorusFluxVarsInit  (p)
                 
                 if ( use_c13 ) then
                    call CarbonStateVarsInit(c13_cs, p)
@@ -1107,7 +1086,7 @@ contains
  end subroutine CarbonFluxVarsInit
 
  !-----------------------------------------------------------------------
- subroutine NitrogenFluxVarsInit(nf, p)
+ subroutine NitrogenFluxVarsInit(p)
    !
    ! !DESCRIPTION:
    ! Initializes p-th patch of nitrogenflux_type
@@ -1115,7 +1094,6 @@ contains
    implicit none
    !
    ! !ARGUMENT
-   type(nitrogenflux_type), intent(inout) :: nf
    integer                , intent(in)    :: p
 
    veg_nf%plant_ndemand(p)         = 0._r8
@@ -1125,7 +1103,7 @@ contains
  end subroutine NitrogenFluxVarsInit
 
  !-----------------------------------------------------------------------
- subroutine PhosphorusFluxVarsInit(pf, p)
+ subroutine PhosphorusFluxVarsInit(p)
    !
    ! !DESCRIPTION:
    ! Initializes p-th patch of phosphorusflux_type
@@ -1133,7 +1111,6 @@ contains
    implicit none
    !
    ! !ARGUMENT
-   type(phosphorusflux_type), intent(inout) :: pf
    integer                  , intent(in)    :: p
 
    veg_pf%plant_pdemand(p)         = 0._r8
@@ -1145,7 +1122,7 @@ contains
  !-----------------------------------------------------------------------
  subroutine dyn_cnbal_column( bounds, clump_index, column_state_updater, &
        col_cs, c13_col_cs, c14_col_cs, &
-       phosphorusstate_vars, col_ns, col_ps)
+       col_ns, col_ps)
    !
    ! !DESCRIPTION:
    ! Modify column-level state variables to maintain carbon, nitrogen
@@ -1163,7 +1140,6 @@ contains
    type(column_carbon_state)       , intent(inout) :: col_cs
    type(column_carbon_state)       , intent(inout) :: c13_col_cs
    type(column_carbon_state)       , intent(inout) :: c14_col_cs
-   type(phosphorusstate_type)      , intent(inout) :: phosphorusstate_vars
    type(column_nitrogen_state)     , intent(inout) :: col_ns
    type(column_phosphorus_state)   , intent(inout) :: col_ps
    !
@@ -1176,8 +1152,7 @@ contains
          cs     => col_cs,     &
          c13_cs => c13_col_cs, &
          c14_cs => c14_col_cs, &
-         ns     => col_ns  , &
-         ps     => phosphorusstate_vars  &
+         ns     => col_ns      &
          )
 
     call dyn_col_cs_Adjustments(bounds, clump_index, column_state_updater, col_cs)

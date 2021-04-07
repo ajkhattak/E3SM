@@ -422,6 +422,7 @@ module ColumnDataType
     real(r8), pointer :: qflx_evap_can        (:)   => null() ! evaporation from leaves and stems (mm H2O/s) (+ = to atm)
     real(r8), pointer :: qflx_evap_tot        (:)   => null() ! col_qflx_evap_soi + col_qflx_evap_veg + qflx_tran_veg
     real(r8), pointer :: qflx_evap_grnd       (:)   => null() ! ground surface evaporation rate (mm H2O/s) [+]
+    real(r8), pointer :: qflx_phs_neg         (:)   => null() ! col sum of negative hydraulic redistribution fluxes (mm H2O/s) [+]
     real(r8), pointer :: qflx_snwcp_liq       (:)   => null() ! excess rainfall due to snow capping (mm H2O /s)
     real(r8), pointer :: qflx_snwcp_ice       (:)   => null() ! excess snowfall due to snow capping (mm H2O /s)
     real(r8), pointer :: qflx_tran_veg        (:)   => null() ! vegetation transpiration (mm H2O/s) (+ = to atm)
@@ -5204,6 +5205,7 @@ contains
     allocate(this%qflx_evap_can          (begc:endc))             ; this%qflx_evap_can        (:)   = nan
     allocate(this%qflx_evap_tot          (begc:endc))             ; this%qflx_evap_tot        (:)   = nan
     allocate(this%qflx_evap_grnd         (begc:endc))             ; this%qflx_evap_grnd       (:)   = nan
+    allocate(this%qflx_phs_neg           (begc:endc))             ; this%qflx_phs_neg         (:)   = nan
     allocate(this%qflx_snwcp_liq         (begc:endc))             ; this%qflx_snwcp_liq       (:)   = nan
     allocate(this%qflx_snwcp_ice         (begc:endc))             ; this%qflx_snwcp_ice       (:)   = nan
     allocate(this%qflx_tran_veg          (begc:endc))             ; this%qflx_tran_veg        (:)   = nan
@@ -5403,6 +5405,8 @@ contains
     this%qflx_evap_grnd(begc:endc) = 0.0_r8
     this%qflx_dew_grnd (begc:endc) = 0.0_r8
     this%qflx_dew_snow (begc:endc) = 0.0_r8
+
+    this%qflx_phs_neg  (begc:endc) = 0.0_r8
 
     this%qflx_h2osfc_surf(begc:endc) = 0._r8
     this%qflx_snow_melt  (begc:endc)   = 0._r8

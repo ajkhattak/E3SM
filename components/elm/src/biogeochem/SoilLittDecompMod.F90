@@ -19,20 +19,12 @@ module SoilLittDecompMod
   use VerticalProfileMod   , only : decomp_vertprofiles
   use CNDecompCascadeConType , only : decomp_cascade_con
   use CNStateType            , only : cnstate_type
-  use CNNitrogenStateType    , only : nitrogenstate_type
-  use CNNitrogenFluxType     , only : nitrogenflux_type
   !!  add phosphorus  -X. YANG
-  use PhosphorusStateType    , only : phosphorusstate_type
-  use PhosphorusFluxType     , only : phosphorusflux_type
   use elm_varctl             , only : nu_com
 
-  use CNCarbonStateType      , only : carbonstate_type
-  use CNCarbonFluxType       , only : carbonflux_type
   use PhotosynthesisType     , only : photosyns_type
   use CanopyStateType        , only : canopystate_type
   use SoilStateType          , only : soilstate_type
-  use TemperatureType        , only : temperature_type
-  use WaterStateType         , only : waterstate_type
   use CH4Mod                 , only : ch4_type
   use cropType               , only : crop_type
   use ColumnDataType         , only : col_cs, col_cf
@@ -98,11 +90,7 @@ contains
   subroutine SoilLittDecompAlloc (bounds, num_soilc, filter_soilc,    &
                 num_soilp, filter_soilp,                        &
                 canopystate_vars, soilstate_vars,               &
-                temperature_vars, waterstate_vars,              &
                 cnstate_vars, ch4_vars,                         &
-                carbonstate_vars, carbonflux_vars,              &
-                nitrogenstate_vars, nitrogenflux_vars,          &
-                phosphorusstate_vars,phosphorusflux_vars,       &
                 elm_fates)
 
     !-----------------------------------------------------------------------------
@@ -126,32 +114,17 @@ contains
     integer                  , intent(in)    :: filter_soilc(:)    ! filter for soil columns
     integer                  , intent(in)    :: num_soilp          ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:)    ! filter for soil patches
-!    type(photosyns_type)     , intent(in)    :: photosyns_vars
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(soilstate_type)     , intent(in)    :: soilstate_vars
-    type(temperature_type)   , intent(in)    :: temperature_vars
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
     type(ch4_type)           , intent(in)    :: ch4_vars
-    type(carbonstate_type)   , intent(inout) :: carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-!    type(carbonflux_type)    , intent(inout) :: c13_carbonflux_vars
-!    type(carbonflux_type)    , intent(inout) :: c14_carbonflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    ! add phosphorus --
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     type(hlm_fates_interface_type), intent(inout), optional :: elm_fates
     
-!    type(crop_type)          , intent(in)    :: crop_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,j,k,l,m                                                                               !indices
     integer :: fc                                                                                      !lake filter column index
     real(r8):: p_decomp_cpool_loss(bounds%begc:bounds%endc,1:nlevdecomp,1:ndecomp_cascade_transitions) !potential C loss from one pool to another
-    !real(r8):: pmnf_decomp_cascade(bounds%begc:bounds%endc,1:nlevdecomp,1:ndecomp_cascade_transitions) !potential mineral N flux, from one pool to another
-    !real(r8):: pmpf_decomp_cascade(bounds%begc:bounds%endc,1:nlevdecomp,1:ndecomp_cascade_transitions) !potential mineral P flux, from one pool to another
     real(r8):: immob(bounds%begc:bounds%endc,1:nlevdecomp)                                             !potential N immobilization
     real(r8):: immob_p(bounds%begc:bounds%endc,1:nlevdecomp)                                             !potential P immobilization
     real(r8):: ratio                                                                                   !temporary variable
@@ -403,8 +376,7 @@ contains
       if (use_nitrif_denitrif) then ! calculate nitrification and denitrification rates
          call nitrif_denitrif(bounds, &
               num_soilc, filter_soilc, &
-              soilstate_vars, waterstate_vars, temperature_vars, ch4_vars, &
-              carbonflux_vars, nitrogenstate_vars, nitrogenflux_vars)
+              soilstate_vars, ch4_vars)
       end if
 
       ! now that potential N immobilization is known, call allocation
@@ -415,10 +387,7 @@ contains
       call Allocation2_ResolveNPLimit(bounds,                     &
                num_soilc, filter_soilc, num_soilp, filter_soilp,    &
                cnstate_vars,                                        &
-               carbonstate_vars, carbonflux_vars,                   &
-               nitrogenstate_vars, nitrogenflux_vars,               &
-               phosphorusstate_vars,phosphorusflux_vars,            &
-               soilstate_vars,waterstate_vars,                      &
+               soilstate_vars,                                      &
                elm_fates)
       call t_stopf('CNAllocation - phase-2')
 
@@ -617,11 +586,9 @@ contains
 !-------------------------------------------------------------------------------------------------
 
   subroutine SoilLittDecompAlloc2 (bounds, num_soilc, filter_soilc, num_soilp, filter_soilp,   &
-       photosyns_vars, canopystate_vars, soilstate_vars, temperature_vars,               &
-       waterstate_vars, cnstate_vars, ch4_vars,                                          &
-       carbonstate_vars, carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars,      &
-       nitrogenstate_vars, nitrogenflux_vars, crop_vars, atm2lnd_vars,                   &
-       phosphorusstate_vars,phosphorusflux_vars)
+       photosyns_vars, canopystate_vars, soilstate_vars,               &
+       cnstate_vars, ch4_vars,                                         &
+       crop_vars, atm2lnd_vars)
     !-----------------------------------------------------------------------------
     ! DESCRIPTION:
     ! bgc interface & pflotran:
@@ -634,7 +601,6 @@ contains
     use AllocationMod , only: Allocation3_PlantCNPAlloc ! Phase-3 of CNAllocation
     use atm2lndType     , only: atm2lnd_type
     use clm_time_manager, only: get_step_size
-!    use elm_varpar      , only: nlevdecomp, ndecomp_pools
 
     !
     ! !ARGUMENT:
@@ -646,21 +612,10 @@ contains
     type(photosyns_type)     , intent(in)    :: photosyns_vars
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(soilstate_type)     , intent(in)    :: soilstate_vars
-    type(temperature_type)   , intent(in)    :: temperature_vars
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
     type(ch4_type)           , intent(in)    :: ch4_vars
-    type(carbonstate_type)   , intent(inout) :: carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c13_carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c14_carbonflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
     type(crop_type)          , intent(inout) :: crop_vars
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
-    !! add phosphorus --
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
 
 
     !
@@ -811,9 +766,7 @@ contains
 
          ! needs to zero CLM-CNP variables NOT available from pflotran bgc coupling
          call CNvariables_nan4pf(bounds, num_soilc, filter_soilc, &
-                        num_soilp, filter_soilp,                  &
-                        carbonflux_vars, nitrogenflux_vars,       &
-                        phosphorusstate_vars, phosphorusflux_vars)
+                        num_soilp, filter_soilp)
 
          ! save variables before updating
          do fc = 1,num_soilc
@@ -833,10 +786,7 @@ contains
           call Allocation3_PlantCNPAlloc (bounds                      , &
                 num_soilc, filter_soilc, num_soilp, filter_soilp    , &
                 canopystate_vars                                    , &
-                cnstate_vars, carbonstate_vars, carbonflux_vars     , &
-                c13_carbonflux_vars, c14_carbonflux_vars            , &
-                nitrogenstate_vars, nitrogenflux_vars               , &
-                phosphorusstate_vars, phosphorusflux_vars, crop_vars)
+                cnstate_vars, crop_vars)
           call t_stopf('CNAllocation - phase-3')
       end if
       !------------------------------------------------------------------
@@ -879,8 +829,7 @@ contains
  
   !-------------------------------------------------------------------------------------------------
   !
-  subroutine CNvariables_nan4pf (bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
-            carbonflux_vars, nitrogenflux_vars, phosphorusstate_vars,phosphorusflux_vars)
+  subroutine CNvariables_nan4pf (bounds, num_soilc, filter_soilc, num_soilp, filter_soilp)
   !
   !DESCRIPTION:
   !  CN variables not available from PFLOTRAN, some of which may be output and may cause issues,
@@ -897,11 +846,6 @@ contains
     integer                  , intent(in)    :: filter_soilc(:)    ! filter for soil columns
     integer                  , intent(in)    :: num_soilp          ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:)    ! filter for soil patches
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    !! add phosphorus --
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
    !
    !CALLED FROM:
    !

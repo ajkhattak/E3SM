@@ -15,8 +15,6 @@ module PhosphorusStateUpdate1Mod
   use VegetationPropertiesType         , only : veg_vp
   use CNDecompCascadeConType , only : decomp_cascade_con
   use CNStateType            , only : cnstate_type
-  use PhosphorusFluxType     , only : phosphorusflux_type
-  use PhosphorusStateType    , only : phosphorusstate_type
   use VegetationType              , only : veg_pp
   use tracer_varcon          , only : is_active_betr_bgc
   ! bgc interface & pflotran:
@@ -103,7 +101,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine PhosphorusStateUpdate1(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       cnstate_vars, phosphorusflux_vars, phosphorusstate_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update all the prognostic phosphorus state
@@ -115,8 +113,6 @@ contains
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,p,j,l,k ! indices
@@ -138,11 +134,7 @@ contains
          cascade_receiver_pool => decomp_cascade_con%cascade_receiver_pool , & ! Input:  [integer  (:)     ]  which pool is C added to for a given decomposition step
 
          !!! N deposition profile, will weathering profile be needed?  -X.YANG
-         ndep_prof             => cnstate_vars%ndep_prof_col               , & ! Input:  [real(r8) (:,:)   ]  profile over which N deposition is distributed through column (1/m)
-!         nfixation_prof        => cnstate_vars%nfixation_prof_col          , & ! Input:  [real(r8) (:,:)   ]  profile over which N fixation is distributed through column (1/m)
-         
-         pf                    => phosphorusflux_vars                        , &
-         ps                    => phosphorusstate_vars &
+         ndep_prof             => cnstate_vars%ndep_prof_col                 & ! Input:  [real(r8) (:,:)   ]  profile over which N deposition is distributed through column (1/m)
          )
 
       ! set time steps

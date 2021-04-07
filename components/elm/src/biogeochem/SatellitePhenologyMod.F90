@@ -295,7 +295,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine SatellitePhenology(bounds, num_nolakep, filter_nolakep, &
-       waterstate_vars, canopystate_vars)
+       canopystate_vars)
     !
     ! !DESCRIPTION:
     ! Ecosystem dynamics: phenology, vegetation
@@ -308,7 +308,6 @@ contains
     type(bounds_type)      , intent(in)    :: bounds                          
     integer                , intent(in)    :: num_nolakep                               ! number of column non-lake points in pft filter
     integer                , intent(in)    :: filter_nolakep(bounds%endp-bounds%begp+1) ! patch filter for non-lake points
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
     type(canopystate_type) , intent(inout) :: canopystate_vars
     !
     ! !LOCAL VARIABLES:

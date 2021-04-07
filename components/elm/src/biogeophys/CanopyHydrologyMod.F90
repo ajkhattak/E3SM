@@ -101,8 +101,8 @@ contains
    !-----------------------------------------------------------------------
    subroutine CanopyHydrology(bounds, &
         num_nolakec, filter_nolakec, num_nolakep, filter_nolakep, &
-        atm2lnd_vars, canopystate_vars, temperature_vars, &
-        aerosol_vars, waterstate_vars, waterflux_vars)
+        atm2lnd_vars, canopystate_vars, &
+        aerosol_vars)
      !
      ! !DESCRIPTION:
      ! Calculation of
@@ -135,10 +135,7 @@ contains
      integer                , intent(in)    :: filter_nolakep(:)    ! patch filter for non-lake points
      type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
      type(canopystate_type) , intent(in)    :: canopystate_vars
-     type(temperature_type) , intent(inout) :: temperature_vars
      type(aerosol_type)     , intent(inout) :: aerosol_vars
-     type(waterstate_type)  , intent(inout) :: waterstate_vars
-     type(waterflux_type)   , intent(inout) :: waterflux_vars
      !
      ! !LOCAL VARIABLES:
      integer  :: f                                            ! filter index
@@ -446,7 +443,7 @@ contains
        ! fraction of foliage that is dry and transpiring.
 
        call FracWet(num_nolakep, filter_nolakep, &
-            canopystate_vars, waterstate_vars)
+            canopystate_vars)
 
        ! Update column level state variables for snow.
 
@@ -657,7 +654,6 @@ contains
 
              ! intitialize SNICAR variables for fresh snow:
              call aerosol_vars%Reset(column=c)
-             ! call waterstate_vars%Reset(column=c)
              col_ws%snw_rds(c,0) = snw_rds_min
           end if
 
@@ -674,14 +670,14 @@ contains
 
        ! update surface water fraction (this may modify frac_sno)
        call FracH2oSfc(bounds, num_nolakec, filter_nolakec, &
-            waterstate_vars, col_wf%qflx_h2osfc2topsoi)
+            col_wf%qflx_h2osfc2topsoi)
 
      end associate 
 
    end subroutine CanopyHydrology
 
    !-----------------------------------------------------------------------
-   subroutine FracWet(numf, filter, canopystate_vars, waterstate_vars)
+   subroutine FracWet(numf, filter, canopystate_vars)
      !
      ! !DESCRIPTION:
      ! Determine fraction of vegetated surfaces which are wet and
@@ -695,7 +691,6 @@ contains
      integer                , intent(in)    :: numf                  ! number of filter non-lake points
      integer                , intent(in)    :: filter(numf)          ! patch filter for non-lake points
      type(canopystate_type) , intent(in)    :: canopystate_vars
-     type(waterstate_type)  , intent(inout) :: waterstate_vars
      !
      ! !LOCAL VARIABLES:
      integer  :: fp,p             ! indices
@@ -738,7 +733,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine FracH2OSfc(bounds, num_h2osfc, filter_h2osfc, &
-        waterstate_vars, qflx_h2osfc2topsoi, no_update)
+        qflx_h2osfc2topsoi, no_update)
      !
      ! !DESCRIPTION:
      ! Determine fraction of land surfaces which are submerged  
@@ -754,7 +749,6 @@ contains
      type(bounds_type)     , intent(in)           :: bounds           
      integer               , intent(in)           :: num_h2osfc       ! number of column points in column filter
      integer               , intent(in)           :: filter_h2osfc(:) ! column filter 
-     type(waterstate_type) , intent(inout)        :: waterstate_vars
      real(r8)              , intent(inout)        :: qflx_h2osfc2topsoi(bounds%begc:bounds%endc)     
      integer               , intent(in), optional :: no_update        ! flag to make calculation w/o updating variables
      !

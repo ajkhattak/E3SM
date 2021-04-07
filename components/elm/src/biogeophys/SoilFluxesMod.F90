@@ -39,8 +39,8 @@ contains
   !-----------------------------------------------------------------------
   subroutine SoilFluxes (bounds, num_urbanl, filter_urbanl, &
        num_nolakec, filter_nolakec, num_nolakep, filter_nolakep, &
-       atm2lnd_vars, solarabs_vars, temperature_vars, canopystate_vars, &
-       waterstate_vars, energyflux_vars, waterflux_vars)            
+       atm2lnd_vars, solarabs_vars, canopystate_vars, &
+       energyflux_vars)
     !
     ! !DESCRIPTION:
     ! Update surface fluxes based on the new ground temperature
@@ -62,10 +62,7 @@ contains
     integer                , intent(in)    :: filter_nolakep(:)                ! patch filter for non-lake points
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
     type(solarabs_type)    , intent(in)    :: solarabs_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
     type(canopystate_type) , intent(in)    :: canopystate_vars
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
-    type(waterflux_type)   , intent(inout) :: waterflux_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:

@@ -10,8 +10,6 @@ module CNNStateUpdate2BeTRMod
   use elm_varpar          , only : nlevsoi, nlevdecomp
   use elm_varpar          , only : i_met_lit, i_cel_lit, i_lig_lit, i_cwd
   use elm_varctl          , only : iulog
-  use CNNitrogenStateType , only : nitrogenstate_type
-  use CNNitrogenFLuxType  , only : nitrogenflux_type
   use VegetationType      , only : veg_pp
   use VegetationDataType  , only : veg_ns, veg_nf
   use pftvarcon           , only : npcropmin
@@ -30,8 +28,7 @@ module CNNStateUpdate2BeTRMod
 contains
 
   !-----------------------------------------------------------------------
-  subroutine NStateUpdate2(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       nitrogenflux_vars, nitrogenstate_vars)
+  subroutine NStateUpdate2(num_soilc, filter_soilc, num_soilp, filter_soilp)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update all the prognostic nitrogen state
@@ -45,19 +42,12 @@ contains
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c,p,j,l ! indices
     integer  :: fp,fc   ! lake filter indices
     real(r8) :: dt      ! radiation time step (seconds)
     !-----------------------------------------------------------------------
-
-    associate(                      &
-         nf => nitrogenflux_vars  , &
-         ns => nitrogenstate_vars   &
-         )
 
       ! set time steps
       dt = real( get_step_size(), r8 )
@@ -94,13 +84,10 @@ contains
 
       end do
 
-    end associate
-
   end subroutine NStateUpdate2
 
   !-----------------------------------------------------------------------
-  subroutine NStateUpdate2h(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       nitrogenflux_vars, nitrogenstate_vars)
+  subroutine NStateUpdate2h(num_soilc, filter_soilc, num_soilp, filter_soilp)
     !
     ! !DESCRIPTION:
     ! Update all the prognostic nitrogen state
@@ -114,8 +101,6 @@ contains
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,p,j,l ! indices
@@ -124,9 +109,7 @@ contains
     !-----------------------------------------------------------------------
 
     associate(                      &
-         ivt => veg_pp%itype         , & ! Input:  [integer  (:) ]  pft vegetation type
-         nf => nitrogenflux_vars  , &
-         ns => nitrogenstate_vars   &
+         ivt => veg_pp%itype        & ! Input:  [integer  (:) ]  pft vegetation type
          )
 
       ! set time steps

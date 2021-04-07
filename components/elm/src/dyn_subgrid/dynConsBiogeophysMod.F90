@@ -17,9 +17,6 @@ module dynConsBiogeophysMod
   use LakeStateType     , only : lakestate_type
   use SoilHydrologyType , only : soilhydrology_type  
   use SoilStateType     , only : soilstate_type
-  use TemperatureType   , only : temperature_type
-  use WaterfluxType     , only : waterflux_type
-  use WaterstateType    , only : waterstate_type
   use TotalWaterAndHeatMod, only : ComputeLiqIceMassNonLake, ComputeLiqIceMassLake
   use TotalWaterAndHeatMod, only : ComputeHeatNonLake, ComputeHeatLake
   use TotalWaterAndHeatMod, only : AdjustDeltaHeatForDeltaLiq
@@ -52,7 +49,7 @@ contains
        num_nolakec, filter_nolakec,                                          &
        num_lakec, filter_lakec,                                              &
        urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars, &
-       waterstate_vars, waterflux_vars, temperature_vars, energyflux_vars)
+       energyflux_vars)
     !
     ! !DESCRIPTION:
     ! Initialize variables used for dyn_hwcontent, and compute grid cell-level heat
@@ -70,9 +67,6 @@ contains
     type(soilstate_type)     , intent(in)    :: soilstate_vars
     type(soilhydrology_type) , intent(in)    :: soilhydrology_vars
     type(lakestate_type)     , intent(in)    :: lakestate_vars
-    type(waterstate_type)    , intent(inout) :: waterstate_vars
-    type(waterflux_type)     , intent(inout) :: waterflux_vars
-    type(temperature_type)   , intent(inout) :: temperature_vars
     type(energyflux_type)    , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
@@ -82,7 +76,7 @@ contains
     call dyn_water_content(bounds,                                        &
          num_nolakec, filter_nolakec,                                     &
          num_lakec, filter_lakec,                                         &
-         soilhydrology_vars, waterstate_vars, lakestate_vars,             &
+         soilhydrology_vars, lakestate_vars,                              &
          liquid_mass = grc_ws%liq1(bounds%begg:bounds%endg), &
          ice_mass    = grc_ws%ice1(bounds%begg:bounds%endg))
 
@@ -90,7 +84,6 @@ contains
          num_nolakec, filter_nolakec,                                     &
          num_lakec, filter_lakec,                                         &
          urbanparams_vars, soilstate_vars, soilhydrology_vars,            &
-         temperature_vars, waterstate_vars,                               &
          heat_grc = grc_es%heat1(bounds%begg:bounds%endg),  &
          liquid_water_temp_grc = grc_es%liquid_water_temp1(bounds%begg:bounds%endg))
 
@@ -101,7 +94,7 @@ contains
        num_nolakec, filter_nolakec, &
        num_lakec, filter_lakec, &
        urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars, &
-       waterstate_vars, waterflux_vars, temperature_vars, energyflux_vars)
+       energyflux_vars)
     !
     ! Should be called AFTER all subgrid weight updates this time step
     !
@@ -117,10 +110,7 @@ contains
     type(urbanparams_type)   , intent(in)    :: urbanparams_vars
     type(soilstate_type)     , intent(in)    :: soilstate_vars
     type(soilhydrology_type) , intent(in)    :: soilhydrology_vars
-    type(waterstate_type)    , intent(inout) :: waterstate_vars
     type(lakestate_type)     , intent(in)    :: lakestate_vars
-    type(waterflux_type)     , intent(inout) :: waterflux_vars
-    type(temperature_type)   , intent(inout) :: temperature_vars
     type(energyflux_type)    , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
@@ -139,7 +129,7 @@ contains
     call dyn_water_content(bounds, &
          num_nolakec, filter_nolakec, &
          num_lakec, filter_lakec, &
-         soilhydrology_vars, waterstate_vars, lakestate_vars, &
+         soilhydrology_vars, lakestate_vars, &
          liquid_mass = grc_ws%liq2(bounds%begg:bounds%endg), &
          ice_mass    = grc_ws%ice2(bounds%begg:bounds%endg))
 
@@ -147,7 +137,6 @@ contains
          num_nolakec, filter_nolakec, &
          num_lakec, filter_lakec, &
          urbanparams_vars, soilstate_vars, soilhydrology_vars, &
-         temperature_vars, waterstate_vars, &
          heat_grc = grc_es%heat2(bounds%begg:bounds%endg), &
          liquid_water_temp_grc = grc_es%liquid_water_temp2(bounds%begg:bounds%endg))
 
@@ -168,35 +157,13 @@ contains
        end do
     end if
 
-    !call AdjustDeltaHeatForDeltaLiq( &
-    !     bounds, &
-    !     delta_liq = delta_liq(bounds%begg:bounds%endg), &
-    !     liquid_water_temp1 = temperature_vars%liquid_water_temp1_grc(bounds%begg:bounds%endg), &
-    !     liquid_water_temp2 = temperature_vars%liquid_water_temp2_grc(bounds%begg:bounds%endg), &
-    !     delta_heat = delta_heat(bounds%begg:bounds%endg))
-
-    !call grc_wf%qflx_liq_dynbal_dribbler%set_curr_delta(bounds, &
-    !     delta_liq(begg:endg))
-    !call grc_wf%qflx_liq_dynbal_dribbler%get_curr_flux(bounds, &
-    !     grc_wf%qflx_liq_dynbal(begg:endg))
-
-    !call grc_wf%qflx_ice_dynbal_dribbler%set_curr_delta(bounds, &
-    !     delta_ice(begg:endg))
-    !call grc_wf%qflx_ice_dynbal_dribbler%get_curr_flux(bounds, &
-    !     grc_wf%qflx_ice_dynbal(begg:endg))
-
-    !call energyflux_vars%eflx_dynbal_dribbler%set_curr_delta(bounds, &
-    !     delta_heat(begg:endg))
-    !call energyflux_vars%eflx_dynbal_dribbler%get_curr_flux(bounds, &
-    !     energyflux_vars%eflx_dynbal_grc(begg:endg))
-
   end subroutine dyn_hwcontent_final
 
   !-----------------------------------------------------------------------
   subroutine dyn_water_content(bounds, &
        num_nolakec, filter_nolakec, &
        num_lakec, filter_lakec, &
-       soilhydrology_vars, waterstate_vars, lakestate_vars, &
+       soilhydrology_vars, lakestate_vars, &
        liquid_mass, ice_mass)
     !
     ! !DESCRIPTION:
@@ -209,7 +176,6 @@ contains
     integer                  , intent(in)    :: num_lakec
     integer                  , intent(in)    :: filter_lakec(:)
     type(soilhydrology_type) , intent(in)    :: soilhydrology_vars
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
     type(lakestate_type)     , intent(in)    :: lakestate_vars
     real(r8)                 , intent(out)   :: liquid_mass( bounds%begg: ) ! kg m-2
     real(r8)                 , intent(out)   :: ice_mass( bounds%begg: )    ! kg m-2
@@ -226,12 +192,12 @@ contains
     SHR_ASSERT_ALL((ubound(ice_mass) == (/bounds%endg/)), errMsg(__FILE__, __LINE__))
 
     call ComputeLiqIceMassNonLake(bounds, num_nolakec, filter_nolakec, &
-         soilhydrology_vars, waterstate_vars, &
+         soilhydrology_vars, &
          liquid_mass_col(bounds%begc:bounds%endc), &
          ice_mass_col(bounds%begc:bounds%endc))
 
     call ComputeLiqIceMassLake(bounds, num_lakec, filter_lakec, &
-         waterstate_vars, lakestate_vars, &
+         lakestate_vars, &
          liquid_mass_col(bounds%begc:bounds%endc), &
          ice_mass_col(bounds%begc:bounds%endc))
 
@@ -255,7 +221,6 @@ contains
        num_nolakec, filter_nolakec, &
        num_lakec, filter_lakec, &
        urbanparams_vars, soilstate_vars, soilhydrology_vars, &
-       temperature_vars, waterstate_vars, &
        heat_grc, liquid_water_temp_grc)
 
     ! !DESCRIPTION:
@@ -276,8 +241,6 @@ contains
     type(urbanparams_type)   , intent(in)  :: urbanparams_vars
     type(soilstate_type)     , intent(in)  :: soilstate_vars
     type(soilhydrology_type) , intent(in)  :: soilhydrology_vars
-    type(temperature_type)   , intent(in)  :: temperature_vars
-    type(waterstate_type)    , intent(in)  :: waterstate_vars
 
     real(r8)                 , intent(out) :: heat_grc( bounds%begg: ) ! total heat content for each grid cell [J/m^2]
     real(r8)                 , intent(out) :: liquid_water_temp_grc( bounds%begg: ) ! weighted average liquid water temperature for each grid cell (K)
@@ -304,13 +267,13 @@ contains
 
     call ComputeHeatNonLake(bounds, num_nolakec, filter_nolakec, &
          urbanparams_vars, soilstate_vars, &
-         temperature_vars, waterstate_vars, soilhydrology_vars, &
+         soilhydrology_vars, &
          heat = heat_col(bounds%begc:bounds%endc), &
          heat_liquid = heat_liquid_col(bounds%begc:bounds%endc), &
          cv_liquid = cv_liquid_col(bounds%begc:bounds%endc))
 
     call ComputeHeatLake(bounds, num_lakec, filter_lakec, &
-         soilstate_vars, temperature_vars, waterstate_vars, &
+         soilstate_vars,                                  &
          heat = heat_col(bounds%begc:bounds%endc), &
          heat_liquid = heat_liquid_col(bounds%begc:bounds%endc), &
          cv_liquid = cv_liquid_col(bounds%begc:bounds%endc))

@@ -13,8 +13,6 @@ module NitrogenStateUpdate3Mod
   use elm_varpar          , only : i_cwd, i_met_lit, i_cel_lit, i_lig_lit
   use elm_varctl          , only : use_erosion, ero_ccycle
   use CNDecompCascadeConType , only : decomp_cascade_con
-  use CNNitrogenStateType , only : nitrogenstate_type
-  use CNNitrogenFLuxType  , only : nitrogenflux_type
   use ColumnDataType      , only : col_ns, col_nf
   use VegetationDataType  , only : veg_ns, veg_nf
   ! bgc interface & pflotran:
@@ -31,8 +29,7 @@ module NitrogenStateUpdate3Mod
 contains
 
   !-----------------------------------------------------------------------
-  subroutine NitrogenStateUpdate3(num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       nitrogenflux_vars, nitrogenstate_vars)
+  subroutine NitrogenStateUpdate3(num_soilc, filter_soilc, num_soilp, filter_soilp)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update all the prognostic nitrogen state
@@ -47,19 +44,12 @@ contains
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,p,j,l,k        ! indices
     integer :: fp,fc      ! lake filter indices
     real(r8):: dt         ! radiation time step (seconds)
     !-----------------------------------------------------------------------
-
-    associate(                      & 
-         nf => nitrogenflux_vars  , &
-         ns => nitrogenstate_vars   &
-         )
 
       ! set time steps
       dt = real( get_step_size(), r8 )
@@ -188,7 +178,6 @@ contains
          end do
       end if
 
-    end associate 
 
   end subroutine NitrogenStateUpdate3
 

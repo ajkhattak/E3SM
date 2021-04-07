@@ -18,19 +18,11 @@ module PhenologyMod
   use elm_varcon          , only : tfrz
   use abortutils          , only : endrun
   use CanopyStateType     , only : canopystate_type
-  use CNCarbonFluxType    , only : carbonflux_type
-  use CNCarbonStateType   , only : carbonstate_type
-  use CNNitrogenFluxType  , only : nitrogenflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
   use CNStateType         , only : cnstate_type
   use CropType            , only : crop_type
   use VegetationPropertiesType      , only : veg_vp
   use SoilStateType       , only : soilstate_type
   use atm2lndType         , only : atm2lnd_type
-  use TemperatureType     , only : temperature_type
-  use WaterstateType      , only : waterstate_type
-  use PhosphorusFluxType  , only : phosphorusflux_type
-  use PhosphorusStateType , only : phosphorusstate_type
   use elm_varctl          , only : nu_com 
   use ColumnType          , only : col_pp
   use ColumnDataType      , only : col_es, col_ws, col_cf, col_nf, col_pf 
@@ -205,9 +197,8 @@ contains
   !-----------------------------------------------------------------------
   subroutine Phenology (num_soilc, filter_soilc, num_soilp, filter_soilp, &
        num_pcropp, filter_pcropp, doalb, atm2lnd_vars, &
-       waterstate_vars, temperature_vars, crop_vars, canopystate_vars, soilstate_vars, &
-       cnstate_vars, carbonstate_vars, carbonflux_vars, &
-       nitrogenstate_vars,nitrogenflux_vars,phosphorusstate_vars,phosphorusflux_vars)
+       crop_vars, canopystate_vars, soilstate_vars, &
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! Dynamic phenology routine for coupled carbon-nitrogen code (CN)
@@ -221,79 +212,57 @@ contains
     integer                  , intent(in)    :: num_pcropp      ! number of prog. crop patches in filter
     integer                  , intent(in)    :: filter_pcropp(:)! filter for prognostic crop patches
     logical                  , intent(in)    :: doalb           ! true if time for sfc albedo calc
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
-    type(temperature_type)   , intent(inout) :: temperature_vars
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
     type(crop_type)          , intent(inout) :: crop_vars
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(soilstate_type)     , intent(in)    :: soilstate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(inout) :: carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !-----------------------------------------------------------------------
 
     ! each of the following phenology type routines includes a filter
     ! to operate only on the relevant patches
 
     call PhenologyClimate(num_soilp, filter_soilp, num_pcropp, filter_pcropp, &
-         temperature_vars, cnstate_vars, crop_vars)
+         cnstate_vars, crop_vars)
 
     call CNEvergreenPhenology(num_soilp, filter_soilp, &
          cnstate_vars) 
 
     call CNSeasonDecidPhenology(num_soilp, filter_soilp, &
-         temperature_vars, cnstate_vars, &
-         carbonstate_vars, nitrogenstate_vars, carbonflux_vars, nitrogenflux_vars,&
-         phosphorusstate_vars,phosphorusflux_vars)
+         cnstate_vars)
 
     call CNStressDecidPhenology(num_soilp, filter_soilp,   &
-         soilstate_vars, atm2lnd_vars, temperature_vars, cnstate_vars, &
-         carbonstate_vars, nitrogenstate_vars, carbonflux_vars, nitrogenflux_vars,&
-         phosphorusstate_vars,phosphorusflux_vars)
+         soilstate_vars, atm2lnd_vars, cnstate_vars)
 
    if (num_pcropp > 0 ) then
        call CropPlantDate(num_soilp, filter_soilp, num_pcropp, filter_pcropp,&
-            temperature_vars, cnstate_vars, crop_vars)
+            cnstate_vars, crop_vars)
    end if
 
     if (doalb .and. num_pcropp > 0 ) then
        call CropPhenology(num_pcropp, filter_pcropp, &
-            waterstate_vars, temperature_vars, crop_vars, canopystate_vars, cnstate_vars, &
-            carbonstate_vars, nitrogenstate_vars, carbonflux_vars, nitrogenflux_vars,&
-            phosphorusstate_vars,phosphorusflux_vars)
+            crop_vars, canopystate_vars, cnstate_vars)
     end if
 
     ! the same onset and offset routines are called regardless of
     ! phenology type - they depend only on onset_flag, offset_flag, bglfr, and bgtr
 
     call CNOnsetGrowth(num_soilp, filter_soilp, &
-         cnstate_vars, &
-         carbonstate_vars, nitrogenstate_vars, carbonflux_vars, nitrogenflux_vars,&
-         phosphorusstate_vars,phosphorusflux_vars)
+         cnstate_vars)
 
    if (num_pcropp > 0 ) then
       call CNCropHarvest(num_pcropp, filter_pcropp, &
            num_soilc, filter_soilc, crop_vars, &
-           cnstate_vars, carbonstate_vars, carbonflux_vars, nitrogenstate_vars, &
-           nitrogenflux_vars, phosphorusstate_vars, phosphorusflux_vars)
+           cnstate_vars)
    end if
 
     call CNOffsetLitterfall(num_soilp, filter_soilp, &
-         cnstate_vars, carbonstate_vars, carbonflux_vars, nitrogenflux_vars,&
-         phosphorusflux_vars, nitrogenstate_vars,phosphorusstate_vars)
+         cnstate_vars)
 
     call CNBackgroundLitterfall(num_soilp, filter_soilp, &
-         cnstate_vars, carbonstate_vars, carbonflux_vars, nitrogenflux_vars,&
-         phosphorusflux_vars, nitrogenstate_vars, phosphorusstate_vars)
+         cnstate_vars)
 
-    call CNLivewoodTurnover(num_soilp, filter_soilp, &
-         carbonstate_vars, nitrogenstate_vars, carbonflux_vars, nitrogenflux_vars,&
-         phosphorusstate_vars,phosphorusflux_vars)
+    call CNLivewoodTurnover(num_soilp, filter_soilp)
 
     ! gather all patch-level litterfall fluxes to the column for litter C and N inputs
 
@@ -371,7 +340,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine PhenologyClimate (num_soilp, filter_soilp, num_pcropp, filter_pcropp, &
-       temperature_vars, cnstate_vars, crop_vars)
+       cnstate_vars, crop_vars)
     !
     ! !DESCRIPTION:
     ! For coupled carbon-nitrogen code (CN).
@@ -385,7 +354,6 @@ contains
     integer                , intent(in)    :: filter_soilp(:) ! filter for soil patches
     integer                , intent(in)    :: num_pcropp      ! number of prognostic crops in filter
     integer                , intent(in)    :: filter_pcropp(:)! filter for prognostic crop patches
-    type(temperature_type) , intent(inout) :: temperature_vars
     type(cnstate_type)     , intent(inout) :: cnstate_vars
     type(crop_type)        , intent(inout) :: crop_vars
 
@@ -511,9 +479,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CNSeasonDecidPhenology (num_soilp, filter_soilp       , &
-       temperature_vars, cnstate_vars, &
-       carbonstate_vars, nitrogenstate_vars, carbonflux_vars, nitrogenflux_vars,&
-       phosphorusstate_vars, phosphorusflux_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! For coupled carbon-nitrogen code (CN).
@@ -527,14 +493,7 @@ contains
     ! !ARGUMENTS:
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(temperature_type)   , intent(in)    :: temperature_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(inout) :: carbonstate_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: g,c,p          !indices
@@ -854,9 +813,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CNStressDecidPhenology (num_soilp, filter_soilp , &                                            
-       soilstate_vars, atm2lnd_vars, temperature_vars, cnstate_vars        , &
-       carbonstate_vars, nitrogenstate_vars, carbonflux_vars,nitrogenflux_vars,&
-       phosphorusstate_vars,phosphorusflux_vars)
+       soilstate_vars, atm2lnd_vars, cnstate_vars)
     !
     ! !DESCRIPTION:
     ! This routine handles phenology for vegetation types, such as grasses and
@@ -878,15 +835,8 @@ contains
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(soilstate_type)     , intent(in)    :: soilstate_vars
-    type(temperature_type)   , intent(in)    :: temperature_vars
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(inout) :: carbonstate_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     real(r8),parameter :: secspqtrday = secspday / 4  ! seconds per quarter day
@@ -1352,9 +1302,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CropPhenology(num_pcropp, filter_pcropp                     , &
-       waterstate_vars, temperature_vars, crop_vars, canopystate_vars, cnstate_vars , &
-       carbonstate_vars, nitrogenstate_vars,carbonflux_vars,nitrogenflux_vars,&
-       phosphorusstate_vars, phosphorusflux_vars)
+       crop_vars, canopystate_vars, cnstate_vars)
 
     ! !DESCRIPTION:
     ! Code from AgroIBIS to determine crop phenology and code from CN to
@@ -1371,17 +1319,9 @@ contains
     ! !ARGUMENTS:
     integer                  , intent(in)    :: num_pcropp       ! number of prog crop patches in filter
     integer                  , intent(in)    :: filter_pcropp                                    (:) ! filter for prognostic crop patches
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
-    type(temperature_type)   , intent(in)    :: temperature_vars
     type(crop_type)          , intent(inout) :: crop_vars
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(inout) :: carbonstate_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
 
     !
     ! LOCAL VARAIBLES:
@@ -1803,7 +1743,7 @@ contains
 
             if (t_ref2m_min(p) < 1.e30_r8 .and. vf(p) /= 1._r8 .and. (ivt(p) == nwcereal .or. ivt(p) == nwcerealirrig)) then
                call vernalization(p, &
-                    canopystate_vars, temperature_vars, waterstate_vars, cnstate_vars, crop_vars)
+                    canopystate_vars, cnstate_vars, crop_vars)
             end if
 
             ! days past planting may determine harvest
@@ -1966,7 +1906,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine vernalization(p, &
-       canopystate_vars, temperature_vars, waterstate_vars, cnstate_vars, &
+       canopystate_vars, cnstate_vars, &
        crop_vars)
     !
     ! !DESCRIPTION:
@@ -1982,8 +1922,6 @@ contains
     ! !ARGUMENTS:
     integer                , intent(in) :: p    ! PATCH index running over
     type(canopystate_type) , intent(in) :: canopystate_vars
-    type(temperature_type) , intent(in) :: temperature_vars
-    type(waterstate_type)  , intent(in) :: waterstate_vars
     type(cnstate_type)     , intent(inout) :: cnstate_vars
     type(crop_type)        , intent(inout) :: crop_vars
     !
@@ -2109,7 +2047,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CropPlantDate (num_soilp, filter_soilp, num_pcropp, filter_pcropp, &
-        temperature_vars, cnstate_vars, crop_vars)
+        cnstate_vars, crop_vars)
     !
     ! !DESCRIPTION:
     ! For determining the plant month for crops, plant day is established in
@@ -2129,7 +2067,6 @@ contains
     integer                , intent(in)    :: filter_soilp(:) ! filter for soil patches
     integer                , intent(in)    :: num_pcropp      ! number of prognostic crops in filter
     integer                , intent(in)    :: filter_pcropp(:)! filter for prognostic crop patches
-    type(temperature_type) , intent(in)    :: temperature_vars
     type(cnstate_type)     , intent(inout) :: cnstate_vars
     type(crop_type)        , intent(inout) :: crop_vars
 
@@ -2297,9 +2234,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CNOnsetGrowth (num_soilp, filter_soilp, &
-       cnstate_vars, &
-       carbonstate_vars, nitrogenstate_vars, carbonflux_vars,nitrogenflux_vars,&
-       phosphorusstate_vars,phosphorusflux_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! Determines the flux of stored C and N from transfer pools to display
@@ -2310,12 +2245,6 @@ contains
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type) , intent(in)    :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: p            ! indices
@@ -2451,8 +2380,7 @@ contains
 
  !----------------------------------------------------------------------
  subroutine CNCropHarvest (num_pcropp, filter_pcropp, num_soilc, filter_soilc, crop_vars, &
-            cnstate_vars, carbonstate_vars, carbonflux_vars, nitrogenstate_vars, nitrogenflux_vars, &
-            phosphorusstate_vars, phosphorusflux_vars)
+            cnstate_vars)
    !
    ! !DESCRIPTION:
    ! This routine handles harvest for agriculture vegetation types, such as
@@ -2468,12 +2396,6 @@ contains
 
     type(crop_type)         , intent(inout) :: crop_vars
     type(cnstate_type)      , intent(inout) :: cnstate_vars
-    type(carbonstate_type)  , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)   , intent(inout) :: carbonflux_vars
-    type(nitrogenstate_type), intent(in)    :: nitrogenstate_vars
-    type(nitrogenflux_type) , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type),intent(inout):: phosphorusstate_vars
-    type(phosphorusflux_type), intent(inout):: phosphorusflux_vars
    !
    ! !LOCAL VARIABLES:
    ! local pointers to implicit in scalars
@@ -2559,15 +2481,13 @@ contains
    ! gather all pft-level fluxes from harvest to the column
    ! for C and N inputs
 
-   call CNCropHarvestPftToColumn(num_soilc, filter_soilc,cnstate_vars, &
-                   carbonflux_vars, nitrogenflux_vars, phosphorusflux_vars)
+   call CNCropHarvestPftToColumn(num_soilc, filter_soilc,cnstate_vars)
     end associate
  end subroutine CNCropHarvest
 
   !-----------------------------------------------------------------------
   subroutine CNOffsetLitterfall (num_soilp, filter_soilp, &
-       cnstate_vars, carbonstate_vars, carbonflux_vars, nitrogenflux_vars,&
-       phosphorusflux_vars, nitrogenstate_vars,phosphorusstate_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! Determines the flux of C and N from displayed pools to litter
@@ -2580,12 +2500,6 @@ contains
     integer                 , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                 , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)      , intent(inout) :: cnstate_vars
-    type(carbonstate_type)  , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)   , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type) , intent(inout) :: nitrogenflux_vars
-    type(phosphorusflux_type) , intent(inout) :: phosphorusflux_vars
-    type(nitrogenstate_type)  , intent(in)   :: nitrogenstate_vars
-    type(phosphorusstate_type), intent(in)   :: phosphorusstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: p, c         ! indices
@@ -2772,8 +2686,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CNBackgroundLitterfall (num_soilp, filter_soilp, &
-       cnstate_vars, carbonstate_vars, carbonflux_vars, nitrogenflux_vars,& 
-       phosphorusflux_vars, nitrogenstate_vars, phosphorusstate_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! Determines the flux of C and N from displayed pools to litter
@@ -2783,12 +2696,6 @@ contains
     integer                 , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                 , intent(in)    :: filter_soilp(:) ! filter for soil patches
     type(cnstate_type)      , intent(in)    :: cnstate_vars
-    type(carbonstate_type)  , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)   , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type) , intent(inout) :: nitrogenflux_vars
-    type(phosphorusflux_type) , intent(inout) :: phosphorusflux_vars
-    type(nitrogenstate_type)  , intent(in)    :: nitrogenstate_vars
-    type(phosphorusstate_type), intent(in)    :: phosphorusstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: p            ! indices
@@ -2876,9 +2783,7 @@ contains
   end subroutine CNBackgroundLitterfall
 
   !-----------------------------------------------------------------------
-  subroutine CNLivewoodTurnover (num_soilp, filter_soilp, &
-       carbonstate_vars, nitrogenstate_vars, carbonflux_vars,nitrogenflux_vars,&
-       phosphorusstate_vars,phosphorusflux_vars)
+  subroutine CNLivewoodTurnover (num_soilp, filter_soilp)
     !
     ! !DESCRIPTION:
     ! Determines the flux of C and N from live wood to
@@ -2888,12 +2793,6 @@ contains
     ! !ARGUMENTS:
     integer                  , intent(in)    :: num_soilp       ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:) ! filter for soil patches
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type) , intent(in)    :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: p            ! indices
@@ -3003,7 +2902,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine CNLitterToColumn (num_soilc, filter_soilc, &
-       cnstate_vars, carbonflux_vars, nitrogenflux_vars,phosphorusflux_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! called at the end of cn_phenology to gather all pft-level litterfall fluxes
@@ -3017,9 +2916,6 @@ contains
     integer                 , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                 , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(cnstate_type)      , intent(in)    :: cnstate_vars
-    type(carbonflux_type)   , intent(inout) :: carbonflux_vars
-    type(nitrogenflux_type) , intent(inout) :: nitrogenflux_vars
-    type(phosphorusflux_type) , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: fc,c,pi,p,j       ! indices
@@ -3167,7 +3063,7 @@ contains
 
  !-----------------------------------------------------------------------
  subroutine CNCropHarvestPftToColumn (num_soilc, filter_soilc, &
-            cnstate_vars, carbonflux_vars, nitrogenflux_vars, phosphorusflux_vars)
+            cnstate_vars)
    !
    ! !DESCRIPTION:
    ! called at the end of CNCropHarvest to gather all pft-level harvest fluxes
@@ -3176,9 +3072,6 @@ contains
    ! !USES:
    use elm_varpar, only : maxpatch_pft
    type(cnstate_type)       , intent(in)    :: cnstate_vars
-   type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-   type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-   type(phosphorusflux_type), intent(inout) :: phosphorusflux_vars
    !
    ! !ARGUMENTS:
    integer, intent(in) :: num_soilc       ! number of soil columns in filter

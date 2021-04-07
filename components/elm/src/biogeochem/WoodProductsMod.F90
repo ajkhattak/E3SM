@@ -10,13 +10,6 @@ module WoodProductsMod
   use landunit_varcon     , only : istsoil
   use clm_time_manager    , only : get_step_size
   use elm_varctl          , only : use_c13, use_c14
-  use CNCarbonStateType   , only : carbonstate_type
-  use CNCarbonFluxType    , only : carbonflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
-  use CNNitrogenFluxType  , only : nitrogenflux_type
-
-  use PhosphorusFluxType  , only : phosphorusflux_type
-  use PhosphorusStateType , only : phosphorusstate_type
   
   use ColumnDataType      , only : col_cs, c13_col_cs, c14_col_cs
   use ColumnDataType      , only : col_cf, c13_col_cf, c14_col_cf
@@ -34,10 +27,7 @@ module WoodProductsMod
 contains
 
   !-----------------------------------------------------------------------
-  subroutine WoodProducts(num_soilc, filter_soilc, &
-       cs, c13_cs, c14_cs, ns, &
-       cf, c13_cf, c14_cf, nf,&
-       ps, pf)
+  subroutine WoodProducts(num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! Update all loss fluxes from wood product pools, and update product pool state variables
@@ -47,17 +37,6 @@ contains
     ! !ARGUMENTS:
     integer                    , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                    , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(carbonstate_type)     , intent(inout) :: cs
-    type(carbonstate_type)     , intent(inout) :: c13_cs
-    type(carbonstate_type)     , intent(inout) :: c14_cs
-    type(nitrogenstate_type)   , intent(inout) :: ns
-    type(carbonflux_type)      , intent(inout) :: cf
-    type(carbonflux_type)      , intent(inout) :: c13_cf
-    type(carbonflux_type)      , intent(inout) :: c14_cf
-    type(nitrogenflux_type)    , intent(inout) :: nf
-
-    type(phosphorusstate_type) , intent(in)    :: ps
-    type(phosphorusflux_type)  , intent(inout) :: pf
 
     !
     ! !LOCAL VARIABLES:

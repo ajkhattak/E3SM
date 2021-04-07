@@ -17,8 +17,6 @@ module BalanceCheckMod
   use EnergyFluxType     , only : energyflux_type
   use SolarAbsorbedType  , only : solarabs_type
   use SoilHydrologyType  , only : soilhydrology_type  
-  use WaterstateType     , only : waterstate_type
-  use WaterfluxType      , only : waterflux_type
   use GridcellType       , only : grc_pp
   use GridcellDataType   , only : grc_ef, grc_wf, grc_ws
   use TopounitDataType   , only : top_af ! atmospheric flux variables  
@@ -45,7 +43,7 @@ contains
   subroutine BeginColWaterBalance(bounds, &
        num_nolakec, filter_nolakec, num_lakec, filter_lakec, &
        num_hydrologyc, filter_hydrologyc, &
-       soilhydrology_vars, waterstate_vars)
+       soilhydrology_vars)
     !
     ! !DESCRIPTION:
     ! Initialize column-level water balance at beginning of time step
@@ -66,7 +64,6 @@ contains
     integer                   , intent(in)    :: num_hydrologyc       ! number of column soil points in column filter
     integer                   , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
     type(soilhydrology_type)  , intent(inout) :: soilhydrology_vars
-    type(waterstate_type)     , intent(inout) :: waterstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c, p, f, j, fc                  ! indices
@@ -146,7 +143,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine ColWaterBalanceCheck( bounds, num_do_smb_c, filter_do_smb_c, &
-        atm2lnd_vars, glc2lnd_vars, solarabs_vars, waterflux_vars, waterstate_vars, &
+        atm2lnd_vars, glc2lnd_vars, solarabs_vars, &
         energyflux_vars, canopystate_vars)
      !
      ! !DESCRIPTION:
@@ -183,8 +180,6 @@ contains
      type(atm2lnd_type)    , intent(in)    :: atm2lnd_vars
      type(glc2lnd_type)    , intent(in)    :: glc2lnd_vars
      type(solarabs_type)   , intent(in)    :: solarabs_vars
-     type(waterflux_type)  , intent(inout) :: waterflux_vars
-     type(waterstate_type) , intent(inout) :: waterstate_vars
      type(energyflux_type) , intent(inout) :: energyflux_vars
      type(canopystate_type), intent(inout) :: canopystate_vars
      !
@@ -713,7 +708,7 @@ contains
   subroutine BeginGridWaterBalance(bounds, &
        num_nolakec, filter_nolakec, num_lakec, filter_lakec, &
        num_hydrologyc, filter_hydrologyc, &
-       soilhydrology_vars, waterstate_vars)
+       soilhydrology_vars)
     !
     ! !DESCRIPTION:
     ! Initialize column-level water balance at beginning of time step
@@ -733,7 +728,6 @@ contains
     integer                   , intent(in)    :: num_hydrologyc       ! number of column soil points in column filter
     integer                   , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
     type(soilhydrology_type)  , intent(inout) :: soilhydrology_vars
-    type(waterstate_type)     , intent(inout) :: waterstate_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c, p, f, j, fc,g                  ! indices
@@ -852,8 +846,8 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine GridBalanceCheck( bounds, num_do_smb_c, filter_do_smb_c, &
-        atm2lnd_vars, glc2lnd_vars, solarabs_vars, waterflux_vars, &
-        waterstate_vars, energyflux_vars, canopystate_vars, soilhydrology_vars)
+        atm2lnd_vars, glc2lnd_vars, solarabs_vars, &
+        energyflux_vars, canopystate_vars, soilhydrology_vars)
      !
      ! !DESCRIPTION:
      !
@@ -875,8 +869,6 @@ contains
      type(atm2lnd_type)    , intent(in)    :: atm2lnd_vars
      type(glc2lnd_type)    , intent(in)    :: glc2lnd_vars
      type(solarabs_type)   , intent(in)    :: solarabs_vars
-     type(waterflux_type)  , intent(inout) :: waterflux_vars
-     type(waterstate_type) , intent(inout) :: waterstate_vars
      type(energyflux_type) , intent(inout) :: energyflux_vars
      type(canopystate_type), intent(inout) :: canopystate_vars
      type(soilhydrology_type), intent(inout) :: soilhydrology_vars

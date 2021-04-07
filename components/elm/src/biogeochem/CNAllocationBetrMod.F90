@@ -15,13 +15,6 @@ module CNAllocationBeTRMod
   use decompMod           , only : bounds_type
   use subgridAveMod       , only : p2c
   use CanopyStateType     , only : canopystate_type
-  use CNCarbonFluxType    , only : carbonflux_type
-  use CNCarbonStateType   , only : carbonstate_type
-  use CNNitrogenFluxType  , only : nitrogenflux_type
-  use CNNitrogenStateType , only : nitrogenstate_type
-  !!! add phosphorus
-  use PhosphorusFluxType  , only : phosphorusflux_type
-  use PhosphorusStateType , only : phosphorusstate_type
   use CNStateType         , only : cnstate_type
   use PhotosynthesisType  , only : photosyns_type
   use CropType            , only : crop_type
@@ -36,7 +29,6 @@ module CNAllocationBeTRMod
   ! bgc interface & pflotran module switches
   use elm_varctl          , only : nu_com
   use SoilStatetype       , only : soilstate_type
-  use WaterStateType      , only : waterstate_type
   use PlantMicKineticsMod , only : PlantMicKinetics_type
   use AllocationMod       , only : AllocParamsInst
   !
@@ -191,9 +183,7 @@ contains
 !!-------------------------------------------------------------------------------------------------
   subroutine SetPlantMicNPDemand(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
        photosyns_vars, crop_vars, canopystate_vars, cnstate_vars,             &
-       carbonstate_vars, carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars,  &
-       nitrogenstate_vars, nitrogenflux_vars,&
-       phosphorusstate_vars,phosphorusflux_vars, PlantMicKinetics_vars)
+       PlantMicKinetics_vars)
   implicit none
 
     !
@@ -207,40 +197,22 @@ contains
     type(crop_type)          , intent(in)    :: crop_vars
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c13_carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c14_carbonflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     type(PlantMicKinetics_type)      , intent(inout) :: PlantMicKinetics_vars
 
    !calculate the plant nutrient demand
    call Allocation1_PlantNPDemand(bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       photosyns_vars, crop_vars, canopystate_vars, cnstate_vars,             &
-       carbonstate_vars, carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars,  &
-       nitrogenstate_vars, nitrogenflux_vars,&
-       phosphorusstate_vars,phosphorusflux_vars)
+       photosyns_vars, crop_vars, canopystate_vars, cnstate_vars)
 
    !extract the kinetic parameters
    call calc_plantN_kineticpar(bounds, num_soilc, filter_soilc               , &
                             num_soilp, filter_soilp                         , &
                             cnstate_vars                                    , &
-                            carbonstate_vars                                , &
-                            nitrogenstate_vars                              , &
-                            phosphorusstate_vars                            , &
-                            carbonflux_vars                                 , &
                             PlantMicKinetics_vars                             )
 
   end subroutine SetPlantMicNPDemand
 !!-------------------------------------------------------------------------------------------------
   subroutine Allocation1_PlantNPDemand (bounds, num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       photosyns_vars, crop_vars, canopystate_vars, cnstate_vars,             &
-       carbonstate_vars, carbonflux_vars, c13_carbonflux_vars, c14_carbonflux_vars,  &
-       nitrogenstate_vars, nitrogenflux_vars,&
-       phosphorusstate_vars,phosphorusflux_vars)
+       photosyns_vars, crop_vars, canopystate_vars, cnstate_vars)
     !! PHASE-1 of CNAllocation: loop over patches to assess the total plant N demand and P demand
     ! !USES:
     use shr_sys_mod      , only: shr_sys_flush
@@ -264,14 +236,6 @@ contains
     type(crop_type)          , intent(in)    :: crop_vars
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c13_carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c14_carbonflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
 
@@ -548,9 +512,6 @@ contains
          p_allometry                  => cnstate_vars%p_allometry_patch                        , & ! Output: [real(r8) (:)   ]  P allocation index (DIM)
          tempmax_retransp             => cnstate_vars%tempmax_retransp_patch                   , & ! Output: [real(r8) (:)   ]  temporary annual max of retranslocated P pool (gP/m2)
          annmax_retransp              => cnstate_vars%annmax_retransp_patch                    , & ! Output: [real(r8) (:)   ]  annual max of retranslocated P pool
-
-         c13cf                        => c13_carbonflux_vars                                   , &
-         c14cf                        => c14_carbonflux_vars                                   , &
 
          froot_prof                   => cnstate_vars%froot_prof_patch                         , & ! fine root vertical profile Zeng, X. 2001. Global vegetation root distribution for land modeling. J. Hydrometeor. 2:525-530
          fpg_nh4_vr                   => cnstate_vars%fpg_nh4_vr_col                           , &
@@ -932,10 +893,6 @@ contains
   subroutine calc_plantN_kineticpar(bounds, num_soilc, filter_soilc         , &
                             num_soilp, filter_soilp                         , &
                             cnstate_vars                                    , &
-                            carbonstate_vars                                , &
-                            nitrogenstate_vars                              , &
-                            phosphorusstate_vars                            , &
-                            carbonflux_vars                                 , &
                             PlantMicKinetics_vars                             )
   !
   !DESCRIPTION
@@ -949,10 +906,6 @@ contains
   integer, intent(in) :: num_soilp
   integer, intent(in) :: filter_soilp(:)
   type(cnstate_type), intent(in) :: cnstate_vars
-  type(carbonstate_type), intent(in) :: carbonstate_vars
-  type(nitrogenstate_type), intent(in) :: nitrogenstate_vars
-  type(phosphorusstate_type), intent(in):: phosphorusstate_vars
-  type(carbonflux_type), intent(in) :: carbonflux_vars
   type(PlantMicKinetics_type), intent(inout) :: PlantMicKinetics_vars
 
   real(r8) :: leaf_totc
@@ -1094,10 +1047,8 @@ contains
   subroutine Allocation3_PlantCNPAlloc (bounds            , &
         num_soilc, filter_soilc, num_soilp, filter_soilp    , &
         canopystate_vars                                    , &
-        cnstate_vars, carbonstate_vars, carbonflux_vars     , &
-        c13_carbonflux_vars, c14_carbonflux_vars            , &
-        nitrogenstate_vars, nitrogenflux_vars               , &
-        phosphorusstate_vars, phosphorusflux_vars, crop_vars)
+        cnstate_vars                                        , &
+        crop_vars)
     !! PHASE-3 of CNAllocation: start new pft loop to distribute the available N/P between the
     ! competing patches on the basis of relative demand, and allocate C/N/P to new growth and storage
 
@@ -1105,14 +1056,10 @@ contains
     use shr_sys_mod      , only: shr_sys_flush
     use elm_varctl       , only: iulog,cnallocate_carbon_only,cnallocate_carbonnitrogen_only,&
                                  cnallocate_carbonphosphorus_only
-!    use pftvarcon        , only: npcropmin, declfact, bfact, aleaff, arootf, astemf
-!    use pftvarcon        , only: arooti, fleafi, allconsl, allconss, grperc, grpnow, nsoybean
     use pftvarcon        , only: noveg
     use pftvarcon        , only:  npcropmin, grperc, grpnow
     use elm_varpar       , only:  nlevdecomp !!nlevsoi,
     use elm_varcon       , only: nitrif_n2o_loss_frac, secspday
-!    use landunit_varcon  , only: istsoil, istcrop
-!    use clm_time_manager , only: get_step_size
     !
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds
@@ -1120,18 +1067,9 @@ contains
     integer                  , intent(in)    :: filter_soilc(:)  ! filter for soil columns
     integer                  , intent(in)    :: num_soilp        ! number of soil patches in filter
     integer                  , intent(in)    :: filter_soilp(:)  ! filter for soil patches
-!    type(photosyns_type)     , intent(in)    :: photosyns_vars
-    type(crop_type)          , intent(inout)    :: crop_vars
+    type(crop_type)          , intent(inout) :: crop_vars
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c13_carbonflux_vars
-    type(carbonflux_type)    , intent(inout) :: c14_carbonflux_vars
-    type(nitrogenstate_type) , intent(inout) :: nitrogenstate_vars
-    type(nitrogenflux_type)  , intent(inout) :: nitrogenflux_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     !
@@ -1318,9 +1256,7 @@ contains
          allocation_leaf              => veg_cf%allocation_leaf                 , &
          allocation_stem              => veg_cf%allocation_stem                 , &
          allocation_froot             => veg_cf%allocation_froot                , &
-         xsmrpool_turnover            => veg_cf%xsmrpool_turnover               , &
-         c13cf => c13_carbonflux_vars, &
-         c14cf => c14_carbonflux_vars  &
+         xsmrpool_turnover            => veg_cf%xsmrpool_turnover                 &
          )
 
 !

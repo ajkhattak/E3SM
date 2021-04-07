@@ -14,9 +14,6 @@ module LakeFluxesMod
   use FrictionVelocityType , only : frictionvel_type
   use LakeStateType        , only : lakestate_type
   use SolarAbsorbedType    , only : solarabs_type
-  use TemperatureType      , only : temperature_type
-  use WaterfluxType        , only : waterflux_type
-  use WaterstateType       , only : waterstate_type
   use GridcellType         , only : grc_pp   
   use TopounitDataType     , only : top_as, top_af ! atmospheric state and flux variables  
   use ColumnType           , only : col_pp
@@ -37,8 +34,8 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine LakeFluxes(bounds, num_lakec, filter_lakec, num_lakep, filter_lakep, &
-       atm2lnd_vars, solarabs_vars, frictionvel_vars, temperature_vars, &
-       energyflux_vars, waterstate_vars, waterflux_vars, lakestate_vars) 
+       atm2lnd_vars, solarabs_vars, frictionvel_vars, &
+       energyflux_vars, lakestate_vars)
     !
     ! !DESCRIPTION:
     ! Calculates lake temperatures and surface fluxes.
@@ -67,9 +64,6 @@ contains
     type(solarabs_type)    , intent(inout) :: solarabs_vars
     type(frictionvel_type) , intent(inout) :: frictionvel_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
-    type(waterflux_type)   , intent(inout) :: waterflux_vars
-    type(temperature_type) , intent(inout) :: temperature_vars
     type(lakestate_type)   , intent(inout) :: lakestate_vars
     !
     ! !LOCAL VARIABLES:

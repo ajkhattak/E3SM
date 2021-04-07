@@ -21,8 +21,6 @@ module SurfaceAlbedoMod
   use CanopyStateType   , only : canopystate_type
   use LakeStateType     , only : lakestate_type
   use SurfaceAlbedoType , only : surfalb_type
-  use TemperatureType   , only : temperature_type
-  use WaterstateType    , only : waterstate_type
   use GridcellType      , only : grc_pp                
   use LandunitType      , only : lun_pp                
   use ColumnType        , only : col_pp
@@ -171,8 +169,8 @@ contains
         num_urbanc   , filter_urbanc,  &
         num_urbanp   , filter_urbanp,  &
         nextsw_cday  , declinp1,       &
-        aerosol_vars, canopystate_vars, waterstate_vars, &
-        lakestate_vars, temperature_vars, surfalb_vars, &
+        aerosol_vars, canopystate_vars,&
+        lakestate_vars, surfalb_vars,  &
         alm_fates)
     !
     ! !DESCRIPTION:
@@ -221,9 +219,7 @@ contains
     real(r8), intent(in) :: declinp1           ! declination angle (radians) for next time step
      type(aerosol_type)     , intent(in)    :: aerosol_vars
      type(canopystate_type) , intent(in)    :: canopystate_vars
-     type(waterstate_type)  , intent(in)    :: waterstate_vars
      type(lakestate_type)   , intent(in)    :: lakestate_vars
-     type(temperature_type) , intent(in)    :: temperature_vars
      type(surfalb_type)     , intent(inout) :: surfalb_vars
      type(hlm_fates_interface_type), intent(inout)  :: alm_fates
     !
@@ -423,7 +419,7 @@ contains
          coszen_col(bounds%begc:bounds%endc), &
          albsnd(bounds%begc:bounds%endc, :), &
             albsni(bounds%begc:bounds%endc, :), &  
-            lakestate_vars, temperature_vars, waterstate_vars, surfalb_vars)
+            lakestate_vars, surfalb_vars)
 
     ! set variables to pass to SNICAR.
 
@@ -496,8 +492,7 @@ contains
                                 mss_cnc_aer_in_frc_bc(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsnd_bc(bounds%begc:bounds%endc, :), &
-                                foo_snw(bounds%begc:bounds%endc, :, :), &
-                                waterstate_vars)
+                                foo_snw(bounds%begc:bounds%endc, :, :))
           else
               call SNICAR_RT(flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,    &
                              coszen_col(bounds%begc:bounds%endc), &
@@ -508,8 +503,7 @@ contains
                              mss_cnc_aer_in_frc_bc(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsnd_bc(bounds%begc:bounds%endc, :), &
-                             foo_snw(bounds%begc:bounds%endc, :, :), &
-                             waterstate_vars)
+                             foo_snw(bounds%begc:bounds%endc, :, :))
           endif ! end if use_snicar_ad
 
           flg_slr = 2; ! diffuse
@@ -523,8 +517,7 @@ contains
                                 mss_cnc_aer_in_frc_bc(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsni_bc(bounds%begc:bounds%endc, :), &
-                                foo_snw(bounds%begc:bounds%endc, :, :), &
-                                waterstate_vars)
+                                foo_snw(bounds%begc:bounds%endc, :, :))
           else
               call SNICAR_RT(flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,    &
                              coszen_col(bounds%begc:bounds%endc), &
@@ -535,8 +528,7 @@ contains
                              mss_cnc_aer_in_frc_bc(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsni_bc(bounds%begc:bounds%endc, :), &
-                             foo_snw(bounds%begc:bounds%endc, :, :), &
-                             waterstate_vars)
+                             foo_snw(bounds%begc:bounds%endc, :, :))
           endif ! end if use_snicar_ad
 
        ! 2. OC input array:
@@ -561,8 +553,7 @@ contains
                                 mss_cnc_aer_in_frc_oc(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsnd_oc(bounds%begc:bounds%endc, :), &
-                                foo_snw(bounds%begc:bounds%endc, :, :), &
-                                waterstate_vars)
+                                foo_snw(bounds%begc:bounds%endc, :, :))
           else
               call SNICAR_RT(flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,    &
                              coszen_col(bounds%begc:bounds%endc), &
@@ -573,8 +564,7 @@ contains
                              mss_cnc_aer_in_frc_oc(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsnd_oc(bounds%begc:bounds%endc, :), &
-                             foo_snw(bounds%begc:bounds%endc, :, :), &
-                             waterstate_vars)
+                             foo_snw(bounds%begc:bounds%endc, :, :))
           endif ! end if use_snicar_ad
 
           flg_slr = 2; ! diffuse
@@ -588,8 +578,7 @@ contains
                                 mss_cnc_aer_in_frc_oc(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsni_oc(bounds%begc:bounds%endc, :), &
-                                foo_snw(bounds%begc:bounds%endc, :, :), &
-                                waterstate_vars)
+                                foo_snw(bounds%begc:bounds%endc, :, :))
           else
               call SNICAR_RT(flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,    &
                              coszen_col(bounds%begc:bounds%endc), &
@@ -600,8 +589,7 @@ contains
                              mss_cnc_aer_in_frc_oc(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsni_oc(bounds%begc:bounds%endc, :), &
-                             foo_snw(bounds%begc:bounds%endc, :, :), &
-                             waterstate_vars)
+                             foo_snw(bounds%begc:bounds%endc, :, :))
           endif ! end if use_snicar_ad
        endif
 
@@ -626,8 +614,7 @@ contains
                                 mss_cnc_aer_in_frc_dst(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsnd_dst(bounds%begc:bounds%endc, :), &
-                                foo_snw(bounds%begc:bounds%endc, :, :), &
-                                waterstate_vars)
+                                foo_snw(bounds%begc:bounds%endc, :, :))
           else
               call SNICAR_RT(flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,    &
                              coszen_col(bounds%begc:bounds%endc), &
@@ -638,8 +625,7 @@ contains
                              mss_cnc_aer_in_frc_dst(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsnd_dst(bounds%begc:bounds%endc, :), &
-                             foo_snw(bounds%begc:bounds%endc, :, :), &
-                             waterstate_vars)
+                             foo_snw(bounds%begc:bounds%endc, :, :))
           endif ! end if use_snicar_ad
 
           flg_slr = 2; ! diffuse
@@ -653,8 +639,7 @@ contains
                                 mss_cnc_aer_in_frc_dst(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsni_dst(bounds%begc:bounds%endc, :), &
-                                foo_snw(bounds%begc:bounds%endc, :, :), &
-                                waterstate_vars)
+                                foo_snw(bounds%begc:bounds%endc, :, :))
           else
               call SNICAR_RT(flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,    &
                              coszen_col(bounds%begc:bounds%endc), &
@@ -665,8 +650,7 @@ contains
                              mss_cnc_aer_in_frc_dst(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsni_dst(bounds%begc:bounds%endc, :), &
-                             foo_snw(bounds%begc:bounds%endc, :, :), &
-                             waterstate_vars)
+                             foo_snw(bounds%begc:bounds%endc, :, :))
           endif ! end if use_snicar_ad
 
 
@@ -683,8 +667,7 @@ contains
                                 mss_cnc_aer_in_frc_pur(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsnd_pur(bounds%begc:bounds%endc, :), &
-                                foo_snw(bounds%begc:bounds%endc, :, :), &
-                                waterstate_vars)
+                                foo_snw(bounds%begc:bounds%endc, :, :))
           else
               call SNICAR_RT(flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,    &
                              coszen_col(bounds%begc:bounds%endc), &
@@ -695,8 +678,7 @@ contains
                              mss_cnc_aer_in_frc_pur(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsnd_pur(bounds%begc:bounds%endc, :), &
-                             foo_snw(bounds%begc:bounds%endc, :, :), &
-                             waterstate_vars)
+                             foo_snw(bounds%begc:bounds%endc, :, :))
           endif ! end if use_snicar_ad
 
           flg_slr = 2; ! diffuse
@@ -710,8 +692,7 @@ contains
                                 mss_cnc_aer_in_frc_pur(bounds%begc:bounds%endc, :, :), &
                                 albsfc(bounds%begc:bounds%endc, :), &
                                 albsni_pur(bounds%begc:bounds%endc, :), &
-                                foo_snw(bounds%begc:bounds%endc, :, :), &
-                                waterstate_vars)
+                                foo_snw(bounds%begc:bounds%endc, :, :))
           else
               call SNICAR_RT(flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,    &
                              coszen_col(bounds%begc:bounds%endc), &
@@ -722,8 +703,7 @@ contains
                              mss_cnc_aer_in_frc_pur(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsni_pur(bounds%begc:bounds%endc, :), &
-                             foo_snw(bounds%begc:bounds%endc, :, :), &
-                             waterstate_vars)
+                             foo_snw(bounds%begc:bounds%endc, :, :))
           endif ! end if use_snicar_ad
     end if !end if use_snicar_frc
 
@@ -739,8 +719,7 @@ contains
                              mss_cnc_aer_in_fdb(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsnd(bounds%begc:bounds%endc, :), &
-                             flx_absd_snw(bounds%begc:bounds%endc, :, :), &
-                             waterstate_vars)
+                             flx_absd_snw(bounds%begc:bounds%endc, :, :))
        else
             call SNICAR_RT(flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,    &
                            coszen_col(bounds%begc:bounds%endc), &
@@ -751,8 +730,7 @@ contains
                            mss_cnc_aer_in_fdb(bounds%begc:bounds%endc, :, :), &
                            albsfc(bounds%begc:bounds%endc, :), &
                            albsnd(bounds%begc:bounds%endc, :), &
-                           flx_absd_snw(bounds%begc:bounds%endc, :, :), &
-                           waterstate_vars)
+                           flx_absd_snw(bounds%begc:bounds%endc, :, :))
        endif ! end if use_snicar_ad
 
        flg_slr = 2; ! diffuse
@@ -766,8 +744,7 @@ contains
                              mss_cnc_aer_in_fdb(bounds%begc:bounds%endc, :, :), &
                              albsfc(bounds%begc:bounds%endc, :), &
                              albsni(bounds%begc:bounds%endc, :), &
-                             flx_absi_snw(bounds%begc:bounds%endc, :, :), &
-                             waterstate_vars)
+                             flx_absi_snw(bounds%begc:bounds%endc, :, :))
        else
             call SNICAR_RT(flg_snw_ice, bounds, num_nourbanc, filter_nourbanc,    &
                            coszen_col(bounds%begc:bounds%endc), &
@@ -778,8 +755,7 @@ contains
                            mss_cnc_aer_in_fdb(bounds%begc:bounds%endc, :, :), &
                            albsfc(bounds%begc:bounds%endc, :), &
                            albsni(bounds%begc:bounds%endc, :), &
-                           flx_absi_snw(bounds%begc:bounds%endc, :, :), &
-                           waterstate_vars)
+                           flx_absi_snw(bounds%begc:bounds%endc, :, :))
        endif ! end if use_snicar_ad
 
     ! ground albedos and snow-fraction weighting of snow absorption factors
@@ -1071,7 +1047,7 @@ contains
                coszen_patch(bounds%begp:bounds%endp), &
                rho(bounds%begp:bounds%endp, :), &
                tau(bounds%begp:bounds%endp, :), &
-               canopystate_vars, temperature_vars, waterstate_vars, surfalb_vars)
+               canopystate_vars, surfalb_vars)
       
     endif	 
 
@@ -1103,7 +1079,7 @@ contains
    subroutine SoilAlbedo (bounds, &
         num_nourbanc, filter_nourbanc, &
         coszen, albsnd, albsni, &
-        lakestate_vars, temperature_vars, waterstate_vars, surfalb_vars)
+        lakestate_vars, surfalb_vars)
      !
      ! !DESCRIPTION:
      ! Determine ground surface albedo, accounting for snow
@@ -1121,8 +1097,6 @@ contains
      real(r8), intent(in) :: coszen( bounds%begc: )      ! cos solar zenith angle next time step [col]
      real(r8), intent(in) :: albsnd( bounds%begc: , 1: ) ! snow albedo (direct) [col, numrad]
      real(r8), intent(in) :: albsni( bounds%begc: , 1: ) ! snow albedo (diffuse) [col, numrad]
-     type(temperature_type) , intent(in)    :: temperature_vars
-     type(waterstate_type)  , intent(in)    :: waterstate_vars
      type(lakestate_type)   , intent(in)    :: lakestate_vars
      type(surfalb_type)     , intent(inout) :: surfalb_vars
      !
@@ -1234,7 +1208,7 @@ contains
    subroutine TwoStream (bounds, &
         filter_vegsol, num_vegsol, &
         coszen, rho, tau, &
-        canopystate_vars, temperature_vars, waterstate_vars, surfalb_vars)
+        canopystate_vars, surfalb_vars)
      !
      ! !DESCRIPTION:
      ! Two-stream fluxes for canopy radiative transfer
@@ -1260,8 +1234,6 @@ contains
      real(r8), intent(in)  :: rho( bounds%begp: , 1: ) ! leaf/stem refl weighted by fraction LAI and SAI [pft, numrad]
      real(r8), intent(in)  :: tau( bounds%begp: , 1: ) ! leaf/stem tran weighted by fraction LAI and SAI [pft, numrad]
      type(canopystate_type) , intent(in)    :: canopystate_vars
-     type(temperature_type) , intent(in)    :: temperature_vars
-     type(waterstate_type)  , intent(in)    :: waterstate_vars
      type(surfalb_type)     , intent(inout) :: surfalb_vars
      !
      ! !LOCAL VARIABLES:

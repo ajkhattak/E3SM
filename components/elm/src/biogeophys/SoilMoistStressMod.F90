@@ -219,7 +219,7 @@ contains
 
   !--------------------------------------------------------------------------------
   subroutine normalize_unfrozen_rootfr(bounds, ubj, fn, filterp, &
-       canopystate_vars, soilstate_vars, temperature_vars, rootfr_unf)
+       canopystate_vars, soilstate_vars, rootfr_unf)
     !
     ! !DESCRIPTIONS
     ! normalize root fraction for total unfrozen depth 
@@ -245,7 +245,6 @@ contains
     integer                , intent(in)    :: filterp(:)                                 !filter
     type(canopystate_type) , intent(in)    :: canopystate_vars
     type(soilstate_type)   , intent(in)    :: soilstate_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
     real(r8)               , intent(inout) :: rootfr_unf(bounds%begp:bounds%endp, 1:ubj) !normalized root fraction in unfrozen layers
     !
     ! !LOCAL VARIABLES:
@@ -314,7 +313,7 @@ contains
   !--------------------------------------------------------------------------------
   subroutine calc_root_moist_stress_clm45default(bounds, &
        nlevgrnd, fn, filterp, rootfr_unf, &
-       temperature_vars, soilstate_vars, energyflux_vars, waterstate_vars, &
+       soilstate_vars, energyflux_vars, &
        soil_water_retention_curve) 
     !
     ! DESCRIPTIONS
@@ -343,8 +342,6 @@ contains
     real(r8)               , intent(in)    :: rootfr_unf(bounds%begp: , 1: ) 
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
     class(soil_water_retention_curve_type), intent(in) :: soil_water_retention_curve
     !
     ! !LOCAL VARIABLES:
@@ -440,8 +437,8 @@ contains
 
   !--------------------------------------------------------------------------------
   subroutine calc_root_moist_stress(bounds, nlevgrnd, fn, filterp, &
-       canopystate_vars, energyflux_vars,  soilstate_vars, temperature_vars, &
-       waterstate_vars, soil_water_retention_curve)
+       canopystate_vars, energyflux_vars,  soilstate_vars, &
+       soil_water_retention_curve)
     !
     ! DESCRIPTIONS
     ! compute the root water stress using different approaches
@@ -453,9 +450,7 @@ contains
     use decompMod       , only : bounds_type
     use CanopyStateType , only : canopystate_type
     use EnergyFluxType  , only : energyflux_type
-    use TemperatureType , only : temperature_type
     use SoilStateType   , only : soilstate_type
-    use WaterSTateType  , only : waterstate_type
     use SoilWaterRetentionCurveMod, only : soil_water_retention_curve_type
     use abortutils      , only : endrun       
     !
@@ -468,8 +463,6 @@ contains
     type(canopystate_type) , intent(in)    :: canopystate_vars
     type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
-    type(temperature_type) , intent(in)    :: temperature_vars
-    type(waterstate_type)  , intent(inout) :: waterstate_vars
     class(soil_water_retention_curve_type), intent(in) :: soil_water_retention_curve
     !
     ! !LOCAL VARIABLES:
@@ -489,7 +482,6 @@ contains
          filterp = filterp,                 &
          canopystate_vars=canopystate_vars, &
          soilstate_vars=soilstate_vars,     &
-         temperature_vars=temperature_vars, & 
          rootfr_unf=rootfr_unf(bounds%begp:bounds%endp,1:nlevgrnd))
 
     !suppose h2osoi_liq, eff_porosity are already computed somewhere else
@@ -503,9 +495,7 @@ contains
             fn = fn,                                    &
             filterp = filterp,                          &
             energyflux_vars=energyflux_vars,            &
-            temperature_vars=temperature_vars,          &
             soilstate_vars=soilstate_vars,              &
-            waterstate_vars=waterstate_vars,            &
             rootfr_unf=rootfr_unf(bounds%begp:bounds%endp,1:nlevgrnd), &
             soil_water_retention_curve=soil_water_retention_curve)
 

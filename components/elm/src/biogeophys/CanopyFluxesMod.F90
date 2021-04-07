@@ -34,12 +34,8 @@ module CanopyFluxesMod
   use SolarAbsorbedType     , only : solarabs_type
   use SurfaceAlbedoType     , only : surfalb_type
   use TemperatureType       , only : temperature_type
-  use WaterfluxType         , only : waterflux_type
-  use WaterstateType        , only : waterstate_type
   use CH4Mod                , only : ch4_type
   use PhotosynthesisType    , only : photosyns_type
-  use PhosphorusStateType   , only : phosphorusstate_type
-  use CNNitrogenStateType   , only : nitrogenstate_type
   use ELMFatesInterfaceMod  , only : hlm_fates_interface_type
   use GridcellType          , only : grc_pp 
   use TopounitDataType      , only : top_as, top_af  
@@ -70,8 +66,8 @@ contains
   subroutine CanopyFluxes(bounds,  num_nolakeurbanp, filter_nolakeurbanp, &
        atm2lnd_vars, canopystate_vars, cnstate_vars, energyflux_vars, &
        frictionvel_vars, soilstate_vars, solarabs_vars, surfalb_vars, &
-       temperature_vars, waterflux_vars, waterstate_vars, ch4_vars, photosyns_vars, &
-       soil_water_retention_curve, nitrogenstate_vars, phosphorusstate_vars, &
+       ch4_vars, photosyns_vars, &
+       soil_water_retention_curve, &
        alm_fates) 
     !
     ! !DESCRIPTION:
@@ -128,14 +124,9 @@ contains
     type(solarabs_type)       , intent(in)    :: solarabs_vars
     type(surfalb_type)        , intent(in)    :: surfalb_vars
     type(soilstate_type)      , intent(inout) :: soilstate_vars
-    type(temperature_type)    , intent(inout) :: temperature_vars
-    type(waterstate_type)     , intent(inout) :: waterstate_vars
-    type(waterflux_type)      , intent(inout) :: waterflux_vars
     type(ch4_type)            , intent(inout) :: ch4_vars
     type(photosyns_type)      , intent(inout) :: photosyns_vars
     class(soil_water_retention_curve_type), intent(in) :: soil_water_retention_curve
-    type(nitrogenstate_type)  , intent(inout) :: nitrogenstate_vars
-    type(phosphorusstate_type), intent(inout) :: phosphorusstate_vars
     type(hlm_fates_interface_type) , intent(inout) :: alm_fates
     !
     ! !LOCAL VARIABLES:
@@ -575,7 +566,7 @@ contains
       
       if(use_fates)then
          call alm_fates%wrap_btran(bounds, fn, filterc_tmp(1:fn), soilstate_vars, &
-               temperature_vars, energyflux_vars, soil_water_retention_curve)
+               energyflux_vars, soil_water_retention_curve)
          
       else
          !calculate root moisture stress
@@ -586,8 +577,6 @@ contains
               canopystate_vars=canopystate_vars, &
               energyflux_vars=energyflux_vars,   &
               soilstate_vars=soilstate_vars,     &
-              temperature_vars=temperature_vars, &
-              waterstate_vars=waterstate_vars,   &
               soil_water_retention_curve=soil_water_retention_curve)
          
       end if !use_fates
@@ -863,7 +852,7 @@ contains
             call alm_fates%wrap_photosynthesis(bounds, fn, filterp(1:fn), &
                   svpts(begp:endp), eah(begp:endp), o2(begp:endp), &
                   co2(begp:endp), rb(begp:endp), dayl_factor(begp:endp), &
-                  atm2lnd_vars, temperature_vars, canopystate_vars, photosyns_vars)
+                  atm2lnd_vars, canopystate_vars, photosyns_vars)
 
          else ! not use_fates
 
@@ -872,14 +861,13 @@ contains
                     svpts(begp:endp), eah(begp:endp), o2(begp:endp), co2(begp:endp), rb(begp:endp), bsun(begp:endp), &
                     bsha(begp:endp), btran(begp:endp), dayl_factor(begp:endp), &
                     qsatl(begp:endp), qaf(begp:endp),     &
-                    atm2lnd_vars, temperature_vars, soilstate_vars, waterstate_vars, surfalb_vars, solarabs_vars,    &
-                    canopystate_vars, photosyns_vars, waterflux_vars, &
-                    nitrogenstate_vars, phosphorusstate_vars)
+                    atm2lnd_vars, soilstate_vars, surfalb_vars, solarabs_vars,    &
+                    canopystate_vars, photosyns_vars)
             else
                call Photosynthesis (bounds, fn, filterp, &
                  svpts(begp:endp), eah(begp:endp), o2(begp:endp), co2(begp:endp), rb(begp:endp), btran(begp:endp), &
-                 dayl_factor(begp:endp), atm2lnd_vars, temperature_vars, surfalb_vars, solarabs_vars, &
-                 canopystate_vars, photosyns_vars, nitrogenstate_vars, phosphorusstate_vars, phase='sun')
+                 dayl_factor(begp:endp), atm2lnd_vars, surfalb_vars, solarabs_vars, &
+                 canopystate_vars, photosyns_vars, phase='sun')
             end if
 
             if ( use_c13 ) then
@@ -898,8 +886,8 @@ contains
             if ( .not. use_hydrstress ) then
               call Photosynthesis (bounds, fn, filterp, &
                  svpts(begp:endp), eah(begp:endp), o2(begp:endp), co2(begp:endp), rb(begp:endp), btran(begp:endp), &
-                 dayl_factor(begp:endp), atm2lnd_vars, temperature_vars, surfalb_vars, solarabs_vars, &
-                 canopystate_vars, photosyns_vars, nitrogenstate_vars, phosphorusstate_vars, phase='sha')
+                 dayl_factor(begp:endp), atm2lnd_vars, surfalb_vars, solarabs_vars, &
+                 canopystate_vars, photosyns_vars, phase='sha')
             end if
 
             if ( use_c13 ) then

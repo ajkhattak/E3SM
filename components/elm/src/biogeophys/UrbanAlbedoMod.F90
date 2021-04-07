@@ -16,7 +16,6 @@ module UrbanAlbedoMod
   use elm_varctl        , only : iulog
   use abortutils        , only : endrun  
   use UrbanParamsType   , only : urbanparams_type
-  use WaterstateType    , only : waterstate_type
   use SolarAbsorbedType , only : solarabs_type
   use SurfaceAlbedoType , only : surfalb_type
   use LandunitType      , only : lun_pp                
@@ -44,7 +43,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine UrbanAlbedo (bounds, num_urbanl, filter_urbanl, &
        num_urbanc, filter_urbanc, num_urbanp, filter_urbanp, &
-       waterstate_vars, urbanparams_vars, solarabs_vars, surfalb_vars) 
+       urbanparams_vars, solarabs_vars, surfalb_vars)
     !
     ! !DESCRIPTION: 
     ! Determine urban landunit component albedos
@@ -68,7 +67,6 @@ contains
     integer                , intent(in)    :: filter_urbanc(:) ! urban column filter
     integer                , intent(in)    :: num_urbanp       ! number of urban patches in clump
     integer                , intent(in)    :: filter_urbanp(:) ! urban pft filter
-    type(waterstate_type)  , intent(in)    :: waterstate_vars
     type(urbanparams_type) , intent(inout) :: urbanparams_vars
     type(solarabs_type)    , intent(inout) :: solarabs_vars
     type(surfalb_type)     , intent(inout) :: surfalb_vars
@@ -322,8 +320,7 @@ contains
                  ic, &
                  albsnd_roof(begl:endl, :), &
                  albsnd_improad(begl:endl, :), &
-                 albsnd_perroad(begl:endl, :), &
-                 waterstate_vars)
+                 albsnd_perroad(begl:endl, :))
 
             ic = 1
             call SnowAlbedo(bounds, &
@@ -332,8 +329,7 @@ contains
                  ic, &
                  albsni_roof(begl:endl, :), &
                  albsni_improad(begl:endl, :), &
-                 albsni_perroad(begl:endl, :), &
-                 waterstate_vars)
+                 albsni_perroad(begl:endl, :))
          end if
 
          ! Combine snow-free and snow albedos
@@ -442,8 +438,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine SnowAlbedo (bounds          , &
        num_urbanc, filter_urbanc, coszen, ind , &
-       albsn_roof, albsn_improad, albsn_perroad, &
-       waterstate_vars)
+       albsn_roof, albsn_improad, albsn_perroad)
     !
     ! !DESCRIPTION:
     ! Determine urban snow albedos
@@ -460,7 +455,6 @@ contains
     real(r8), intent(out):: albsn_roof    ( bounds%begl: , 1: ) ! roof snow albedo by waveband [landunit, numrad]
     real(r8), intent(out):: albsn_improad ( bounds%begl: , 1: ) ! impervious road snow albedo by waveband [landunit, numrad]
     real(r8), intent(out):: albsn_perroad ( bounds%begl: , 1: ) ! pervious road snow albedo by waveband [landunit, numrad]
-    type(waterstate_type), intent(in) :: waterstate_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: fc,c,l              ! indices

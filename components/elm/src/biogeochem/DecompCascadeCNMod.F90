@@ -18,10 +18,8 @@ module DecompCascadeCNMod
   use SharedParamsMod      , only : ParamsShareInst, anoxia_wtsat, nlev_soildecomp_standard 
   use CNDecompCascadeConType , only : decomp_cascade_con
   use CNStateType            , only : cnstate_type
-  use CNCarbonFluxType       , only : carbonflux_type
   use SoilStateType          , only : soilstate_type
   use CanopyStateType        , only : canopystate_type
-  use TemperatureType        , only : temperature_type 
   use ch4Mod                 , only : ch4_type
   use ColumnType             , only : col_pp   
   use ColumnDataType         , only : col_es, col_cf  
@@ -590,7 +588,7 @@ contains
    !-----------------------------------------------------------------------
    subroutine decomp_rate_constants_cn(bounds, &
         num_soilc, filter_soilc, &
-        canopystate_vars, soilstate_vars, temperature_vars, ch4_vars, carbonflux_vars, cnstate_vars)
+        canopystate_vars, soilstate_vars, ch4_vars, cnstate_vars)
      !
      ! !DESCRIPTION:
      ! calculate rate constants and decomposition pathways for the BGC model 
@@ -608,9 +606,7 @@ contains
      integer                , intent(in)    :: filter_soilc(:) ! filter for soil columns
      type(canopystate_type) , intent(in)    :: canopystate_vars
      type(soilstate_type)   , intent(in)    :: soilstate_vars
-     type(temperature_type) , intent(in)    :: temperature_vars 
      type(ch4_type)         , intent(in)    :: ch4_vars
-     type(carbonflux_type)  , intent(inout) :: carbonflux_vars
      type(cnstate_type)     , intent(inout) :: cnstate_vars
 
      !

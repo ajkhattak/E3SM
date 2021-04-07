@@ -17,11 +17,7 @@ module MaintenanceRespMod
   use VegetationPropertiesType      , only : veg_vp
   use SoilStateType       , only : soilstate_type
   use CanopyStateType     , only : canopystate_type
-  use TemperatureType     , only : temperature_type
   use PhotosynthesisType  , only : photosyns_type
-  use CNCarbonFluxType    , only : carbonflux_type
-  use CNCarbonStateType   , only : carbonstate_type
-  use CNNitrogenStateType , only : nitrogenstate_type
   use ColumnDataType      , only : col_es
   use VegetationType      , only : veg_pp                
   use VegetationDataType  , only : veg_es, veg_cs, veg_cf, veg_ns
@@ -76,8 +72,7 @@ contains
   !
   subroutine MaintenanceResp(bounds, &
        num_soilc, filter_soilc, num_soilp, filter_soilp, &
-       canopystate_vars, soilstate_vars, temperature_vars, photosyns_vars, &
-       carbonflux_vars, carbonstate_vars, nitrogenstate_vars)
+       canopystate_vars, soilstate_vars, photosyns_vars)
     !
     ! !DESCRIPTION:
     !
@@ -91,11 +86,7 @@ contains
     integer                  , intent(in)    :: filter_soilp(:) ! patch filter for soil points
     type(canopystate_type)   , intent(in)    :: canopystate_vars
     type(soilstate_type)     , intent(in)    :: soilstate_vars
-    type(temperature_type)   , intent(in)    :: temperature_vars
     type(photosyns_type)     , intent(in)    :: photosyns_vars
-    type(carbonflux_type)    , intent(inout) :: carbonflux_vars
-    type(carbonstate_type)   , intent(in)    :: carbonstate_vars
-    type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars
     !
     ! !LOCAL VARIABLES:
     integer :: c,p,j ! indices

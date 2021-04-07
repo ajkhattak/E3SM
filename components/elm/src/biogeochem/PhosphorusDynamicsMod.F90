@@ -14,16 +14,10 @@ module PhosphorusDynamicsMod
   use elm_varcon          , only : dzsoi_decomp, zisoi
   use subgridAveMod       , only : p2c
   use atm2lndType         , only : atm2lnd_type
-  use CNCarbonFluxType    , only : carbonflux_type  
   use elm_varpar          , only : nlevdecomp
   use elm_varctl          , only : use_vertsoilc
-  use PhosphorusFluxType  , only : phosphorusflux_type
-  use PhosphorusStateType , only : phosphorusstate_type
-  use CNNitrogenStateType , only : nitrogenstate_type 
 
   use CNStateType         , only : cnstate_type
-  use WaterStateType      , only : waterstate_type
-  use WaterFluxType       , only : waterflux_type
   use CropType            , only : crop_type
   use ColumnType          , only : col_pp
   use ColumnDataType      , only : col_ws, col_wf, nfix_timeconst, col_ps, col_pf
@@ -54,7 +48,7 @@ module PhosphorusDynamicsMod
 contains
   !-----------------------------------------------------------------------
   subroutine PhosphorusDeposition( bounds, &
-       atm2lnd_vars, phosphorusflux_vars )
+       atm2lnd_vars)
     ! BY X. SHI
     ! !DESCRIPTION:
     ! On the radiation time step, update the phosphorus deposition rate
@@ -66,7 +60,6 @@ contains
     ! !ARGUMENTS:
     type(bounds_type)        , intent(in)    :: bounds
     type(atm2lnd_type)       , intent(in)    :: atm2lnd_vars
-    type(phosphorusflux_type) , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: g,c                    ! indices
@@ -89,7 +82,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine PhosphorusWeathering(num_soilc, filter_soilc, &
-       cnstate_vars,phosphorusstate_vars,phosphorusflux_vars)
+       cnstate_vars)
     !
     !
     ! !USES:
@@ -102,8 +95,6 @@ contains
     integer                 , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                 , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(phosphorusstate_type), intent(in) ::  phosphorusstate_vars
-    type(phosphorusflux_type) , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c,fc                  ! indices
@@ -156,7 +147,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine PhosphorusAdsportion(num_soilc, filter_soilc, &
-       cnstate_vars,phosphorusstate_vars,phosphorusflux_vars)
+       cnstate_vars)
     !
     !
     ! !USES:
@@ -169,8 +160,6 @@ contains
     integer                 , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                 , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(phosphorusstate_type), intent(in) ::  phosphorusstate_vars
-    type(phosphorusflux_type) , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c,fc                  ! indices
@@ -225,7 +214,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine PhosphorusDesoprtion(num_soilc, filter_soilc, &
-       cnstate_vars,phosphorusstate_vars,phosphorusflux_vars)
+       cnstate_vars)
     !
     !
     ! !USES:
@@ -238,8 +227,6 @@ contains
     integer                 , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                 , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(phosphorusstate_type), intent(in) ::  phosphorusstate_vars
-    type(phosphorusflux_type) , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c,fc                  ! indices
@@ -294,7 +281,7 @@ contains
 
   !-----------------------------------------------------------------------
   subroutine PhosphorusOcclusion(num_soilc, filter_soilc, &
-       cnstate_vars,phosphorusstate_vars,phosphorusflux_vars)
+       cnstate_vars)
     !
     !
     ! !USES:
@@ -307,8 +294,6 @@ contains
     integer                 , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                 , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(cnstate_type)       , intent(in)    :: cnstate_vars
-    type(phosphorusstate_type), intent(in) ::  phosphorusstate_vars
-    type(phosphorusflux_type) , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: c,fc                  ! indices
@@ -364,8 +349,7 @@ contains
 
 
   !-----------------------------------------------------------------------
-  subroutine PhosphorusLeaching(bounds, num_soilc, filter_soilc, &
-       waterstate_vars, waterflux_vars, phosphorusstate_vars, phosphorusflux_vars)
+  subroutine PhosphorusLeaching(bounds, num_soilc, filter_soilc)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update the phosphorus leaching rate
@@ -379,10 +363,6 @@ contains
     type(bounds_type)        , intent(in)    :: bounds
     integer                  , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
-    type(waterstate_type)    , intent(in)    :: waterstate_vars
-    type(waterflux_type)     , intent(in)    :: waterflux_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,fc                                 ! indices
@@ -484,7 +464,7 @@ contains
 
 
   subroutine PhosphorusBiochemMin(bounds,num_soilc, filter_soilc, &
-       cnstate_vars, phosphorusstate_vars, phosphorusflux_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! On the radiation time step, update the phosphorus leaching rate
@@ -503,8 +483,6 @@ contains
     integer                  , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                  , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(cnstate_type)         , intent(in)    :: cnstate_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     integer  :: c,fc,j,l
     real(r8) :: rr
@@ -597,7 +575,7 @@ contains
   !-----------------------------------------------------------------------
   
   subroutine PhosphorusBiochemMin_balance(bounds,num_soilc, filter_soilc, &
-       cnstate_vars,nitrogenstate_vars, phosphorusstate_vars, phosphorusflux_vars)
+       cnstate_vars)
     !
     ! !DESCRIPTION:
     ! created, Aug 2015 by Q. Zhu
@@ -615,9 +593,6 @@ contains
     integer                    , intent(in)    :: num_soilc       ! number of soil columns in filter
     integer                    , intent(in)    :: filter_soilc(:) ! filter for soil columns
     type(cnstate_type)         , intent(in)    :: cnstate_vars
-    type(nitrogenstate_type) , intent(in)    :: nitrogenstate_vars
-    type(phosphorusstate_type) , intent(inout) :: phosphorusstate_vars
-    type(phosphorusflux_type)  , intent(inout) :: phosphorusflux_vars
     !
     integer  :: c,fc,p,j,l,s
     integer  :: ci             ! clump index of the bounds
