@@ -14,7 +14,6 @@ module SoilFluxesMod
   use elm_varpar	, only : nlevsno, nlevgrnd, nlevurb, max_patch_per_col
   use atm2lndType	, only : atm2lnd_type
   use CanopyStateType   , only : canopystate_type
-  use EnergyFluxType    , only : energyflux_type
   use SolarAbsorbedType , only : solarabs_type
   use TemperatureType   , only : temperature_type
   use WaterstateType    , only : waterstate_type
@@ -39,8 +38,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine SoilFluxes (bounds, num_urbanl, filter_urbanl, &
        num_nolakec, filter_nolakec, num_nolakep, filter_nolakep, &
-       atm2lnd_vars, solarabs_vars, canopystate_vars, &
-       energyflux_vars)
+       atm2lnd_vars, solarabs_vars, canopystate_vars)
     !
     ! !DESCRIPTION:
     ! Update surface fluxes based on the new ground temperature
@@ -63,7 +61,6 @@ contains
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
     type(solarabs_type)    , intent(in)    :: solarabs_vars
     type(canopystate_type) , intent(in)    :: canopystate_vars
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: p,c,t,g,j,pi,l                                     ! indices

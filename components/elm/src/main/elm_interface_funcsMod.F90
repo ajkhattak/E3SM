@@ -41,7 +41,6 @@ module elm_interface_funcsMod
   use atm2lndType           , only : atm2lnd_type
   use SoilStateType         , only : soilstate_type
   use SoilHydrologyType     , only : soilhydrology_type
-  use EnergyFluxType        , only : energyflux_type
 
   use CNStateType           , only : cnstate_type
 
@@ -129,7 +128,6 @@ contains
            bounds, num_soilc, filter_soilc,                       &
            num_soilp, filter_soilp,                               &
            atm2lnd_vars, soilstate_vars,                          &
-           energyflux_vars,                                       &
            cnstate_vars,                                          &
            ch4_vars                                               &
            )
@@ -144,8 +142,6 @@ contains
     integer                     , intent(in)    :: filter_soilp(:)   ! filter for soil patches
     type(atm2lnd_type)          , intent(in)    :: atm2lnd_vars
     type(soilstate_type)        , intent(in)    :: soilstate_vars
-
-    type(energyflux_type)       , intent(in)    :: energyflux_vars
 
     type(cnstate_type)          , intent(in)    :: cnstate_vars
     type(ch4_type)              , intent(in)    :: ch4_vars
@@ -174,8 +170,7 @@ contains
                    atm2lnd_vars, soilstate_vars)
 
     call get_elm_soil_th_flux(elm_idata_th,                 &
-                       bounds, num_soilc, filter_soilc,     &
-                       energyflux_vars)
+                       bounds, num_soilc, filter_soilc)
 
     call get_elm_bgc_state(elm_idata_bgc,                   &
                     bounds, num_soilc, filter_soilc,        &
@@ -383,8 +378,7 @@ contains
 
 !--------------------------------------------------------------------------------------
   subroutine get_elm_soil_th_flux(elm_idata_th,             &
-                       bounds, num_soilc, filter_soilc,     &
-                       energyflux_vars)
+                       bounds, num_soilc, filter_soilc)
   !
   ! !DESCRIPTION:
   !  get soil temperature/saturation from CLM to soil BGC module
@@ -400,7 +394,6 @@ contains
     type(bounds_type)        , intent(in) :: bounds           ! bounds
     integer                  , intent(in) :: num_soilc        ! number of column soil points in column filter
     integer                  , intent(in) :: filter_soilc(:)  ! column filter for soil points
-    type(energyflux_type)    , intent(in) :: energyflux_vars
 
     type(elm_interface_th_datatype)       , intent(inout) :: elm_idata_th
 
@@ -791,7 +784,6 @@ contains
 !--------------------------------------------------------------------------------------
   subroutine update_th_data_pf2elm(elm_idata_th,           &
            bounds, num_soilc, filter_soilc,                &
-           energyflux_vars,                                &
            soilstate_vars, soilhydrology_vars)
 
     ! USES
@@ -805,7 +797,6 @@ contains
     integer                     , intent(in)    :: filter_soilc(:)   ! filter for soil columns
     type(soilstate_type)        , intent(inout) :: soilstate_vars
     type(soilhydrology_type)    , intent(inout) :: soilhydrology_vars
-    type(energyflux_type)       , intent(inout) :: energyflux_vars
 
     type(elm_interface_th_datatype), intent(in) :: elm_idata_th
 

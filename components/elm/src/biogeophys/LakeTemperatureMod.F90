@@ -12,7 +12,6 @@ module LakeTemperatureMod
   use shr_log_mod       , only : errMsg => shr_log_errMsg
   use decompMod         , only : bounds_type
   use CH4Mod            , only : ch4_type
-  use EnergyFluxType    , only : energyflux_type
   use LakeStateType     , only : lakestate_type
   use SoilStateType     , only : soilstate_type
   use SolarAbsorbedType , only : solarabs_type
@@ -42,7 +41,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine LakeTemperature(bounds, num_lakec, filter_lakec, num_lakep, filter_lakep, &
        solarabs_vars, soilstate_vars, ch4_vars, &
-       energyflux_vars, lakestate_vars)
+       lakestate_vars)
     !
     ! !DESCRIPTION:
     ! Calculates temperatures in the 25-45 layer column of (possible) snow,
@@ -127,7 +126,6 @@ contains
     type(solarabs_type)    , intent(in)    :: solarabs_vars
     type(soilstate_type)   , intent(in)    :: soilstate_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(lakestate_type)   , intent(inout) :: lakestate_vars
     !
     ! !LOCAL VARIABLES:
@@ -707,7 +705,7 @@ contains
          cv(bounds%begc:bounds%endc, :), &
          cv_lake(bounds%begc:bounds%endc, :), &
          lhabs(bounds%begc:bounds%endc), &
-         energyflux_vars, lakestate_vars)
+         lakestate_vars)
 
     !!!!!!!!!!!!!!!!!!!!!!!
 
@@ -1233,7 +1231,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine PhaseChange_Lake (bounds, num_lakec, filter_lakec, cv, cv_lake, lhabs, &
-        energyflux_vars, lakestate_vars)
+        lakestate_vars)
      !
      ! !DESCRIPTION:
      ! Calculation of the phase change within snow, soil, & lake layers:
@@ -1263,7 +1261,6 @@ contains
      real(r8)               , intent(inout) :: cv( bounds%begc: , -nlevsno+1: ) ! heat capacity [J/(m2 K)] [col, lev]
      real(r8)               , intent(inout) :: cv_lake( bounds%begc: , 1: )     ! heat capacity [J/(m2 K)] [col, levlak]
      real(r8)               , intent(out)   :: lhabs( bounds%begc: )            ! total per-column latent heat abs. (J/m^2) [col]
-     type(energyflux_type)  , intent(inout) :: energyflux_vars
      type(lakestate_type)   , intent(inout) :: lakestate_vars
      !
      ! !LOCAL VARIABLES:

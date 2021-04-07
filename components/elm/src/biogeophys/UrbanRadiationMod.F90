@@ -20,7 +20,6 @@ module UrbanRadiationMod
   use SolarAbsorbedType , only : solarabs_type 
   use SurfaceAlbedoType , only : surfalb_type
   use UrbanParamsType   , only : urbanparams_type
-  use EnergyFluxType    , only : energyflux_type
   use TopounitDataType  , only : top_af
   use LandunitType      , only : lun_pp                
   use ColumnType        , only : col_pp 
@@ -49,7 +48,7 @@ contains
        num_urbanc, filter_urbanc                                      , &
        num_urbanp, filter_urbanp                                      , &
        atm2lnd_vars, urbanparams_vars                                 , &
-       solarabs_vars, surfalb_vars, energyflux_vars)
+       solarabs_vars, surfalb_vars)
     !
     ! !DESCRIPTION: 
     ! Solar fluxes absorbed and reflected by roof and canyon (walls, road).
@@ -75,7 +74,6 @@ contains
     type(urbanparams_type) , intent(in)    :: urbanparams_vars
     type(solarabs_type)    , intent(inout) :: solarabs_vars
     type(surfalb_type)     , intent(in)    :: surfalb_vars
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: fp,fl,p,c,l,t,g            ! indices

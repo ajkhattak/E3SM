@@ -1659,7 +1659,7 @@ contains
          call ch4_tran (bounds, &
               num_soilc, filter_soilc, &
               jwt(begc:endc), dtime_ch4, sat, lake, &
-              soilstate_vars, energyflux_vars, ch4_vars)
+              soilstate_vars, ch4_vars)
 
       enddo ! sat/unsat
 
@@ -1708,7 +1708,7 @@ contains
          call ch4_tran (bounds, &
               num_lakec, filter_lakec, &
               jwt(begc:endc), dtime_ch4, sat, lake, &
-              soilstate_vars, energyflux_vars, ch4_vars)
+              soilstate_vars, ch4_vars)
 
       end if
 
@@ -2754,7 +2754,7 @@ contains
   subroutine ch4_tran (bounds, &
        num_methc, filter_methc, &
        jwt, dtime_ch4, sat, lake, &
-       soilstate_vars, energyflux_vars, ch4_vars)
+       soilstate_vars, ch4_vars)
     !
     ! !DESCRIPTION:
     ! Solves the reaction & diffusion equation for the timestep.  First "competition" between processes for
@@ -2779,7 +2779,6 @@ contains
     logical                , intent(in)    :: lake      ! function called with lake filter
     real(r8)               , intent(in)    :: dtime_ch4           ! time step for ch4 calculations
     type(soilstate_type)   , intent(in)    :: soilstate_vars
-    type(energyflux_type)  , intent(in)    :: energyflux_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
     !
     ! !LOCAL VARIABLES:

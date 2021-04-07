@@ -23,7 +23,6 @@ module lnd2atmMod
   use DUSTMod              , only : dust_type
   use DryDepVelocity       , only : drydepvel_type
   use VocEmissionMod       , only : vocemis_type
-  use EnergyFluxType       , only : energyflux_type
   use FrictionVelocityType , only : frictionvel_type
   use SolarAbsorbedType    , only : solarabs_type
   use SurfaceAlbedoType    , only : surfalb_type
@@ -48,7 +47,7 @@ contains
 
   !------------------------------------------------------------------------
   subroutine lnd2atm_minimal(bounds, &
-      surfalb_vars, energyflux_vars, lnd2atm_vars)
+      surfalb_vars, lnd2atm_vars)
     !
     ! !DESCRIPTION:
     ! Compute clm_l2a_vars component of gridcell derived type. This routine computes
@@ -62,7 +61,6 @@ contains
     ! !ARGUMENTS:
     type(bounds_type)     , intent(in)    :: bounds  
     type(surfalb_type)    , intent(in)    :: surfalb_vars
-    type(energyflux_type) , intent(in)    :: energyflux_vars
     type(lnd2atm_type)    , intent(inout) :: lnd2atm_vars 
     !
     ! !LOCAL VARIABLES:
@@ -108,7 +106,6 @@ contains
   !------------------------------------------------------------------------
   subroutine lnd2atm(bounds, &
        atm2lnd_vars, surfalb_vars, frictionvel_vars, &
-       energyflux_vars, &
        solarabs_vars, drydepvel_vars, &
        vocemis_vars, dust_vars, ch4_vars, soilhydrology_vars, lnd2atm_vars) 
     !
@@ -123,7 +120,6 @@ contains
     type(atm2lnd_type)     , intent(in)     :: atm2lnd_vars
     type(surfalb_type)     , intent(in)     :: surfalb_vars
     type(frictionvel_type) , intent(in)     :: frictionvel_vars
-    type(energyflux_type)  , intent(in)     :: energyflux_vars
     type(solarabs_type)    , intent(in)     :: solarabs_vars
     type(drydepvel_type)   , intent(in)     :: drydepvel_vars
     type(vocemis_type)     , intent(in)     :: vocemis_vars
@@ -147,7 +143,7 @@ contains
     
     ! First, compute the "minimal" set of fields.
     call lnd2atm_minimal(bounds, &
-         surfalb_vars, energyflux_vars, lnd2atm_vars)
+         surfalb_vars, lnd2atm_vars)
 
     call p2g(bounds, &
          veg_es%t_ref2m (bounds%begp:bounds%endp), &

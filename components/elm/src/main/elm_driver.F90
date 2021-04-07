@@ -411,7 +411,6 @@ contains
     call t_startf('dyn_subgrid')
     call dynSubgrid_driver(bounds_proc,                                      &
        urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars, &
-       energyflux_vars,   &
        canopystate_vars, photosyns_vars, cnstate_vars,                       &
        veg_cs, c13_veg_cs, c14_veg_cs,         &
        col_cs, c13_col_cs, c14_col_cs, col_cf,  &
@@ -683,7 +682,7 @@ contains
             filter(nc)%num_urbanc, filter(nc)%urbanc,                          &
             filter(nc)%num_urbanp, filter(nc)%urbanp,                          &
             atm2lnd_vars, urbanparams_vars,                                    &
-            solarabs_vars, surfalb_vars, energyflux_vars)
+            solarabs_vars, surfalb_vars)
 
        call t_stopf('surfrad')
 
@@ -697,7 +696,6 @@ contains
             filter(nc)%num_nolakec, filter(nc)%nolakec,                       &
             filter(nc)%num_nolakep, filter(nc)%nolakep,                       &
             atm2lnd_vars, canopystate_vars, soilstate_vars, frictionvel_vars, &
-            energyflux_vars,                                                  &
             alm_fates)
        call t_stopf('bgp1')
 
@@ -714,7 +712,7 @@ contains
        call BareGroundFluxes(bounds_clump,                                 &
             filter(nc)%num_nolakeurbanp, filter(nc)%nolakeurbanp,          &
             atm2lnd_vars, canopystate_vars, soilstate_vars,                &
-            frictionvel_vars, ch4_vars, energyflux_vars)
+            frictionvel_vars, ch4_vars)
        call t_stopf('bgflux')
 
        ! non-bareground fluxes for all patches except lakes and urban landunits
@@ -740,7 +738,7 @@ contains
             filter(nc)%num_urbanc, filter(nc)%urbanc,                         &
             filter(nc)%num_urbanp, filter(nc)%urbanp,                         &
             atm2lnd_vars, urbanparams_vars, soilstate_vars,                   &
-            frictionvel_vars, energyflux_vars)
+            frictionvel_vars)
        call t_stopf('uflux')
 
        ! Fluxes for all lake landunits
@@ -750,7 +748,7 @@ contains
             filter(nc)%num_lakec, filter(nc)%lakec,                          &
             filter(nc)%num_lakep, filter(nc)%lakep,                          &
             atm2lnd_vars, solarabs_vars, frictionvel_vars,                   &
-            energyflux_vars, lakestate_vars)
+            lakestate_vars)
 
        ! ============================================================================
        ! DUST and VOC emissions
@@ -791,7 +789,7 @@ contains
             filter(nc)%num_lakec, filter(nc)%lakec,                                   &
             filter(nc)%num_lakep, filter(nc)%lakep,                                   & 
             solarabs_vars, soilstate_vars, ch4_vars,                                  &
-            energyflux_vars, lakestate_vars)
+            lakestate_vars)
        call t_stopf('bgplake')
 
        ! Set soil/snow temperatures including ground temperature
@@ -818,8 +816,7 @@ contains
             filter(nc)%num_urbanl,  filter(nc)%urbanl,                                        &
             filter(nc)%num_nolakec, filter(nc)%nolakec,                                       &
             filter(nc)%num_nolakep, filter(nc)%nolakep,                                       &
-            atm2lnd_vars, solarabs_vars, canopystate_vars,                                    &
-            energyflux_vars)
+            atm2lnd_vars, solarabs_vars, canopystate_vars)
        call t_stopf('bgp2')
 
        ! ============================================================================
@@ -846,7 +843,7 @@ contains
             filter(nc)%num_urbanc, filter(nc)%urbanc,                        &
             filter(nc)%num_snowc, filter(nc)%snowc,                          &
             filter(nc)%num_nosnowc, filter(nc)%nosnowc,canopystate_vars,     &
-            atm2lnd_vars, soilstate_vars, energyflux_vars,                   &
+            atm2lnd_vars, soilstate_vars,                                    &
             soilhydrology_vars, aerosol_vars,                                &
             soil_water_retention_curve, ep_betr,                             &
             alm_fates)
@@ -878,7 +875,7 @@ contains
             filter(nc)%num_lakesnowc, filter(nc)%lakesnowc,                                  &
             filter(nc)%num_lakenosnowc, filter(nc)%lakenosnowc,                              &
             atm2lnd_vars, soilstate_vars,                                                    &
-            energyflux_vars, aerosol_vars, lakestate_vars)
+            aerosol_vars, lakestate_vars)
        
        !  Calculate column-integrated aerosol masses, and
        !  mass concentrations for radiative calculations and output
@@ -997,7 +994,6 @@ contains
                            filter(nc)%num_soilc, filter(nc)%soilc,                      &
                            filter(nc)%num_soilp, filter(nc)%soilp,                      &
                            atm2lnd_vars, soilstate_vars,                                &
-                           energyflux_vars,                                             &
                            cnstate_vars,                                                &
                            ch4_vars)
 
@@ -1232,14 +1228,14 @@ contains
        call ColWaterBalanceCheck(bounds_clump, &
             filter(nc)%num_do_smb_c, filter(nc)%do_smb_c, &
             atm2lnd_vars, glc2lnd_vars, solarabs_vars,    &
-            energyflux_vars, canopystate_vars)
+            canopystate_vars)
        call t_stopf('balchk')
 
        call t_startf('gridbalchk')
        call GridBalanceCheck(bounds_clump                             , &
             filter(nc)%num_do_smb_c, filter(nc)%do_smb_c              , &
             atm2lnd_vars, glc2lnd_vars, solarabs_vars                 , &
-            energyflux_vars, canopystate_vars                         , &
+            canopystate_vars                                          , &
             soilhydrology_vars)
        call t_stopf('gridbalchk')
 
@@ -1324,7 +1320,6 @@ contains
     call t_startf('lnd2atm')
     call lnd2atm(bounds_proc,                                            &
          atm2lnd_vars, surfalb_vars, frictionvel_vars, &
-         energyflux_vars,               &
          solarabs_vars, drydepvel_vars,                 &
          vocemis_vars, dust_vars, ch4_vars, soilhydrology_vars, lnd2atm_vars) 
     call t_stopf('lnd2atm')
@@ -1577,7 +1572,7 @@ contains
     ! defined at the patch level.
     !
     ! !USES:
-    use EnergyFluxType , only : energyflux_type
+    !use EnergyFluxType , only : energyflux_type
     use subgridAveMod  , only : p2c
     !
     ! !ARGUMENTS:

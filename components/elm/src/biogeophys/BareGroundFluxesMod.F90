@@ -11,7 +11,6 @@ module BareGroundFluxesMod
   use CH4Mod               , only : ch4_type
   use atm2lndType          , only : atm2lnd_type
   use CanopyStateType      , only : canopystate_type
-  use EnergyFluxType       , only : energyflux_type
   use FrictionVelocityType , only : frictionvel_type
   use SoilStateType        , only : soilstate_type
   use TemperatureType      , only : temperature_type
@@ -37,7 +36,7 @@ contains
   !------------------------------------------------------------------------------
   subroutine BareGroundFluxes(bounds, num_nolakeurbanp, filter_nolakeurbanp, &
        atm2lnd_vars, canopystate_vars, soilstate_vars, &
-       frictionvel_vars, ch4_vars, energyflux_vars)
+       frictionvel_vars, ch4_vars)
     !
     ! !DESCRIPTION:
     ! Compute sensible and latent fluxes and their derivatives with respect
@@ -62,7 +61,6 @@ contains
     type(soilstate_type)   , intent(in)    :: soilstate_vars
     type(frictionvel_type) , intent(inout) :: frictionvel_vars
     type(ch4_type)         , intent(inout) :: ch4_vars
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer, parameter  :: niters = 3            ! maximum number of iterations for surface temperature

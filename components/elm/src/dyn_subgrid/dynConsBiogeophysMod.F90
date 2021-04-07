@@ -13,7 +13,6 @@ module dynConsBiogeophysMod
   use shr_log_mod       , only : errMsg => shr_log_errMsg
   use decompMod         , only : bounds_type
   use UrbanParamsType   , only : urbanparams_type
-  use EnergyFluxType    , only : energyflux_type
   use LakeStateType     , only : lakestate_type
   use SoilHydrologyType , only : soilhydrology_type  
   use SoilStateType     , only : soilstate_type
@@ -48,8 +47,7 @@ contains
   subroutine dyn_hwcontent_init(bounds,                                      &
        num_nolakec, filter_nolakec,                                          &
        num_lakec, filter_lakec,                                              &
-       urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars, &
-       energyflux_vars)
+       urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars)
     !
     ! !DESCRIPTION:
     ! Initialize variables used for dyn_hwcontent, and compute grid cell-level heat
@@ -67,7 +65,6 @@ contains
     type(soilstate_type)     , intent(in)    :: soilstate_vars
     type(soilhydrology_type) , intent(in)    :: soilhydrology_vars
     type(lakestate_type)     , intent(in)    :: lakestate_vars
-    type(energyflux_type)    , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer :: g   ! grid cell index
@@ -93,8 +90,7 @@ contains
   subroutine dyn_hwcontent_final(bounds, &
        num_nolakec, filter_nolakec, &
        num_lakec, filter_lakec, &
-       urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars, &
-       energyflux_vars)
+       urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars)
     !
     ! Should be called AFTER all subgrid weight updates this time step
     !
@@ -111,7 +107,6 @@ contains
     type(soilstate_type)     , intent(in)    :: soilstate_vars
     type(soilhydrology_type) , intent(in)    :: soilhydrology_vars
     type(lakestate_type)     , intent(in)    :: lakestate_vars
-    type(energyflux_type)    , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: begg, endg

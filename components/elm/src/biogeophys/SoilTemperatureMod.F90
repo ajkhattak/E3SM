@@ -390,7 +390,7 @@ contains
            dhsdT( begc:endc ),                                                &
            sabg_lyr_col( begc:endc, -nlevsno+1: ),                            &
            atm2lnd_vars, urbanparams_vars, canopystate_vars,                  &
-           solarabs_vars, energyflux_vars)
+           solarabs_vars)
 
       ! Determine heat diffusion through the layer interface and factor used in computing
       ! banded diagonal matrix and set up vector r and vectors a, b, c that define banded
@@ -401,8 +401,7 @@ contains
            tk( begc:endc, -nlevsno+1: ),                                     &
            cv( begc:endc, -nlevsno+1: ),                                     &
            fn( begc:endc, -nlevsno+1: ),                                     &
-           fact( begc:endc, -nlevsno+1: ),                                   &
-           energyflux_vars)
+           fact( begc:endc, -nlevsno+1: ))
 
       ! compute thermal properties of h2osfc
 
@@ -621,12 +620,11 @@ contains
       end do
 
       call PhaseChangeH2osfc (bounds, num_nolakec, filter_nolakec, &
-           dhsdT(bounds%begc:bounds%endc), &
-           energyflux_vars)
+           dhsdT(bounds%begc:bounds%endc))
 
       call Phasechange_beta (bounds, num_nolakec, filter_nolakec, &
            dhsdT(bounds%begc:bounds%endc), &
-           soilstate_vars, energyflux_vars)
+           soilstate_vars)
 
       do fc = 1,num_nolakec
          c = filter_nolakec(fc)
@@ -1054,7 +1052,7 @@ end subroutine SolveTemperature
 
   !-----------------------------------------------------------------------
   subroutine PhaseChangeH2osfc (bounds, num_nolakec, filter_nolakec, &
-       dhsdT, energyflux_vars)
+       dhsdT)
     !
     ! !DESCRIPTION:
     ! Only freezing is considered.  When water freezes, move ice to bottom snow layer.
@@ -1070,7 +1068,6 @@ end subroutine SolveTemperature
     integer                , intent(in)    :: num_nolakec                          ! number of column non-lake points in column filter
     integer                , intent(in)    :: filter_nolakec(:)                    ! column filter for non-lake points
     real(r8)               , intent(in)    :: dhsdT ( bounds%begc: )               ! temperature derivative of "hs" [col               ]
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,g                       !do loop index
@@ -1270,7 +1267,7 @@ end subroutine SolveTemperature
 
   !-----------------------------------------------------------------------
   subroutine Phasechange_beta (bounds, num_nolakec, filter_nolakec, dhsdT, &
-       soilstate_vars, energyflux_vars)
+       soilstate_vars)
     !
     ! !DESCRIPTION:
     ! Calculation of the phase change within snow and soil layers:
@@ -1298,7 +1295,6 @@ end subroutine SolveTemperature
     integer                , intent(in)    :: filter_nolakec(:)                    ! column filter for non-lake points
     real(r8)               , intent(in)    :: dhsdT ( bounds%begc: )               ! temperature derivative of "hs" [col]
     type(soilstate_type)   , intent(in)    :: soilstate_vars
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,g,l                            !do loop index
@@ -1667,7 +1663,7 @@ end subroutine SolveTemperature
   subroutine ComputeGroundHeatFluxAndDeriv(bounds, num_nolakec, filter_nolakec, &
        hs_h2osfc, hs_top_snow, hs_soil, hs_top, dhsdT, sabg_lyr_col, &
        atm2lnd_vars, urbanparams_vars, canopystate_vars, &
-       solarabs_vars, energyflux_vars)
+       solarabs_vars)
     !
     ! !DESCRIPTION:
     ! Computes ground heat flux on:
@@ -1697,7 +1693,6 @@ end subroutine SolveTemperature
     type(urbanparams_type) , intent(in)    :: urbanparams_vars
     type(canopystate_type) , intent(in)    :: canopystate_vars
     type(solarabs_type)    , intent(inout) :: solarabs_vars
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,p,l,t,g,pi                                         ! indices
@@ -1917,8 +1912,7 @@ end subroutine SolveTemperature
 
   !-----------------------------------------------------------------------
   subroutine ComputeHeatDiffFluxAndFactor(bounds, num_nolakec, filter_nolakec, dtime, &
-       tk, cv, fn, fact, &
-       energyflux_vars)
+       tk, cv, fn, fact)
     !
     ! !DESCRIPTION:
     ! Computes:
@@ -1940,7 +1934,6 @@ end subroutine SolveTemperature
     real(r8)               , intent(in)  :: cv (bounds%begc: ,-nlevsno+1: )    ! heat capacity [J/(m2 K)]
     real(r8)               , intent(out) :: fn (bounds%begc: ,-nlevsno+1: )    ! heat diffusion through the layer interface [W/m2]
     real(r8)               , intent(out) :: fact( bounds%begc: , -nlevsno+1: ) ! used in computing tridiagonal matrix [col, lev]
-    type(energyflux_type)  , intent(in)  :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer  :: j,c,l                                           ! indices
@@ -4962,8 +4955,7 @@ end subroutine SolveTemperature
 
   !-----------------------------------------------------------------------
   subroutine Prepare_Data_for_EM_PTM_Driver(bounds, num_filter, filter, &
-       sabg_lyr, dhsdT, hs_soil, hs_top_snow, hs_h2osfc, &
-       energyflux_vars)
+       sabg_lyr, dhsdT, hs_soil, hs_top_snow, hs_h2osfc)
     !
     ! !DESCRIPTION:
     ! Prepare data needed for the external model, PETSc-based Thermal
@@ -4985,7 +4977,6 @@ end subroutine SolveTemperature
     real(r8)               , intent(in)    :: hs_soil(bounds%begc:bounds%endc)                   ! heat flux on soil [W/m2]
     real(r8)               , intent(in)    :: hs_top_snow(bounds%begc:bounds%endc)               ! heat flux on top snow layer [W/m2]
     real(r8)               , intent(in)    :: hs_h2osfc(bounds%begc:bounds%endc)                 ! heat flux on standing water [W/m2]
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     integer                                :: c, j

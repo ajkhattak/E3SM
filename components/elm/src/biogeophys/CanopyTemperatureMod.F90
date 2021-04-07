@@ -23,7 +23,6 @@ module CanopyTemperatureMod
   use VegetationPropertiesType, only : veg_vp
   use atm2lndType          , only : atm2lnd_type
   use CanopyStateType      , only : canopystate_type
-  use EnergyFluxType       , only : energyflux_type
   use FrictionVelocityType , only : frictionvel_type
   use SoilStateType        , only : soilstate_type
   use TopounitDataType     , only : top_as
@@ -47,7 +46,6 @@ contains
   subroutine CanopyTemperature(bounds, &
        num_nolakec, filter_nolakec, num_nolakep, filter_nolakep, &
        atm2lnd_vars, canopystate_vars, soilstate_vars, frictionvel_vars, &
-       energyflux_vars, &
        alm_fates)
     !
     ! !DESCRIPTION:
@@ -89,7 +87,6 @@ contains
     type(canopystate_type) , intent(inout) :: canopystate_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
     type(frictionvel_type) , intent(inout) :: frictionvel_vars
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(hlm_fates_interface_type) , intent(inout) :: alm_fates
     !
     ! !LOCAL VARIABLES:

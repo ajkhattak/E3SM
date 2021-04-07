@@ -26,7 +26,6 @@ module LakeHydrologyMod
   use VegetationDataType   , only : veg_ef, veg_wf
   use atm2lndType          , only : atm2lnd_type
   use AerosolType          , only : aerosol_type
-  use EnergyFluxType       , only : energyflux_type
   use FrictionVelocityType , only : frictionvel_type
   use LakeStateType        , only : lakestate_type
   use SoilStateType        , only : soilstate_type
@@ -51,7 +50,7 @@ contains
        num_lakec, filter_lakec, num_lakep, filter_lakep, &
        num_shlakesnowc, filter_shlakesnowc, num_shlakenosnowc, filter_shlakenosnowc, &
        atm2lnd_vars, soilstate_vars, &
-       energyflux_vars, aerosol_vars, lakestate_vars)
+       aerosol_vars, lakestate_vars)
     !
     ! !DESCRIPTION:
     ! WARNING: This subroutine assumes lake columns have one and only one pft.
@@ -91,7 +90,6 @@ contains
     integer                , intent(out)   :: filter_shlakenosnowc(:) ! column filter for non-snow points
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
     type(soilstate_type)   , intent(in)    :: soilstate_vars
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(aerosol_type)     , intent(inout) :: aerosol_vars
     type(lakestate_type)   , intent(inout) :: lakestate_vars
     !

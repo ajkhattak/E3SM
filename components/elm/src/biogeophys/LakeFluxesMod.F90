@@ -10,7 +10,6 @@ module LakeFluxesMod
   use shr_log_mod          , only : errMsg => shr_log_errMsg
   use decompMod            , only : bounds_type
   use atm2lndType          , only : atm2lnd_type
-  use EnergyFluxType       , only : energyflux_type
   use FrictionVelocityType , only : frictionvel_type
   use LakeStateType        , only : lakestate_type
   use SolarAbsorbedType    , only : solarabs_type
@@ -35,7 +34,7 @@ contains
   !-----------------------------------------------------------------------
   subroutine LakeFluxes(bounds, num_lakec, filter_lakec, num_lakep, filter_lakep, &
        atm2lnd_vars, solarabs_vars, frictionvel_vars, &
-       energyflux_vars, lakestate_vars)
+       lakestate_vars)
     !
     ! !DESCRIPTION:
     ! Calculates lake temperatures and surface fluxes.
@@ -63,7 +62,6 @@ contains
     type(atm2lnd_type)     , intent(in)    :: atm2lnd_vars
     type(solarabs_type)    , intent(inout) :: solarabs_vars
     type(frictionvel_type) , intent(inout) :: frictionvel_vars
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     type(lakestate_type)   , intent(inout) :: lakestate_vars
     !
     ! !LOCAL VARIABLES:

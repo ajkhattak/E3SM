@@ -18,7 +18,6 @@ module dynSubgridDriverMod
   use UrbanParamsType     , only : urbanparams_type
   use CanopyStateType     , only : canopystate_type
   use CNStateType         , only : cnstate_type
-  use EnergyFluxType      , only : energyflux_type
   use LakeStateType       , only : lakestate_type
   use PhotosynthesisType  , only : photosyns_type
   use SoilHydrologyType   , only : soilhydrology_type  
@@ -136,7 +135,6 @@ contains
   !-----------------------------------------------------------------------
   subroutine dynSubgrid_driver(bounds_proc, &
        urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars, &
-       energyflux_vars,                                &
        canopystate_vars, photosyns_vars, cnstate_vars, &
        veg_cs, c13_veg_cs, c14_veg_cs, &
        col_cs, c13_col_cs, c14_col_cs, col_cf, &
@@ -176,7 +174,6 @@ contains
     type(soilstate_type)     , intent(in)    :: soilstate_vars
     type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
     type(lakestate_type)     , intent(in)    :: lakestate_vars
-    type(energyflux_type)    , intent(inout) :: energyflux_vars
     type(canopystate_type)   , intent(inout) :: canopystate_vars
     type(photosyns_type)     , intent(inout) :: photosyns_vars
     type(cnstate_type)       , intent(inout) :: cnstate_vars
@@ -216,8 +213,7 @@ contains
        call dyn_hwcontent_init(bounds_clump, &
             filter(nc)%num_nolakec, filter(nc)%nolakec, &
             filter(nc)%num_lakec, filter(nc)%lakec, &
-            urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars, &
-            energyflux_vars)
+            urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars)
 
        call prior_weights%set_prior_weights(bounds_clump)
        call patch_state_updater%set_old_weights(bounds_clump)
@@ -275,8 +271,7 @@ contains
        call dyn_hwcontent_final(bounds_clump, &
             filter(nc)%num_nolakec, filter(nc)%nolakec, &
             filter(nc)%num_lakec, filter(nc)%lakec, &
-            urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars, &
-            energyflux_vars)
+            urbanparams_vars, soilstate_vars, soilhydrology_vars, lakestate_vars)
 
        if (use_cn) then
           call dyn_cnbal_patch(bounds_clump, &

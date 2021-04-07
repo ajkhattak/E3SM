@@ -14,7 +14,6 @@ module BalanceCheckMod
   use GetGlobalValuesMod , only : GetGlobalIndex
   use atm2lndType        , only : atm2lnd_type
   use glc2lndMod         , only : glc2lnd_type
-  use EnergyFluxType     , only : energyflux_type
   use SolarAbsorbedType  , only : solarabs_type
   use SoilHydrologyType  , only : soilhydrology_type  
   use GridcellType       , only : grc_pp
@@ -144,7 +143,7 @@ contains
    !-----------------------------------------------------------------------
    subroutine ColWaterBalanceCheck( bounds, num_do_smb_c, filter_do_smb_c, &
         atm2lnd_vars, glc2lnd_vars, solarabs_vars, &
-        energyflux_vars, canopystate_vars)
+        canopystate_vars)
      !
      ! !DESCRIPTION:
      ! This subroutine accumulates the numerical truncation errors of the water
@@ -180,7 +179,6 @@ contains
      type(atm2lnd_type)    , intent(in)    :: atm2lnd_vars
      type(glc2lnd_type)    , intent(in)    :: glc2lnd_vars
      type(solarabs_type)   , intent(in)    :: solarabs_vars
-     type(energyflux_type) , intent(inout) :: energyflux_vars
      type(canopystate_type), intent(inout) :: canopystate_vars
      !
      ! !LOCAL VARIABLES:
@@ -847,7 +845,7 @@ contains
    !-----------------------------------------------------------------------
    subroutine GridBalanceCheck( bounds, num_do_smb_c, filter_do_smb_c, &
         atm2lnd_vars, glc2lnd_vars, solarabs_vars, &
-        energyflux_vars, canopystate_vars, soilhydrology_vars)
+        canopystate_vars, soilhydrology_vars)
      !
      ! !DESCRIPTION:
      !
@@ -869,7 +867,6 @@ contains
      type(atm2lnd_type)    , intent(in)    :: atm2lnd_vars
      type(glc2lnd_type)    , intent(in)    :: glc2lnd_vars
      type(solarabs_type)   , intent(in)    :: solarabs_vars
-     type(energyflux_type) , intent(inout) :: energyflux_vars
      type(canopystate_type), intent(inout) :: canopystate_vars
      type(soilhydrology_type), intent(inout) :: soilhydrology_vars
      !

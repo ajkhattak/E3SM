@@ -15,7 +15,7 @@ module SedYieldMod
   use elm_varpar        , only : nlevslp
   use atm2lndType       , only : atm2lnd_type
   use CanopyStateType   , only : CanopyState_type
-  use EnergyFluxType    , only : energyflux_type
+  !use EnergyFluxType    , only : energyflux_type
   use SoilHydrologyType , only : soilhydrology_type
   use SoilStateType     , only : soilstate_type
   use ColumnType        , only : col_pp

@@ -18,7 +18,6 @@ module UrbanFluxesMod
   use atm2lndType          , only : atm2lnd_type
   use SoilStateType        , only : soilstate_type
   use FrictionVelocityType , only : frictionvel_type
-  use EnergyFluxType       , only : energyflux_type
   use SurfaceResistanceMod , only : do_soilevap_beta
   use GridcellType         , only : grc_pp
   use TopounitDataType     , only : top_as  
@@ -44,7 +43,7 @@ contains
   subroutine UrbanFluxes (bounds, num_nourbanl, filter_nourbanl,                        &
        num_urbanl, filter_urbanl, num_urbanc, filter_urbanc, num_urbanp, filter_urbanp, &
        atm2lnd_vars, urbanparams_vars, soilstate_vars,                                  &
-       frictionvel_vars, energyflux_vars)
+       frictionvel_vars)
     !
     ! !DESCRIPTION: 
     ! Turbulent and momentum fluxes from urban canyon (consisting of roof, sunwall, 
@@ -76,7 +75,6 @@ contains
     type(urbanparams_type) , intent(in)    :: urbanparams_vars
     type(soilstate_type)   , intent(inout) :: soilstate_vars
     type(frictionvel_type) , intent(inout) :: frictionvel_vars
-    type(energyflux_type)  , intent(inout) :: energyflux_vars
     !
     ! !LOCAL VARIABLES:
     character(len=*), parameter :: sub="UrbanFluxes"

@@ -9,7 +9,6 @@ module SoilHydrologyMod
   use decompMod         , only : bounds_type
   use elm_varctl        , only : iulog, use_vichydro
   use elm_varcon        , only : e_ice, denh2o, denice, rpi
-  use EnergyFluxType    , only : energyflux_type
   use SoilHydrologyType , only : soilhydrology_type  
   use SoilStateType     , only : soilstate_type
   use LandunitType      , only : lun_pp                
@@ -248,7 +247,7 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine Infiltration(bounds, num_hydrologyc, filter_hydrologyc, num_urbanc, filter_urbanc, &
-        energyflux_vars, soilhydrology_vars, soilstate_vars)
+        soilhydrology_vars, soilstate_vars)
      !
      ! !DESCRIPTION:
      ! Calculate infiltration into surface soil layer (minus the evaporation)
@@ -268,7 +267,6 @@ contains
      integer                  , intent(in)    :: filter_hydrologyc(:) ! column filter for soil points
      integer                  , intent(in)    :: num_urbanc           ! number of column urban points in column filter
      integer                  , intent(in)    :: filter_urbanc(:)     ! column filter for urban points
-     type(energyflux_type)    , intent(in)    :: energyflux_vars 
      type(soilhydrology_type) , intent(inout) :: soilhydrology_vars
      type(soilstate_type)     , intent(inout) :: soilstate_vars
      !

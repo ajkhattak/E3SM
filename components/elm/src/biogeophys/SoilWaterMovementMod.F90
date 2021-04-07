@@ -1042,7 +1042,7 @@ contains
    ! ====================================================================================
    
    subroutine Compute_EffecRootFrac_And_VertTranSink(bounds, num_hydrologyc, &
-         filter_hydrologyc, soilstate_inst, canopystate_inst, energyflux_inst)
+         filter_hydrologyc, soilstate_inst, canopystate_inst)
       
       ! ---------------------------------------------------------------------------------
       ! This is a wrapper for calculating the effective root fraction and soil
@@ -1066,7 +1066,6 @@ contains
 
       use SoilStateType       , only : soilstate_type
       use CanopyStateType     , only : canopystate_type
-      use EnergyFluxType      , only : energyflux_type
       use ColumnType          , only : col_pp 
       use LandunitType        , only : lun_pp
       use decompMod           , only : bounds_type   
@@ -1081,7 +1080,6 @@ contains
       integer                 , intent(in)    :: filter_hydrologyc(num_hydrologyc) ! column filter for soil points
       type(soilstate_type)    , intent(inout) :: soilstate_inst
       type(canopystate_type)  , intent(in)    :: canopystate_inst
-      type(energyflux_type)   , intent(in)    :: energyflux_inst
 
       ! Local Variables
       integer  :: filterc(bounds%endc-bounds%begc+1)           !column filter
@@ -1120,7 +1118,7 @@ contains
       if(use_hydrstress) then
          call Compute_EffecRootFrac_And_VertTranSink_HydStress(bounds, &
                num_filterc, filterc, soilstate_inst, &
-               canopystate_inst, energyflux_inst)
+               canopystate_inst)
       else
          call Compute_EffecRootFrac_And_VertTranSink_Default(bounds, &
                num_filterc,filterc, soilstate_inst)
@@ -1260,7 +1258,7 @@ contains
    
    subroutine Compute_EffecRootFrac_And_VertTranSink_HydStress( bounds, &
            num_filterc, filterc, soilstate_vars, &
-           canopystate_vars, energyflux_vars)
+           canopystate_vars)
 
 
         !
@@ -1276,7 +1274,6 @@ contains
         use PhotosynthesisMod, only : plc, params_inst
         use column_varcon    , only : icol_road_perv
         use shr_infnan_mod   , only : isnan => shr_infnan_isnan
-        use EnergyFluxType   , only : energyflux_type
         use shr_kind_mod     , only : r8 => shr_kind_r8
         !
         ! !ARGUMENTS:
@@ -1285,7 +1282,6 @@ contains
         integer              , intent(in)    :: filterc(:)      ! column filter for soil points
         type(soilstate_type) , intent(inout) :: soilstate_vars
         type(canopystate_type) , intent(in)  :: canopystate_vars
-        type(energyflux_type), intent(in)    :: energyflux_vars
         !
         ! !LOCAL VARIABLES:
         integer  :: p,c,fc,j                                              ! do loop indices
