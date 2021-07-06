@@ -2125,7 +2125,7 @@
     <NODENAME_REGEX>or-condo</NODENAME_REGEX>
     <OS>LINUX</OS>
     <COMPILERS>gnu,intel</COMPILERS>
-    <MPILIBS>openmpi,openmpi3</MPILIBS>
+    <MPILIBS>openmpi,openmpi3,openmpiats</MPILIBS>
     <CIME_OUTPUT_ROOT>/lustre/or-scratch/cades-ccsi/scratch/$USER</CIME_OUTPUT_ROOT>
     <DIN_LOC_ROOT>/lustre/or-scratch/cades-ccsi/proj-shared/project_acme/e3sm_inputdata</DIN_LOC_ROOT>
     <DIN_LOC_ROOT_CLMFORC>/lustre/or-scratch/cades-ccsi/proj-shared/project_acme/e3sm_inputdata/atm/datm7</DIN_LOC_ROOT_CLMFORC>
@@ -2146,6 +2146,12 @@
       </arguments>
     </mpirun>
     <mpirun mpilib="openmpi3" compiler="gnu">
+      <executable>mpirun</executable>
+      <arguments>
+        <arg name="num_tasks"> -np {{ total_tasks }}</arg>
+      </arguments>
+    </mpirun>
+    <mpirun mpilib="openmpiats" compiler="gnu">
       <executable>mpirun</executable>
       <arguments>
         <arg name="num_tasks"> -np {{ total_tasks }}</arg>
@@ -2187,6 +2193,10 @@
         <command name="load">python/3.6.3</command>
       </modules>
 
+      <modules compiler="gnu" mpilib="openmpiats">
+	<command name="load">PE-gnu</command> <!-- this will load gcc-5.3/openmpi-1.10, by default-->
+        <command name="load">python/3.6.3</command>
+      </modules>
     </module_system>
 
     <!-- customize these fields as appropriate for your system (max tasks) and
@@ -2201,7 +2211,11 @@
     <environment_variables compiler="gnu" mpilib="openmpi3">
       <env name="PETSC_PATH">$ENV{AMANZI_TPLS_DIR}/petsc-3.13</env>
     </environment_variables>
-
+    
+    <environment_variables compiler="gnu" mpilib="openmpiats">
+      <env name="PETSC_PATH">$ENV{AMANZI_TPLS_DIR}/petsc-3.13</env>
+    </environment_variables>
+    
     <environment_variables>
       <env name="HDF5_PATH">$ENV{HDF5_PATH}</env>
       <env name="NETCDF_PATH">$ENV{NETCDF_PATH}</env>
